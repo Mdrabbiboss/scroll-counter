@@ -42,6 +42,7 @@ class ScrollBubble(private val service: AccessibilityService) {
         val mood = Mood.of(total, limit)
         if (root == null) attach()
         face.mood = mood
+        face.post { face.react() }
         title.text = "$appCount scrolls on $appName"
         subtitle.text = "Today $total / $limit  ·  ${mood.label}"
         (card?.background as? GradientDrawable)?.setStroke(dp(1.5f).toInt(), mood.accent)

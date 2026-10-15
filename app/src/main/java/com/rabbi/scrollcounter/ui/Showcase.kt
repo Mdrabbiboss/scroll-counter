@@ -24,6 +24,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.TouchApp
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.ChatBubble
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -91,91 +95,217 @@ fun PhoneFrame(width: Dp, height: Dp, content: @Composable BoxScope.() -> Unit) 
 // Welcome showcase: a feed flies by while the mascot counter climbs to 1000 and gets exhausted
 // ---------------------------------------------------------------------------------------------
 
-private val FeedColors = listOf(
-    Color(0xFF0EA5E9) to Color(0xFF1E3A8A),
-    Color(0xFFF97316) to Color(0xFF7C2D12),
-    Color(0xFF22C55E) to Color(0xFF14532D),
-    Color(0xFFE11D48) to Color(0xFF4C0519),
-    Color(0xFFA855F7) to Color(0xFF3B0764),
-    Color(0xFFEAB308) to Color(0xFF713F12),
-    Color(0xFF14B8A6) to Color(0xFF134E4A),
-)
+private val Handles = listOf("@sunset.diaries", "@ocean.daily", "@citylights", "@into.the.woods", "@dune.walker", "@peak.hunter")
+private val Captions = listOf("Golden hour never misses", "Sound of the waves", "This city never sleeps", "Lost in the green", "Endless sand", "Above the clouds")
+private val Likes = listOf("24.1K", "8,302", "112K", "3,954", "41.7K", "9,880")
 
+/** One illustrated "reel": a little landscape scene, so the feed reads as real content. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawScene(kind: Int, top: Float, w: Float, h: Float) {
+    fun rect(c1: Color, c2: Color, y0: Float, y1: Float) =
+        drawRect(Brush.verticalGradient(listOf(c1, c2), top + y0 * h, top + y1 * h), Offset(0f, top + y0 * h), Size(w, (y1 - y0) * h))
+    fun poly(c: Color, vararg pts: Float) {
+        val path = androidx.compose.ui.graphics.Path()
+        path.moveTo(pts[0] * w, top + pts[1] * h)
+        var i = 2
+        while (i < pts.size) { path.lineTo(pts[i] * w, top + pts[i + 1] * h); i += 2 }
+        path.close()
+        drawPath(path, c)
+    }
+    when (kind) {
+        0 -> { // Sunset over mountains
+            rect(Color(0xFFFF8A4C), Color(0xFF9D4EDD), 0f, 1f)
+            drawCircle(Color(0xFFFFE08A), w * 0.17f, Offset(w * 0.5f, top + h * 0.5f))
+            poly(Color(0xFF5B2A86), 0f, 0.62f, 0.25f, 0.45f, 0.45f, 0.6f, 0.68f, 0.4f, 1f, 0.6f, 1f, 1f, 0f, 1f)
+            poly(Color(0xFF2E1450), 0f, 0.78f, 0.3f, 0.6f, 0.6f, 0.8f, 0.85f, 0.65f, 1f, 0.75f, 1f, 1f, 0f, 1f)
+        }
+        1 -> { // Ocean
+            rect(Color(0xFF7DD3FC), Color(0xFFE0F2FE), 0f, 0.5f)
+            rect(Color(0xFF0EA5E9), Color(0xFF0C4A6E), 0.5f, 1f)
+            drawCircle(Color(0xFFFFF7D6), w * 0.1f, Offset(w * 0.75f, top + h * 0.2f))
+            for (k in 0..4) drawRoundRect(Color.White.copy(alpha = 0.5f), Offset(w * (0.1f + 0.17f * k), top + h * (0.58f + 0.07f * (k % 3))), Size(w * 0.18f, h * 0.012f), CornerRadius(10f))
+        }
+        2 -> { // Night city
+            rect(Color(0xFF0B1026), Color(0xFF2A1B5C), 0f, 1f)
+            drawCircle(Color(0xFFF5F3CE), w * 0.08f, Offset(w * 0.78f, top + h * 0.16f))
+            for (k in 0..14) drawCircle(Color.White.copy(alpha = 0.7f), 2.5f, Offset(w * ((k * 37) % 100) / 100f, top + h * (0.05f + ((k * 13) % 30) / 100f)))
+            val bw = w / 6
+            for (k in 0..5) {
+                val bh = h * (0.32f + ((k * 29) % 25) / 100f)
+                drawRect(Color(0xFF151A3A), Offset(k * bw, top + h - bh), Size(bw - 4f, bh))
+                for (row in 0..6) for (col in 0..1)
+                    if ((row + col + k) % 3 != 0) drawRect(Color(0xFFFFD166), Offset(k * bw + 8f + col * bw * 0.4f, top + h - bh + 14f + row * bh * 0.12f), Size(bw * 0.16f, bh * 0.05f))
+            }
+        }
+        3 -> { // Forest
+            rect(Color(0xFFBBF7D0), Color(0xFF14532D), 0f, 1f)
+            for (k in 0..6) {
+                val x = w * (k / 6f)
+                val base = 0.95f - (k % 2) * 0.08f
+                poly(Color(0xFF166534).copy(alpha = 0.9f), x / w - 0.12f, base, x / w, base - 0.42f, x / w + 0.12f, base)
+            }
+            rect(Color.White.copy(alpha = 0.0f), Color.White.copy(alpha = 0.25f), 0.55f, 0.75f)
+        }
+        4 -> { // Desert
+            rect(Color(0xFF5EEAD4), Color(0xFFFDE68A), 0f, 0.55f)
+            drawCircle(Color(0xFFFFFBEB), w * 0.12f, Offset(w * 0.3f, top + h * 0.22f))
+            poly(Color(0xFFF59E0B), 0f, 0.6f, 0.4f, 0.5f, 1f, 0.62f, 1f, 1f, 0f, 1f)
+            poly(Color(0xFFD97706), 0f, 0.78f, 0.55f, 0.66f, 1f, 0.8f, 1f, 1f, 0f, 1f)
+        }
+        else -> { // Snowy peaks
+            rect(Color(0xFF38BDF8), Color(0xFFE0F2FE), 0f, 1f)
+            poly(Color(0xFF64748B), 0f, 0.8f, 0.3f, 0.35f, 0.55f, 0.7f, 0.78f, 0.42f, 1f, 0.75f, 1f, 1f, 0f, 1f)
+            poly(Color.White, 0.22f, 0.47f, 0.3f, 0.35f, 0.38f, 0.47f)
+            poly(Color.White, 0.71f, 0.52f, 0.78f, 0.42f, 0.85f, 0.52f)
+            rect(Color(0xFFF1F5F9), Color.White, 0.85f, 1f)
+        }
+    }
+}
+
+/**
+ * Welcome showcase, told in three beats so it's easy to follow:
+ *  1. Slow: each swipe moves to the next reel and the counter goes +1 (a finger shows the swipe).
+ *  2. Faster and faster: the count races up and the buddy gets more and more tired.
+ *  3. 1000: the counter jumps to the middle, turns red, and the buddy is dizzy.
+ */
 @Composable
 fun WelcomeShowcase(modifier: Modifier = Modifier) {
-    var t by remember { mutableFloatStateOf(0f) }      // 0..1 scrolling run
-    var fin by remember { mutableFloatStateOf(0f) }    // 0..1 finale (big red pill)
+    var posts by remember { mutableFloatStateOf(0f) }
+    var count by remember { mutableIntStateOf(0) }
+    var fin by remember { mutableFloatStateOf(0f) }
     var fade by remember { mutableFloatStateOf(1f) }
+    var finger by remember { mutableFloatStateOf(-1f) }   // -1 hidden, 0..1 swipe progress
+    var beat by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         while (true) {
-            t = 0f; fin = 0f; fade = 1f
-            delay(400)
-            Animatable(0f).animateTo(1f, tween(6200, easing = LinearEasing)) { t = value }
-            Animatable(0f).animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 260f)) { fin = value }
-            delay(1600)
+            posts = 0f; count = 0; fin = 0f; fade = 1f; beat = 0
+            Animatable(0f).animateTo(1f, tween(350)) { fade = value }
+            delay(500)
+            // Beat 1: six deliberate swipes
+            repeat(6) {
+                val start = posts
+                Animatable(0f).animateTo(1f, tween(420, easing = FastOutSlowInEasing)) {
+                    finger = value
+                    posts = start + value
+                }
+                finger = -1f
+                count += 1
+                delay(520)
+            }
+            // Beat 2: speeding up
+            beat = 1
+            val startPosts = posts
+            Animatable(0f).animateTo(1f, tween(5200, easing = LinearEasing)) {
+                val t = value
+                posts = startPosts + 90f * t * t
+                count = (6 + 994 * t.toDouble().pow(2.4)).roundToInt()
+            }
+            count = 1000
+            // Beat 3: the big red 1000
+            beat = 2
+            Animatable(0f).animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 220f)) { fin = value }
+            delay(2300)
             Animatable(1f).animateTo(0f, tween(450)) { fade = value }
         }
     }
 
-    val count = (1000 * t.toDouble().pow(2.3)).roundToInt()
-    val posts = 70f * t.toDouble().pow(1.9).toFloat()
     val mood = Mood.of(count, 1000)
-    val phoneW = 220.dp
-    val phoneH = 440.dp
+    val phoneW = 250.dp
+    val phoneH = 500.dp
+    val current = (posts.roundToInt() % Handles.size + Handles.size) % Handles.size
 
-    Box(modifier, contentAlignment = Alignment.Center) {
-        // Soft glow behind the phone
-        Box(
-            Modifier.size(320.dp).background(
-                Brush.radialGradient(listOf(Color(mood.accent).copy(alpha = 0.28f), Color.Transparent))
-            )
-        )
-        PhoneFrame(phoneW, phoneH) {
-            Canvas(Modifier.fillMaxSize().alpha(fade)) {
-                val h = size.height
-                val w = size.width
-                val first = floor(posts).toInt()
-                for (k in 0..2) {
-                    val i = first + k
-                    val top = (i - posts) * h
-                    val (c1, c2) = FeedColors[((i % FeedColors.size) + FeedColors.size) % FeedColors.size]
-                    drawRect(Brush.verticalGradient(listOf(c1, c2), top, top + h), Offset(0f, top), Size(w, h))
-                    // "Subject" of the post
-                    drawCircle(Color.White.copy(alpha = 0.16f), w * 0.32f, Offset(w * 0.5f, top + h * 0.42f))
-                    drawCircle(Color.White.copy(alpha = 0.10f), w * 0.55f, Offset(w * 0.15f, top + h * 0.85f))
-                    // Side action buttons
-                    for (j in 0..3) drawCircle(Color.White.copy(alpha = 0.85f), w * 0.045f, Offset(w * 0.9f, top + h * (0.52f + j * 0.08f)))
-                    // Caption
-                    drawCircle(Color.White, w * 0.05f, Offset(w * 0.11f, top + h * 0.82f))
-                    drawRoundRect(Color.White.copy(alpha = 0.9f), Offset(w * 0.2f, top + h * 0.805f), Size(w * 0.4f, h * 0.025f), CornerRadius(20f))
-                    drawRoundRect(Color.White.copy(alpha = 0.55f), Offset(w * 0.06f, top + h * 0.86f), Size(w * 0.6f, h * 0.02f), CornerRadius(20f))
-                }
-                // Top and bottom shade so the pill reads clearly
-                drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent), 0f, h * 0.25f))
-            }
-            // Counter pill: slides from the top to the centre, grows and turns red at 1000
-            val pillY = (36 + (phoneH.value / 2 - 60) * fin).dp
-            val pillColor = lerp(Color(0xE6062A26), Color(0xFFE5484D), fin.coerceIn(0f, 1f))
-            Row(
-                Modifier.align(Alignment.TopCenter).offset(y = pillY).alpha(fade).scale(1f + 0.75f * fin)
-                    .clip(RoundedCornerShape(50)).background(pillColor)
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(50))
-                    .padding(start = 6.dp, end = 14.dp, top = 5.dp, bottom = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Canvas(Modifier.size(26.dp)) {
-                    drawIntoCanvas { FaceRenderer.draw(it.nativeCanvas, size.width / 2, size.height / 2, size.minDimension / 2 * 0.96f, mood) }
-                }
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "$count",
-                    color = if (fin > 0.3f) Color.White else Brand.Gold,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(340.dp).background(
+                    Brush.radialGradient(listOf(Color(mood.accent).copy(alpha = 0.32f), Color.Transparent))
                 )
+            )
+            PhoneFrame(phoneW, phoneH) {
+                Canvas(Modifier.fillMaxSize().alpha(fade)) {
+                    val h = size.height
+                    val w = size.width
+                    val first = floor(posts).toInt()
+                    for (k in 0..1) {
+                        val i = first + k
+                        val top = (i - posts) * h
+                        drawScene(((i % 6) + 6) % 6, top, w, h)
+                    }
+                    drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent), 0f, h * 0.22f))
+                    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)), h * 0.62f, h))
+                    // Finger swipe hint
+                    if (finger >= 0f) {
+                        val fy = h * (0.78f - 0.42f * finger)
+                        drawCircle(Color.White.copy(alpha = 0.35f * (1 - finger * 0.5f)), w * 0.1f, Offset(w * 0.5f, fy))
+                        drawCircle(Color.White.copy(alpha = 0.9f), w * 0.055f, Offset(w * 0.5f, fy))
+                    }
+                }
+                // Reel UI: actions on the right, author and caption bottom-left
+                Column(
+                    Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 70.dp).alpha(fade),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    ReelAction(Icons.Rounded.Favorite, Likes[current])
+                    ReelAction(Icons.Rounded.ChatBubble, "${(current + 3) * 127}")
+                    ReelAction(Icons.Rounded.Share, "Share")
+                }
+                Column(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 22.dp, end = 60.dp).alpha(fade)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(22.dp).clip(CircleShape).background(Brush.linearGradient(listOf(Color(0xFFF472B6), Color(0xFFF59E0B)))))
+                        Spacer(Modifier.width(6.dp))
+                        Text(Handles[current], color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(Captions[current], color = Color.White.copy(alpha = 0.9f), fontSize = 10.sp)
+                }
+                // Counter pill: slides from the top to the centre, grows and turns red at 1000
+                val pillY = (34 + (phoneH.value / 2 - 64) * fin).dp
+                val pillColor = lerp(Color(0xE6062A26), Color(0xFFE5484D), fin.coerceIn(0f, 1f))
+                Row(
+                    Modifier.align(Alignment.TopCenter).offset(y = pillY).alpha(fade).scale(1f + 0.8f * fin)
+                        .clip(RoundedCornerShape(50)).background(pillColor)
+                        .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(50))
+                        .padding(start = 4.dp, end = 14.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AnimatedFace(mood, 30.dp, bounceKey = if (beat == 0) count else null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "$count",
+                        color = if (fin > 0.3f) Color.White else Brand.Gold,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                }
             }
         }
+        Spacer(Modifier.height(14.dp))
+        // Narration chip so it's clear what's happening
+        val caption = when (beat) {
+            0 -> "Every swipe  =  +1 scroll"
+            1 -> "It adds up fast…  ${mood.label.lowercase()}"
+            else -> "1000 scrolls. Time for a break!"
+        }
+        androidx.compose.animation.AnimatedContent(targetState = caption, label = "caption") { c ->
+            Text(
+                c,
+                modifier = Modifier.clip(RoundedCornerShape(50))
+                    .background(if (beat == 2) Color(0xFFE5484D).copy(alpha = 0.18f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                color = if (beat == 2) Color(0xFFE5484D) else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReelAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Text(label, color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

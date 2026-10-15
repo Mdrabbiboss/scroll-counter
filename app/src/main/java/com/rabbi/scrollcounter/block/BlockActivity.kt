@@ -97,11 +97,7 @@ private fun BlockScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Canvas(Modifier.size(150.dp)) {
-            drawIntoCanvas {
-                FaceRenderer.draw(it.nativeCanvas, size.width / 2, size.height / 2, size.minDimension / 2 * 0.96f, Mood.EXHAUSTED)
-            }
-        }
+        com.rabbi.scrollcounter.ui.AnimatedFace(Mood.EXHAUSTED, 160.dp)
         Spacer(Modifier.height(28.dp))
         Text("Daily limit reached", style = MaterialTheme.typography.headlineMedium, color = Color.White, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp))

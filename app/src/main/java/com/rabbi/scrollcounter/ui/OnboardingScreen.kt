@@ -141,7 +141,7 @@ fun OnboardingScreen(
 
 @Composable
 private fun Welcome() {
-    WelcomeShowcase(Modifier.fillMaxWidth().height(460.dp))
+    WelcomeShowcase(Modifier.fillMaxWidth())
     Spacer(Modifier.height(18.dp))
     Text("See your scroll count", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(8.dp))
