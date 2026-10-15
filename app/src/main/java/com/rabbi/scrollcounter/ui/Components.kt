@@ -3,6 +3,11 @@ package com.rabbi.scrollcounter.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.draw.shadow
@@ -101,7 +106,10 @@ fun PremiumCard(
         .clip(shape)
         .background(fill)
         .border(1.dp, edge, shape)
-    if (onClick != null) m = m.clickable(onClick = onClick)
+    if (onClick != null) {
+        val src = remember { MutableInteractionSource() }
+        m = Modifier.pressScale(src).then(m).clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
+    }
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         Column(m.padding(18.dp), content = content)
     }
@@ -281,7 +289,10 @@ fun SettingRow(
 ) {
     val base = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
     Row(
-        (if (onClick != null) base.clickable(onClick = onClick) else base).padding(vertical = 10.dp, horizontal = 4.dp),
+        (if (onClick != null) {
+            val src = remember { MutableInteractionSource() }
+            Modifier.pressScale(src).then(base).clickable(interactionSource = src, indication = LocalIndication.current, onClick = onClick)
+        } else base).padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -429,6 +440,18 @@ fun PillButton(text: String, icon: ImageVector? = null, gold: Boolean = false, o
         }
         Text(text, fontWeight = FontWeight.Bold)
     }
+}
+
+/** Gently shrinks the element while it's pressed, then springs back — a tactile, premium feel. */
+@Composable
+fun Modifier.pressScale(source: MutableInteractionSource): Modifier {
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (pressed) 0.97f else 1f,
+        spring(dampingRatio = 0.6f, stiffness = 500f),
+        label = "press"
+    )
+    return this.graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
 // ---------- Formatting ----------

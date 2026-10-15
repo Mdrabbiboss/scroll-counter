@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -153,6 +154,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
             )
         } else {
             var tab by rememberSaveable { mutableStateOf(Tab.Today) }
+            val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
             Scaffold(
                 modifier = Modifier.glassBackdrop(dark),
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -169,7 +171,10 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                             Tab.entries.forEach { t ->
                                 NavigationBarItem(
                                     selected = tab == t,
-                                    onClick = { tab = t },
+                                    onClick = {
+                                        if (tab != t) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        tab = t
+                                    },
                                     icon = { Icon(t.icon, contentDescription = t.label) },
                                     label = { Text(t.label) },
                                     colors = NavigationBarItemDefaults.colors(
@@ -182,17 +187,39 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                     }
                 }
             ) { padding ->
-                Box(Modifier.fillMaxSize().padding(padding)) {
-                    when (tab) {
-                        Tab.Today -> TodayScreen(store, tick, status, { showDisclosure = true }, { showLimit = true }, onAddWidget = addWidget)
-                        Tab.History -> HistoryScreen(store, tick)
-                        Tab.Settings -> SettingsScreen(
-                            store, tick, status,
-                            onEnableTracking = { showDisclosure = true },
-                            onEditLimit = { showLimit = true },
-                            onRequestNotifications = requestNotifications,
-                            onAddWidget = addWidget
-                        )
+                // Each tab keeps its scroll position; switching slides + fades in the direction you moved.
+                val tabStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+                androidx.compose.animation.AnimatedContent(
+                    targetState = tab,
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    transitionSpec = {
+                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        val enter = androidx.compose.animation.slideInHorizontally(
+                            androidx.compose.animation.core.spring(dampingRatio = 0.88f, stiffness = 380f)
+                        ) { it / 6 * dir } +
+                            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260, delayMillis = 50)) +
+                            androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(320), initialScale = 0.97f)
+                        val exit = androidx.compose.animation.slideOutHorizontally(
+                            androidx.compose.animation.core.tween(220)
+                        ) { -it / 10 * dir } +
+                            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) +
+                            androidx.compose.animation.scaleOut(androidx.compose.animation.core.tween(220), targetScale = 0.985f)
+                        (enter togetherWith exit).using(androidx.compose.animation.SizeTransform(clip = false))
+                    },
+                    label = "tabs"
+                ) { t ->
+                    tabStates.SaveableStateProvider(t.name) {
+                        when (t) {
+                            Tab.Today -> TodayScreen(store, tick, status, { showDisclosure = true }, { showLimit = true }, onAddWidget = addWidget)
+                            Tab.History -> HistoryScreen(store, tick)
+                            Tab.Settings -> SettingsScreen(
+                                store, tick, status,
+                                onEnableTracking = { showDisclosure = true },
+                                onEditLimit = { showLimit = true },
+                                onRequestNotifications = requestNotifications,
+                                onAddWidget = addWidget
+                            )
+                        }
                     }
                 }
             }
