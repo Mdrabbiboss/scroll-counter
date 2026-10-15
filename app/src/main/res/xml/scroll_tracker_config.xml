@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Listens only in the social / short-video apps listed below. It looks at the screen LAYOUT
+<!-- Listens in every app (so reels are counted in any social / video app and in browsers). It looks at the screen LAYOUT
      (sizes and view ids) to recognise a Reels / Shorts feed; it never reads or stores text. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewScrolled|typeWindowStateChanged|typeWindowContentChanged"
@@ -7,5 +7,4 @@
     android:accessibilityFlags="flagReportViewIds"
     android:canRetrieveWindowContent="true"
     android:description="@string/accessibility_description"
-    android:notificationTimeout="100"
-    android:packageNames="com.facebook.katana,com.facebook.lite,com.instagram.android,com.instagram.barcelona,com.zhiliaoapp.musically,com.ss.android.ugc.trill,com.zhiliaoapp.musically.go,com.google.android.youtube,com.twitter.android,com.snapchat.android,com.reddit.frontpage,com.linkedin.android,com.pinterest,video.like,video.like.lite,com.kwai.video,com.kwai.bulldog,in.mohalla.video" />
+    android:notificationTimeout="100" />

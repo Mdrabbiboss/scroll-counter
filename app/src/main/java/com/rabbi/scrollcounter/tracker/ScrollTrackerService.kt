@@ -2,25 +2,29 @@ package com.rabbi.scrollcounter.tracker
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import android.view.inputmethod.InputMethodManager
 import com.rabbi.scrollcounter.block.BlockActivity
 import com.rabbi.scrollcounter.data.ScrollStore
+import com.rabbi.scrollcounter.data.TrackedApp
 import com.rabbi.scrollcounter.data.TrackedApps
 import java.time.LocalDate
 
 /**
- * Counts Reels / Shorts / short videos — one new reel = +1 — in supported apps, keeps a small
- * live counter on screen while you watch, and sends you out of the app once the daily limit
- * is reached. Ordinary feed, chat or profile scrolling is ignored.
+ * Counts Reels / Shorts / short videos — one new reel = +1 — in ANY app on the phone and on
+ * short-video websites in any browser. Shows a small live counter while you watch, and sends you
+ * home once the daily limit is reached. Comments, chats, normal feeds and reading are ignored.
  */
 class ScrollTrackerService : AccessibilityService() {
 
     private var store: ScrollStore? = null
     private var pill: ReelCounterPill? = null
     private var detector: ReelDetector? = null
+    private var web: BrowserReelDetector? = null
     private val handler = Handler(Looper.getMainLooper())
 
     private var lastBlockAt = 0L
@@ -28,15 +32,39 @@ class ScrollTrackerService : AccessibilityService() {
     private var currentPkg: String? = null
     private var lastScanAt = 0L
 
+    /** Packages that never contain reels: this app, system UI, home screens, keyboards, settings. */
+    private val ignored = HashSet<String>()
+    /** Packages we've decided are social/video apps (for blocking and the quick reels scan). */
+    private val socialCache = HashMap<String, Boolean>()
+    private val countedKeys = HashSet<String>()
+
+    // ---- settle timers: a swipe is judged once the feed has been still for a moment ----
+    private var settleApp: TrackedApp? = null
+    private val settleRunnable = Runnable {
+        val app = settleApp ?: return@Runnable
+        val n = detector?.settle(app.key) ?: 0
+        if (n > 0) onNewReels(app, n, detector?.lastPagerHeight ?: 0)
+    }
+    private var webApp: TrackedApp? = null
+    private val webSettleRunnable = Runnable {
+        val app = webApp ?: return@Runnable
+        val n = web?.settle(app.key) ?: 0
+        if (n > 0) onNewReels(app, n, resources.displayMetrics.heightPixels)
+    }
+
     /** While the counter is up, check every so often whether the user is still in a reels feed. */
     private val watcher = object : Runnable {
         override fun run() {
             val p = pill ?: return
             if (!p.isShowing) return
+            val s = store
             val activePkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
-            val stillTracked = activePkg != null && TrackedApps.forPackage(activePkg) != null
-            val inReels = detector?.stillInReels() == true
-            if (!stillTracked || !inReels || store?.bubbleOn != true || store?.paused == true) {
+            val inReels = when {
+                activePkg == null || activePkg in ignored -> false
+                TrackedApps.isBrowser(activePkg) -> web?.inReels(TrackedApps.forPackage(activePkg).key) == true
+                else -> detector?.stillInReels() == true
+            }
+            if (!inReels || s?.bubbleOn != true || s.paused) {
                 p.hide()
                 detector?.forgetPager()
             } else {
@@ -47,70 +75,120 @@ class ScrollTrackerService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        store = ScrollStore.get(this)
+        val s = ScrollStore.get(this)
+        store = s
         pill = ReelCounterPill(this)
         val dm = resources.displayMetrics
         detector = ReelDetector(dm.widthPixels, dm.heightPixels)
+        web = BrowserReelDetector(dm.heightPixels)
         val dpi = if (dm.ydpi > 0f) dm.ydpi else dm.densityDpi.toFloat()
         metersPerPx = 0.0254f / dpi
+        buildIgnoreList()
+        countedKeys.addAll(runCatching { s.keysWithData() }.getOrDefault(emptySet()))
         Notifier.ensureChannel(this)
+    }
+
+    private fun buildIgnoreList() {
+        ignored.clear()
+        ignored += setOf(packageName, "com.android.systemui", "android", "com.android.settings",
+            "com.google.android.permissioncontroller", "com.android.permissioncontroller",
+            "com.google.android.packageinstaller", "com.android.packageinstaller")
+        runCatching {
+            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            packageManager.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY)
+                .forEach { ignored += it.activityInfo.packageName }
+        }
+        runCatching {
+            val imm = getSystemService(InputMethodManager::class.java)
+            imm?.enabledInputMethodList?.forEach { ignored += it.packageName }
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         val store = store ?: return
         val pkg = event.packageName?.toString() ?: return
-        val app = TrackedApps.forPackage(pkg) ?: return
-        if (store.paused || !store.isAppEnabled(app.key)) return
+        if (pkg in ignored || store.paused) return
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            if (pkg != currentPkg) {
-                currentPkg = pkg
-                detector?.reset(app.key)
+        val isBrowser = TrackedApps.isBrowser(pkg)
+        if (isBrowser && !store.browsersOn) return
+
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                val app = TrackedApps.forPackage(pkg)
+                if (pkg != currentPkg) {
+                    currentPkg = pkg
+                    detector?.reset(app.key)
+                    web?.reset(app.key)
+                }
+                // Limit reached → don't let the user stay in a social app.
+                if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app) && shouldBlock(store)) block(app.name)
             }
-            // Limit reached → don't let the user stay in the app.
-            if (shouldBlock(store)) block(app.name)
-            return
-        }
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            // Cheap, throttled check: did the user just open a Reels / Shorts feed?
-            val now = SystemClock.uptimeMillis()
-            if (store.bubbleOn && pill?.isShowing != true && now - lastScanAt > SCAN_GAP_MS) {
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                if (isBrowser) return
+                // Cheap, throttled check: did the user just open a Reels / Shorts feed?
+                val now = SystemClock.uptimeMillis()
+                if (!store.bubbleOn || pill?.isShowing == true || now - lastScanAt < SCAN_GAP_MS) return
+                val app = TrackedApps.forPackage(pkg)
+                if (!store.isAppEnabled(app.key) || !isSocial(pkg, app)) return
                 lastScanAt = now
                 val det = detector ?: return
                 if (det.findReelPager(runCatching { rootInActiveWindow }.getOrNull())) {
+                    det.prime(app.key)
                     showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
                 }
             }
-            return
+
+            AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+                val app = TrackedApps.forPackage(pkg)
+                if (!store.isAppEnabled(app.key)) return
+                if (isBrowser) onBrowserScroll(store, app, event) else onAppScroll(store, app, event)
+            }
         }
+    }
 
-        if (event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
+    private fun onAppScroll(store: ScrollStore, app: TrackedApp, event: AccessibilityEvent) {
         val det = detector ?: return
-        val newReel = det.onScroll(app.key, event)
+        if (!det.onScroll(app.key, event)) return
+        if (shouldBlock(store)) { block(app.name); return }
+        // Judge the swipe once the feed is still.
+        settleApp = app
+        handler.removeCallbacks(settleRunnable)
+        handler.postDelayed(settleRunnable, ReelDetector.SETTLE_MS)
+        if (pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+    }
 
-        if (shouldBlock(store) && det.lastPager != null) {
+    private fun onBrowserScroll(store: ScrollStore, app: TrackedApp, event: AccessibilityEvent) {
+        val w = web ?: return
+        w.onScroll(app.key, event)
+        if (w.inReels(app.key) && shouldBlock(store)) { block(app.name); return }
+        webApp = app
+        handler.removeCallbacks(webSettleRunnable)
+        handler.postDelayed(webSettleRunnable, WEB_SETTLE_MS)
+    }
+
+    private fun onNewReels(app: TrackedApp, n: Int, pageHeightPx: Int) {
+        val store = store ?: return
+        if (store.paused) return
+        repeat(n) { store.addScroll(app.key) }
+        store.addDistance(app.key, n * pageHeightPx * metersPerPx)
+        countedKeys += app.key
+        val total = store.todayTotal()
+        val limit = store.dailyLimit
+        checkAlerts(store, total, limit)
+        if (store.blockOn && !store.inGrace && total >= limit) {
             block(app.name)
             return
         }
-
-        if (newReel) {
-            store.addScroll(app.key)
-            store.addDistance(app.key, det.lastPagerHeight * metersPerPx)
-            val total = store.todayTotal()
-            val limit = store.dailyLimit
-            checkAlerts(store, total, limit)
-            if (store.blockOn && !store.inGrace && total >= limit) {
-                block(app.name)
-                return
-            }
-            showPill(store, total, limit, bump = true)
-        } else if (det.lastPager != null && pill?.isShowing != true && store.bubbleOn) {
-            // Entered a reels feed: bring the counter up even before the first swipe.
-            if (det.stillInReels()) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
-        }
+        showPill(store, total, limit, bump = true)
     }
+
+    /** A social / video app: from our catalogue, the phone's own category, or reels already counted there. */
+    private fun isSocial(pkg: String, app: TrackedApp): Boolean =
+        app.key in countedKeys || socialCache.getOrPut(pkg) {
+            TrackedApps.isKnown(pkg) || TrackedApps.isSocialCategory(pkg)
+        }
 
     private fun showPill(store: ScrollStore, total: Int, limit: Int, bump: Boolean) {
         if (!store.bubbleOn) return
@@ -165,6 +243,7 @@ class ScrollTrackerService : AccessibilityService() {
     companion object {
         private const val WATCH_MS = 1200L
         private const val SCAN_GAP_MS = 900L
+        private const val WEB_SETTLE_MS = 420L
         const val BUBBLE_EVERY = 1
         const val WARN_AT = 0.8f
     }

@@ -314,8 +314,8 @@ private fun ReelAction(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 fun SupportedAppsRow() {
     val context = LocalContext.current
     val apps = remember {
-        val installed = TrackedApps.all.filter { TrackedApps.isInstalled(context, it) }
-        (installed.ifEmpty { TrackedApps.all }).take(6)
+        val installed = TrackedApps.installedApps(context)
+        (installed.ifEmpty { TrackedApps.known }).take(6)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         apps.forEach { AppIcon(it, size = 30) }

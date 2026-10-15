@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.Restore
@@ -43,6 +44,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,7 +84,18 @@ fun SettingsScreen(
     val theme = remember(tick) { store.themeMode }
     val bubbleOn = remember(tick) { store.bubbleOn }
     val blockOn = remember(tick) { store.blockOn }
-    val installed = remember { TrackedApps.all.associate { it.key to TrackedApps.isInstalled(context, it) } }
+    val browsersOn = remember(tick) { store.browsersOn }
+    // Only apps installed on this phone — rebuilt every time Settings opens, so new apps appear.
+    var apps by remember { mutableStateOf<List<com.rabbi.scrollcounter.data.TrackedApp>?>(null) }
+    var browsers by remember { mutableStateOf<List<com.rabbi.scrollcounter.data.TrackedApp>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            TrackedApps.refresh()
+            val a = TrackedApps.installedApps(context, store.keysWithData())
+            val b = TrackedApps.installedBrowsers(context)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { apps = a; browsers = b }
+        }
+    }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var showPolicy by remember { mutableStateOf(false) }
 
@@ -188,25 +201,36 @@ fun SettingsScreen(
         item { SectionLabel("Apps to track") }
         item {
             PremiumCard {
-                TrackedApps.all.forEach { app ->
+                Text(
+                    "Reels are counted in every app — these are the social & video apps on your phone. New apps appear here automatically.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+                val list = apps
+                if (list == null) {
+                    Text("Looking for your apps…", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
+                } else if (list.isEmpty()) {
+                    Text("No social apps installed yet", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
+                }
+                list?.forEach { app ->
                     val enabled = remember(tick, app.key) { store.isAppEnabled(app.key) }
-                    val isInstalled = installed[app.key] == true
-                    Row(
-                        Modifier.padding(vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AppIcon(app, size = 38)
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(app.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                if (isInstalled) "Installed" else "Not installed",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        PremiumSwitch(checked = enabled, onCheckedChange = { store.setAppEnabled(app.key, it) })
-                    }
+                    TrackedAppRow(app, if (enabled) "Counting reels" else "Not counted", enabled) { store.setAppEnabled(app.key, it) }
+                }
+            }
+        }
+
+        item { SectionLabel("Browsers") }
+        item {
+            PremiumCard {
+                SettingRow(
+                    Icons.Rounded.Public, "Count reels on websites",
+                    if (browsersOn) "TikTok, Shorts & Reels in Chrome or any browser" else "Off — browsers are ignored",
+                    onClick = { store.browsersOn = !browsersOn }
+                ) { PremiumSwitch(checked = browsersOn, onCheckedChange = { store.browsersOn = it }) }
+                if (browsersOn) browsers.forEach { app ->
+                    val enabled = remember(tick, app.key) { store.isAppEnabled(app.key) }
+                    TrackedAppRow(app, "Browser", enabled) { store.setAppEnabled(app.key, it) }
                 }
             }
         }
@@ -306,4 +330,20 @@ private fun shareApp(context: Context) {
     val text = "I'm tracking how much I scroll with Scroll Counter: https://play.google.com/store/apps/details?id=${context.packageName}"
     val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
     context.startActivity(Intent.createChooser(send, "Share Scroll Counter").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
+@Composable
+private fun TrackedAppRow(app: com.rabbi.scrollcounter.data.TrackedApp, subtitle: String, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.padding(vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AppIcon(app, size = 38)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(app.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        PremiumSwitch(checked = enabled, onCheckedChange = onChange)
+    }
 }

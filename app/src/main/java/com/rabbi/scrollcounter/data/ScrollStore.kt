@@ -36,6 +36,8 @@ class ScrollStore private constructor(context: Context) {
     val changes: StateFlow<Long> = _changes
 
     private val appContext = context.applicationContext
+
+    init { TrackedApps.attach(appContext) }
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val widgetRefresh = Runnable { com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(appContext) }
 
@@ -68,22 +70,35 @@ class ScrollStore private constructor(context: Context) {
         bump()
     }
 
-    fun dayStats(date: LocalDate): DayStats {
-        val d = date.toString()
-        val apps = TrackedApps.all.mapNotNull { app ->
-            val c = stats.getInt("c|$d|${app.key}", 0)
-            if (c == 0) null else AppStat(app.key, c, stats.getFloat("d|$d|${app.key}", 0f))
-        }
+    fun dayStats(date: LocalDate): DayStats = dayStats(date, stats.all)
+
+    /** Reads every app that has data on [date] — catalogue apps and any other app alike. */
+    private fun dayStats(date: LocalDate, all: Map<String, *>): DayStats {
+        val prefix = "c|$date|"
+        val apps = all.mapNotNull { (k, v) ->
+            if (!k.startsWith(prefix)) return@mapNotNull null
+            val c = (v as? Int) ?: 0
+            if (c == 0) return@mapNotNull null
+            val key = k.substring(prefix.length)
+            AppStat(key, c, (all["d|$date|$key"] as? Float) ?: 0f)
+        }.sortedByDescending { it.scrolls }
         return DayStats(date, apps)
     }
+
+    /** Every app key that has ever had reels counted (still within history). */
+    fun keysWithData(): Set<String> =
+        stats.all.keys.filter { it.startsWith("c|") }.mapNotNull { it.split('|').getOrNull(2) }.toSet()
 
     /** Today's scrolls in one app. */
     fun todayCount(appKey: String): Int = stats.getInt("c|${LocalDate.now()}|$appKey", 0)
 
     /** Today's scrolls across all apps. */
     fun todayTotal(): Int {
+        // The hourly buckets hold every counted reel, so their sum is today's total (24 cheap reads).
         val d = LocalDate.now().toString()
-        return TrackedApps.all.sumOf { stats.getInt("c|$d|${it.key}", 0) }
+        var sum = 0
+        for (h in 0 until 24) sum += stats.getInt("h|$d|$h", 0)
+        return sum
     }
 
     /** Scrolls per hour (index 0..23) for [date]. */
@@ -95,7 +110,8 @@ class ScrollStore private constructor(context: Context) {
     /** Oldest first, ending today. */
     fun lastDays(n: Int): List<DayStats> {
         val today = LocalDate.now()
-        return (n - 1 downTo 0).map { dayStats(today.minusDays(it.toLong())) }
+        val all = stats.all
+        return (n - 1 downTo 0).map { dayStats(today.minusDays(it.toLong()), all) }
     }
 
     /** Consecutive finished days (yesterday backwards) that stayed under the daily limit. */
@@ -104,8 +120,9 @@ class ScrollStore private constructor(context: Context) {
         val limit = dailyLimit
         var day = LocalDate.now().minusDays(1)
         var n = 0
+        val all = stats.all
         while (!day.isBefore(first) && n < 365) {
-            if (dayStats(day).totalScrolls < limit) n++ else break
+            if (dayStats(day, all).totalScrolls < limit) n++ else break
             day = day.minusDays(1)
         }
         return n
@@ -212,6 +229,11 @@ class ScrollStore private constructor(context: Context) {
     val inGrace: Boolean get() = System.currentTimeMillis() < graceUntil
 
     fun isAppEnabled(key: String): Boolean = settings.getBoolean("app_$key", true)
+
+    /** Count reels watched on TikTok / YouTube / Facebook… websites in browsers. */
+    var browsersOn: Boolean
+        get() = settings.getBoolean("browsers_on", true)
+        set(value) { settings.edit().putBoolean("browsers_on", value).apply(); bump() }
 
     fun setAppEnabled(key: String, enabled: Boolean) {
         settings.edit().putBoolean("app_$key", enabled).apply()
