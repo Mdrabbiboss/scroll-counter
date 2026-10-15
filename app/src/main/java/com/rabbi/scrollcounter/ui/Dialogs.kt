@@ -346,16 +346,38 @@ const val DISCLOSURE_TEXT =
         "• Your scroll data never leaves your phone\n\n" +
         "On the next screen, tap \"Scroll Counter\" and switch it on."
 
-/** Prominent disclosure shown before sending the user to Accessibility settings (Google Play policy). */
+/** Prominent disclosure + animated how-to, shown before sending the user to Accessibility settings (Google Play policy). */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("How tracking works") },
-        text = { Text(DISCLOSURE_TEXT) },
-        confirmButton = { TextButton(onClick = onAgree) { Text("Agree & continue", fontWeight = FontWeight.SemiBold) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } }
-    )
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp).padding(bottom = 20.dp).navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Turn on scroll tracking", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(4.dp))
+            Text("Here's exactly what to tap on the next screen:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
+            AccessibilityGuide(Modifier.fillMaxWidth())
+            Spacer(Modifier.height(16.dp))
+            Text("How tracking works", style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(4.dp))
+            Text(DISCLOSURE_TEXT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(18.dp))
+            Button(
+                onClick = onAgree,
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) { Text("Agree & open settings", style = MaterialTheme.typography.titleMedium) }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+        }
+    }
 }
 
 const val PRIVACY_POLICY_TEXT =

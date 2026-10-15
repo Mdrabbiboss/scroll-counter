@@ -88,13 +88,13 @@ fun OnboardingScreen(
             ) {
                 when (s) {
                     0 -> Welcome()
-                    1 -> StepBody(
+                    1 -> if (status.trackerOn) StepBody(
                         Icons.Rounded.AccessibilityNew, MaterialTheme.colorScheme.primary,
                         "Allow scroll tracking",
-                        DISCLOSURE_TEXT,
-                        done = status.trackerOn,
+                        "Scroll tracking is on. Scroll Counter can now count your scrolls in the apps you chose.",
+                        done = true,
                         badge = "REQUIRED"
-                    )
+                    ) else AccessibilityStep()
                     2 -> StepBody(
                         Icons.Rounded.NotificationsActive, Brand.Warn,
                         "Get a heads-up",
@@ -141,19 +141,47 @@ fun OnboardingScreen(
 
 @Composable
 private fun Welcome() {
-    AppLogo(112.dp)
-    Spacer(Modifier.height(24.dp))
-    Text("Know your scroll", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    WelcomeShowcase(Modifier.fillMaxWidth().height(460.dp))
+    Spacer(Modifier.height(18.dp))
+    Text("See your scroll count", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(8.dp))
     Text(
-        "See how much you really scroll on social media, and set a daily limit that works for you.",
+        "Every swipe on social media, counted live — and a little face that gets tired as you go.",
         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
     )
-    Spacer(Modifier.height(28.dp))
-    Feature(Icons.Rounded.SwipeVertical, "Every scroll, counted", "Facebook, Instagram, TikTok, YouTube, X and more")
-    Feature(Icons.Rounded.Straighten, "Distance you scrolled", "In meters, and compared to real landmarks")
-    Feature(Icons.Rounded.Timeline, "Daily limit & history", "Alerts, streaks and 30-day trends")
-    Feature(Icons.Rounded.Lock, "Private by design", "Nothing on your screen is read. Data stays on your phone.")
+    Spacer(Modifier.height(16.dp))
+    SupportedAppsRow()
+}
+
+@Composable
+private fun AccessibilityStep() {
+    Text(
+        "REQUIRED",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+    )
+    Spacer(Modifier.height(10.dp))
+    Text("Allow scroll tracking", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    Spacer(Modifier.height(4.dp))
+    Text("Here's exactly what to tap on the next screen:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(16.dp))
+    AccessibilityGuide(Modifier.fillMaxWidth())
+    Spacer(Modifier.height(18.dp))
+    PremiumCard {
+        Text("How tracking works", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(6.dp))
+        Text(DISCLOSURE_TEXT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Spacer(Modifier.height(10.dp))
+    Text(
+        "Scroll Counter greyed out or says \"Restricted setting\"? Open phone Settings → Apps → Scroll Counter → ⋮ → Allow restricted settings, then try again.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
 }
 
 @Composable
