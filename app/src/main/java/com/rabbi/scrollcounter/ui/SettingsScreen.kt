@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.AccessibilityNew
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
@@ -136,7 +137,9 @@ fun SettingsScreen(
         item { SectionLabel("Daily goal") }
         item {
             PremiumCard {
-                SettingRow(Icons.Rounded.Flag, "Daily scroll limit", "$limit reels per day", onClick = onEditLimit)
+                SettingRow(Icons.Rounded.Flag, "Daily reel limit", "$limit reels per day", iconTint = Brand.Gold, onClick = onEditLimit) {
+                    PillButton("Edit", Icons.Rounded.Edit, gold = true, onClick = onEditLimit)
+                }
             }
         }
 

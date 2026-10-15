@@ -116,28 +116,28 @@ fun PremiumCard(
 }
 
 /** Colored light blobs behind everything, so the translucent cards read as frosted glass. */
-fun Modifier.glassBackdrop(dark: Boolean): Modifier = this.drawBehind {
+fun Modifier.glassBackdrop(dark: Boolean, accent: Color = Color(0xFF14B8A6)): Modifier = this.drawBehind {
     val w = size.width
     val h = size.height
     drawRect(
         Brush.verticalGradient(
-            if (dark) listOf(Color(0xFF062420), Color(0xFF050D0C), Color(0xFF040A0A))
-            else listOf(Color(0xFFF2FAF8), Color(0xFFF7FAFA), Color(0xFFF0F6F9))
+            if (dark) listOf(Color(0xFF070C0D), Color(0xFF05080A), Color(0xFF030506))
+            else listOf(Color(0xFFF4F8F7), Color(0xFFF8FAFA), Color(0xFFF1F5F8))
         )
     )
     fun blob(cx: Float, cy: Float, r: Float, c: Color) =
         drawCircle(Brush.radialGradient(listOf(c, Color.Transparent), Offset(cx, cy), r), r, Offset(cx, cy))
     if (dark) {
-        blob(w * 0.0f, h * 0.02f, w * 1.05f, Color(0xFF14B8A6).copy(alpha = 0.42f))
-        blob(w * 1.05f, h * 0.30f, w * 0.90f, Color(0xFF0EA5E9).copy(alpha = 0.26f))
-        blob(w * 0.10f, h * 0.62f, w * 0.80f, Color(0xFF10B981).copy(alpha = 0.18f))
-        blob(w * 0.95f, h * 0.92f, w * 0.85f, Color(0xFF06B6D4).copy(alpha = 0.20f))
+        // Aurora in today's mood colour, with a warm gold counter-light — matches the widget.
+        blob(w * 0.05f, h * 0.0f, w * 1.15f, accent.copy(alpha = 0.40f))
+        blob(w * 1.05f, h * 0.28f, w * 0.85f, Color(0xFF6366F1).copy(alpha = 0.16f))
+        blob(w * 0.0f, h * 0.66f, w * 0.85f, accent.copy(alpha = 0.16f))
+        blob(w * 1.0f, h * 0.95f, w * 0.80f, Color(0xFFF8C33A).copy(alpha = 0.08f))
     } else {
-        // Light: airy near-white with distinct teal, sky and warm-gold lights the glass can pick up.
-        blob(w * -0.05f, h * 0.0f, w * 0.95f, Color(0xFF2DD4BF).copy(alpha = 0.38f))
-        blob(w * 1.05f, h * 0.22f, w * 0.85f, Color(0xFF38BDF8).copy(alpha = 0.30f))
-        blob(w * 0.0f, h * 0.62f, w * 0.75f, Color(0xFFFBBF24).copy(alpha = 0.16f))
-        blob(w * 1.0f, h * 0.9f, w * 0.9f, Color(0xFF34D399).copy(alpha = 0.26f))
+        blob(w * -0.05f, h * 0.0f, w * 1.0f, accent.copy(alpha = 0.34f))
+        blob(w * 1.05f, h * 0.22f, w * 0.85f, Color(0xFF818CF8).copy(alpha = 0.20f))
+        blob(w * 0.0f, h * 0.62f, w * 0.75f, Color(0xFFFBBF24).copy(alpha = 0.14f))
+        blob(w * 1.0f, h * 0.9f, w * 0.9f, accent.copy(alpha = 0.22f))
     }
 }
 

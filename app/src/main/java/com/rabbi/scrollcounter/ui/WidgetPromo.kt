@@ -85,18 +85,20 @@ import kotlin.math.sin
 fun WidgetPreview(state: WidgetState, modifier: Modifier = Modifier) {
     val t = rememberInfiniteTransition(label = "widget")
     val phase by t.animateFloat(0f, 1f, infiniteRepeatable(tween(3200, easing = LinearEasing)), label = "phase")
+    val eyes = remember { com.rabbi.scrollcounter.face.EyeLife() }
     var blink by remember { mutableStateOf(0f) }
+    var gx by remember { mutableStateOf(0f) }
+    var gy by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(2600L + (0..1800).random())
-            val a = Animatable(0f)
-            a.animateTo(1f, tween(90)) { blink = value }
-            a.animateTo(0f, tween(130)) { blink = value }
+            androidx.compose.runtime.withFrameMillis { t ->
+                eyes.update(t); blink = eyes.blink; gx = eyes.gazeX; gy = eyes.gazeY
+            }
         }
     }
     val density = LocalDensity.current.density
     Canvas(modifier) {
-        drawIntoCanvas { WidgetArt.draw(it.nativeCanvas, size.width, size.height, density, state, phase, blink) }
+        drawIntoCanvas { WidgetArt.draw(it.nativeCanvas, size.width, size.height, density, state, phase, blink, gx, gy) }
     }
 }
 

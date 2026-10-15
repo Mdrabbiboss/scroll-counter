@@ -57,7 +57,9 @@ object FaceRenderer {
      * Draws the face of radius [r] at ([cx], [cy]).
      * [blink] 0 = eyes open, 1 = closed (for blink animations).
      */
-    fun draw(canvas: Canvas, cx: Float, cy: Float, r: Float, mood: Mood, blink: Float = 0f) {
+    @Synchronized
+    fun draw(canvas: Canvas, cx: Float, cy: Float, r: Float, mood: Mood, blink: Float = 0f, gazeX: Float = 0f, gazeY: Float = 0f) {
+        gx = gazeX.coerceIn(-1f, 1f); gy = gazeY.coerceIn(-1f, 1f)
         p.shader = null; p.style = Paint.Style.FILL
         s.shader = null
 
@@ -174,7 +176,14 @@ object FaceRenderer {
         }
     }
 
-    private fun glossyEye(c: Canvas, x: Float, y: Float, w: Float, h: Float, closed: Float, mood: Mood, r: Float) {
+    private var gx = 0f
+    private var gy = 0f
+
+    private fun glossyEye(c: Canvas, x0: Float, y0: Float, w0: Float, h: Float, closed: Float, mood: Mood, r: Float) {
+        // Gaze: the eye moves inside its socket and looks slightly narrower when turned sideways.
+        val x = x0 + gx * w0 * 0.55f
+        val y = y0 + gy * h * 0.32f
+        val w = w0 * (1f - 0.12f * kotlin.math.abs(gx))
         if (closed >= 0.95f) {
             // Closed: a soft curved line
             s.color = INK; s.strokeWidth = r * 0.055f
@@ -189,10 +198,12 @@ object FaceRenderer {
         c.drawOval(rect, p)
         p.shader = null
         // Two catch-lights make the eyes look wet and alive
+        val lx = x - gx * w0 * 0.25f
+        val ly0 = y - gy * h * 0.15f
         p.color = 0xFFFFFFFF.toInt()
-        c.drawOval(RectF(x - w * 0.15f, y - h * 0.7f, x + w * 0.6f, y - h * 0.05f), p)
+        c.drawOval(RectF(lx - w * 0.15f, ly0 - h * 0.7f, lx + w * 0.6f, ly0 - h * 0.05f), p)
         p.color = 0xCCFFFFFF.toInt()
-        c.drawCircle(x - w * 0.45f, y + h * 0.45f, w * 0.18f, p)
+        c.drawCircle(lx - w * 0.45f, ly0 + h * 0.45f, w * 0.18f, p)
         c.restore()
         if (closed > 0f) {
             // Eyelid edge

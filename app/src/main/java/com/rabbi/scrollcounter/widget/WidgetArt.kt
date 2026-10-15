@@ -87,7 +87,7 @@ object WidgetArt {
      * preview; the home-screen widget uses 0.
      */
     @Synchronized
-    fun draw(c: Canvas, w: Float, h: Float, dp: Float, state: WidgetState, phase: Float, blink: Float = 0f) {
+    fun draw(c: Canvas, w: Float, h: Float, dp: Float, state: WidgetState, phase: Float, blink: Float = 0f, gazeX: Float = 0f, gazeY: Float = 0f) {
         val sc = scene(state)
         val radius = 26f * dp
         val wide = w >= h * 1.55f
@@ -147,7 +147,7 @@ object WidgetArt {
         p.shader = RadialGradient(fx, fy, faceR * 1.7f, intArrayOf(alpha(sc.glow, 0.45f), 0), null, Shader.TileMode.CLAMP)
         c.drawCircle(fx, fy, faceR * 1.7f, p)
         p.shader = null
-        FaceRenderer.draw(c, fx, fy, faceR, if (state.paused) Mood.OKAY else state.mood, blink)
+        FaceRenderer.draw(c, fx, fy, faceR, if (state.paused) Mood.OKAY else state.mood, blink, gazeX, gazeY)
 
         // ---- headline + streak, bottom-left (square) or beside the ring (wide) ----
         tp.reset(); tp.isAntiAlias = true
@@ -192,6 +192,51 @@ object WidgetArt {
         c.drawRoundRect(rf, radius, radius, p)
         p.style = Paint.Style.FILL
     }
+
+    // -------------------------------------------------------------------------- public pieces (in-app hero)
+
+    /** The mood scene alone — gradient, glow, hills, decorations, sheen — for the app's hero card. */
+    @Synchronized
+    fun drawScene(c: Canvas, w: Float, h: Float, dp: Float, state: WidgetState, phase: Float, radius: Float) {
+        val sc = scene(state)
+        c.save()
+        path.reset(); rf.set(0f, 0f, w, h)
+        path.addRoundRect(rf, radius, radius, Path.Direction.CW)
+        c.clipPath(path)
+        p.reset(); p.isAntiAlias = true
+        p.shader = LinearGradient(0f, 0f, w * 0.35f, h, sc.top, sc.bottom, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, p)
+        p.shader = RadialGradient(w * 0.5f, h * 0.36f, maxOf(w, h) * 0.6f,
+            intArrayOf(alpha(sc.glow, 0.40f), alpha(sc.glow, 0.10f), 0), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, p)
+        p.shader = null
+        hill(c, w, h, 0.74f, 0.05f, 0.05f, phase)
+        hill(c, w, h, 0.84f, -0.04f, 0.07f, phase)
+        decorations(c, w, h, dp, sc, false, phase)
+        p.reset(); p.isAntiAlias = true
+        p.shader = LinearGradient(0f, 0f, 0f, h * 0.45f, 0x1FFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h * 0.45f, p)
+        p.shader = null
+        c.restore()
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 1.2f * dp
+        p.shader = LinearGradient(0f, 0f, 0f, h, 0x4DFFFFFF, 0x0DFFFFFF, Shader.TileMode.CLAMP)
+        rf.set(0.6f * dp, 0.6f * dp, w - 0.6f * dp, h - 0.6f * dp)
+        c.drawRoundRect(rf, radius, radius, p)
+        p.shader = null
+        p.style = Paint.Style.FILL
+    }
+
+    /** The glowing progress ring alone, in the mood's colours. */
+    @Synchronized
+    fun drawRing(c: Canvas, x: Float, y: Float, size: Float, state: WidgetState, dp: Float, phase: Float) =
+        ring(c, x, y, size, state.progress, scene(state), dp, phase)
+
+    /** The mood's glow colour (ARGB), used to tint the app's background. */
+    fun glowColor(state: WidgetState): Int = scene(state).glow
+
+    /** The mood's headline ("Feeling fresh!", "Put it down?"…). */
+    fun headline(state: WidgetState): String = scene(state).headline
 
     // -------------------------------------------------------------------------- pieces
 

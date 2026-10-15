@@ -32,19 +32,24 @@ import kotlin.random.Random
  */
 @Composable
 fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey: Any? = null) {
+    // Human-like eyes: glances, resting drift and natural blinks, every frame.
+    val eyes = remember { com.rabbi.scrollcounter.face.EyeLife() }
     var blink by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(mood) {
-        if (mood == Mood.EXHAUSTED) return@LaunchedEffect
+    var gazeX by remember { mutableFloatStateOf(0f) }
+    var gazeY by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
         while (true) {
-            delay(Random.nextLong(1800, 4000))
-            Animatable(0f).animateTo(1f, tween(80)) { blink = value }
-            Animatable(1f).animateTo(0f, tween(130)) { blink = value }
+            androidx.compose.runtime.withFrameMillis { t ->
+                eyes.update(t)
+                blink = eyes.blink; gazeX = eyes.gazeX; gazeY = eyes.gazeY
+            }
         }
     }
 
     val bounce = remember { Animatable(1f) }
     LaunchedEffect(bounceKey) {
         if (bounceKey != null) {
+            eyes.glanceAtCounter(android.os.SystemClock.uptimeMillis())
             bounce.snapTo(1.16f)
             bounce.animateTo(1f, spring(dampingRatio = 0.38f, stiffness = 650f))
         }
@@ -72,7 +77,7 @@ fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey:
         }
     ) {
         drawIntoCanvas {
-            FaceRenderer.draw(it.nativeCanvas, this.size.width / 2, this.size.height / 2, this.size.minDimension / 2 * 0.94f, mood, blink)
+            FaceRenderer.draw(it.nativeCanvas, this.size.width / 2, this.size.height / 2, this.size.minDimension / 2 * 0.94f, mood, blink, gazeX, gazeY)
         }
     }
 }

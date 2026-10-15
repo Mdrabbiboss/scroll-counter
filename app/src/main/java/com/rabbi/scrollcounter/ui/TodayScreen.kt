@@ -51,6 +51,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloat
 import com.rabbi.scrollcounter.data.ScrollStore
 import com.rabbi.scrollcounter.data.TrackedApps
 import com.rabbi.scrollcounter.tracker.DeviceStatus
@@ -94,7 +97,7 @@ fun TodayScreen(
         if (!status.trackerOn) item { SetupBanner(onEnableTracking) }
         else if (paused) item { PausedBanner { store.paused = false } }
 
-        item { HeroCard(today.totalScrolls, limit, onEditLimit) }
+        item { HeroCard(today.totalScrolls, limit, streak, onEditLimit) }
         if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
 
         item {
@@ -151,76 +154,113 @@ fun TodayScreen(
 }
 
 @Composable
-private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
+private fun HeroCard(count: Int, limit: Int, streak: Int, onEditLimit: () -> Unit) {
     val ratio = if (limit > 0) count.toFloat() / limit else 0f
     val progress by animateFloatAsState(ratio.coerceIn(0f, 1f), tween(900), label = "ring")
-    val over = count >= limit
-    val brush = when {
-        over -> Brush.sweepGradient(listOf(Brand.Over, Brand.Over))
-        ratio >= 0.8f -> Brush.sweepGradient(listOf(Brand.Warn, Brand.Over))
-        else -> Brush.sweepGradient(listOf(Brand.RingStart, Brand.RingEnd))
-    }
-    val message = when {
-        over -> "Limit reached. Time for a real-world break."
-        ratio >= 0.8f -> "Almost there — ${limit - count} reels left."
-        count == 0 -> "A clean slate. Let's keep it mindful."
-        else -> "${limit - count} reels left today."
-    }
-
     val shown by animateIntAsState(count, tween(700), label = "count")
+    val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
+    val state = com.rabbi.scrollcounter.widget.WidgetState(count, limit, streak)
+    val ringState = state.copy(total = (progress * limit).toInt().coerceAtLeast(if (count > 0) 1 else 0))
+    val message = when {
+        count >= limit -> "Limit reached — time for a real-world break."
+        ratio >= 0.8f -> "Almost there — only ${limit - count} reels left."
+        count == 0 -> "A clean slate. Keep it mindful today."
+        else -> "${limit - count} reels left in today's limit."
+    }
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "hero")
+    val phase by t.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(tween(3600, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "phase"
+    )
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+
     Box(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Brand.hero)
-            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.28f), Color.White.copy(alpha = 0.04f))), RoundedCornerShape(28.dp))
+        Modifier.fillMaxWidth()
             .drawBehind {
-                // Soft light glows for depth.
-                val r1 = size.width * 0.75f
-                val c1 = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.02f)
-                drawCircle(Brush.radialGradient(listOf(Brand.Glow.copy(alpha = 0.32f), Color.Transparent), c1, r1), r1, c1)
-                val r2 = size.width * 0.6f
-                val c2 = androidx.compose.ui.geometry.Offset(0f, size.height)
-                drawCircle(Brush.radialGradient(listOf(Brand.RingEnd.copy(alpha = 0.22f), Color.Transparent), c2, r2), r2, c2)
+                drawIntoCanvas {
+                    com.rabbi.scrollcounter.widget.WidgetArt.drawScene(
+                        it.nativeCanvas, size.width, size.height, density, state, phase, 30.dp.toPx()
+                    )
+                }
             }
     ) {
-        Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(212.dp), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.fillMaxSize().rotate(-90f)) {
-                    val stroke = 16.dp.toPx()
-                    val tl = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2)
-                    val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
-                    drawArc(Color.White.copy(alpha = 0.10f), 0f, 360f, false, tl, arc, style = Stroke(stroke))
-                    if (progress > 0f) {
-                        drawArc(brush, 0f, 360f * progress, false, tl, arc, style = Stroke(stroke, cap = StrokeCap.Round))
+        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            // Top row: mood headline + streak
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    com.rabbi.scrollcounter.widget.WidgetArt.headline(state),
+                    color = Color.White, style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f)
+                )
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.14f))
+                        .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("\uD83D\uDD25", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.width(5.dp))
+                    Text(if (streak == 1) "1 day" else "$streak days", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+
+            // The glowing ring with today's count
+            Box(Modifier.size(224.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    drawIntoCanvas {
+                        com.rabbi.scrollcounter.widget.WidgetArt.drawRing(it.nativeCanvas, 0f, 0f, size.minDimension, ringState, density, phase)
                     }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$shown", style = MaterialTheme.typography.displayLarge, color = Color.White)
-                    Text("REELS TODAY", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.6f))
+                    Text(
+                        "$shown",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.35f), androidx.compose.ui.geometry.Offset(0f, 6f), 18f)
+                        ),
+                        color = Color.White, fontWeight = FontWeight.Black
+                    )
+                    Text("of $limit reels today", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.75f))
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AnimatedFace(mood, 40.dp, bounceKey = count)
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(mood.label, style = MaterialTheme.typography.labelLarge, color = Color(mood.face), fontWeight = FontWeight.SemiBold)
-                    Text(message, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+            Spacer(Modifier.height(10.dp))
+
+            // Buddy + message
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                AnimatedFace(mood, 58.dp, bounceKey = count)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(mood.label, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(message, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.82f))
                 }
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
+
+            // Daily limit + a clear "Edit limit" button
+            val src = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.10f))
-                    .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                Modifier.fillMaxWidth().pressScale(src).clip(RoundedCornerShape(20.dp))
+                    .background(Color.Black.copy(alpha = 0.22f))
+                    .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp))
+                    .clickable(interactionSource = src, indication = null, onClick = onEditLimit)
+                    .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("DAILY LIMIT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
-                    Text("$limit reels · ${(ratio * 100).toInt()}% used", style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text("DAILY LIMIT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.65f), letterSpacing = 1.2.sp)
+                    Text("$limit reels", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("${(ratio * 100).toInt().coerceAtMost(999)}% used", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                 }
-                TextButton(onClick = onEditLimit) {
-                    Icon(Icons.Rounded.Edit, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Change", color = Color.White)
+                Row(
+                    Modifier.clip(RoundedCornerShape(16.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43))))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Edit, null, tint = Color(0xFF4A2A00), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Edit limit", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                 }
             }
         }

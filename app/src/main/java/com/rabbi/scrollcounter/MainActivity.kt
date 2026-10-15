@@ -99,11 +99,6 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     val mode = remember(tick) { store.themeMode }
     val systemDark = isSystemInDarkTheme()
     val dark = when (mode) { ThemeMode.SYSTEM -> systemDark; ThemeMode.LIGHT -> false; ThemeMode.DARK -> true }
-    LaunchedEffect(dark) {
-        val style = if (dark) SystemBarStyle.dark(AndroidColor.TRANSPARENT)
-        else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
-        activity.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
-    }
 
     // Live device state, re-read every time the user returns to the app (e.g. from Settings).
     var status by remember { mutableStateOf(TrackerStatus.read(context)) }
@@ -158,20 +153,40 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
         }
     }
 
+    // First-run setup and the widget showcase are always shown in the premium dark look.
+    val darkBars = dark || !onboarded || showWidgetPromo
+    LaunchedEffect(darkBars) {
+        val style = if (darkBars) SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+        else SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+        activity.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+    }
+
+    // The whole app takes on today's mood colour, like the widget.
+    val todayTotal = remember(tick) { store.todayTotal() }
+    val limitNow = remember(tick) { store.dailyLimit }
+    val accent by androidx.compose.animation.animateColorAsState(
+        androidx.compose.ui.graphics.Color(
+            com.rabbi.scrollcounter.widget.WidgetArt.glowColor(com.rabbi.scrollcounter.widget.WidgetState(todayTotal, limitNow))
+        ),
+        androidx.compose.animation.core.tween(900), label = "accent"
+    )
+
     ScrollCounterTheme(dark) {
         if (!onboarded) {
-            OnboardingScreen(
-                status = status,
-                onOpenAccessibility = { TrackerStatus.openAccessibilitySettings(context) },
-                onRequestNotifications = requestNotifications,
-                onOpenBattery = { TrackerStatus.openBatterySettings(context) },
-                onFinish = { store.onboarded = true }
-            )
+            ScrollCounterTheme(true) {
+                OnboardingScreen(
+                    status = status,
+                    onOpenAccessibility = { TrackerStatus.openAccessibilitySettings(context) },
+                    onRequestNotifications = requestNotifications,
+                    onOpenBattery = { TrackerStatus.openBatterySettings(context) },
+                    onFinish = { store.onboarded = true }
+                )
+            }
         } else {
             var tab by rememberSaveable { mutableStateOf(Tab.Today) }
             val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
             Scaffold(
-                modifier = Modifier.glassBackdrop(dark),
+                modifier = Modifier.glassBackdrop(dark, accent),
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onBackground,
                 bottomBar = {
@@ -179,7 +194,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                         if (AdsConsent.canRequestAds) BannerAd()
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         NavigationBar(
-                            containerColor = if (dark) androidx.compose.ui.graphics.Color(0xE6071312) else androidx.compose.ui.graphics.Color(0xCCFFFFFF),
+                            containerColor = if (dark) androidx.compose.ui.graphics.Color(0xF0060A0B) else androidx.compose.ui.graphics.Color(0xE6FFFFFF),
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             tonalElevation = 0.dp
                         ) {
@@ -193,8 +208,11 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                     icon = { Icon(t.icon, contentDescription = t.label) },
                                     label = { Text(t.label) },
                                     colors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        indicatorColor = accent.copy(alpha = if (dark) 0.26f else 0.22f),
+                                        selectedIconColor = if (dark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface,
+                                        selectedTextColor = if (dark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 )
                             }

@@ -3,6 +3,7 @@ package com.rabbi.scrollcounter.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.background
@@ -90,7 +91,7 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Brand.HeroTop,
+        containerColor = Color(0xFF071012),
         contentColor = Color.White,
         dragHandle = {
             Box(Modifier.padding(top = 12.dp, bottom = 4.dp).size(width = 40.dp, height = 4.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.3f)))
@@ -98,15 +99,26 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
     ) {
         Column(
             Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Brand.HeroTop, Brand.HeroBottom)))
+                .background(Brush.verticalGradient(listOf(Color(0xFF0B2A2B), Color(0xFF071012), Color(0xFF05080A))))
+                .navigationBarsPadding()
+                .imePadding()
+        ) {
+        Column(
+            Modifier.fillMaxWidth()
+                .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 8.dp, bottom = 24.dp)
-                .navigationBarsPadding()
-                .imePadding(),
+                .padding(top = 8.dp, bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("DAILY SCROLL LIMIT", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.6f))
+            Text("Set your daily reel limit", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Now: $current reels" + if (valid && value != current) "  →  New: $value reels" else "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (valid && value != current) Brand.Gold else Color.White.copy(alpha = 0.65f),
+                fontWeight = FontWeight.SemiBold
+            )
             Spacer(Modifier.height(18.dp))
 
             // − [ number ] +
@@ -118,7 +130,7 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                         .background(Color.White.copy(alpha = 0.08f))
                         .border(
                             1.5.dp,
-                            if (valid) Brand.Glow.copy(alpha = 0.6f) else Brand.Over,
+                            if (valid) Brand.Gold.copy(alpha = 0.7f) else Brand.Over,
                             RoundedCornerShape(24.dp)
                         )
                         .padding(vertical = 10.dp),
@@ -131,7 +143,7 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                         textStyle = MaterialTheme.typography.displayMedium.copy(
                             color = Color.White, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold
                         ),
-                        cursorBrush = SolidColor(Brand.Glow),
+                        cursorBrush = SolidColor(Brand.Gold),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
                         modifier = Modifier.fillMaxWidth()
@@ -162,7 +174,7 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                 valueRange = MIN_LIMIT.toFloat()..MAX_LIMIT.toFloat(),
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
-                    activeTrackColor = Brand.Glow,
+                    activeTrackColor = Brand.Gold,
                     inactiveTrackColor = Color.White.copy(alpha = 0.15f),
                 ),
                 modifier = Modifier.fillMaxWidth()
@@ -182,12 +194,12 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                     val on = value == q
                     Box(
                         Modifier.clip(RoundedCornerShape(50))
-                            .background(if (on) Brand.Glow else Color.White.copy(alpha = 0.08f))
-                            .border(1.dp, if (on) Brand.Glow else Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
+                            .background(if (on) Brand.Gold else Color.White.copy(alpha = 0.08f))
+                            .border(1.dp, if (on) Brand.Gold else Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
                             .clickable { set(q); focus.clearFocus() }
                             .padding(horizontal = 16.dp, vertical = 9.dp)
                     ) {
-                        Text("$q", color = if (on) Brand.HeroTop else Color.White, fontWeight = FontWeight.SemiBold)
+                        Text("$q", color = if (on) Brand.GoldDeep else Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -200,21 +212,31 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                 color = Color.White.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = { if (valid) onSave(value!!) },
-                enabled = valid,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Brand.HeroTop,
-                    disabledContainerColor = Color.White.copy(alpha = 0.2f),
-                    disabledContentColor = Color.White.copy(alpha = 0.5f)
-                )
-            ) { Text("Save limit", style = MaterialTheme.typography.titleMedium) }
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.75f))
+        }
+            // Buttons stay pinned at the bottom so they're always visible, even with the keyboard open.
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 16.dp)) {
+                Box(
+                    Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(18.dp))
+                        .background(
+                            if (valid) Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43)))
+                            else SolidColor(Color.White.copy(alpha = 0.12f))
+                        )
+                        .clickable(enabled = valid) { onSave(value!!) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Check, null, tint = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (valid && value != current) "Save new limit" else "Save limit",
+                            color = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f),
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.75f))
+                }
             }
         }
     }
