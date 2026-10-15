@@ -87,14 +87,17 @@ fun PremiumCard(
     val fill: Brush = if (container != null) SolidColor(container) else if (dark)
         Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.04f)))
     else
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.88f), Color.White.copy(alpha = 0.62f)))
+        Brush.linearGradient(
+            listOf(Color.White.copy(alpha = 0.78f), Color.White.copy(alpha = 0.46f)),
+            start = Offset.Zero, end = Offset(900f, 900f)
+        )
     val edge = if (dark)
         Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.05f)))
     else
-        Brush.verticalGradient(listOf(Color.White, Color(0xFFCFE3DF)))
+        Brush.verticalGradient(listOf(Color.White, Color.White.copy(alpha = 0.55f), Color(0x330E8C7F)))
 
     var m = modifier.fillMaxWidth()
-        .shadow(if (dark) 0.dp else 10.dp, shape, ambientColor = Color(0x220E8C7F), spotColor = Color(0x220E8C7F))
+        .shadow(if (dark) 0.dp else 18.dp, shape, ambientColor = Color(0x1A0E5F57), spotColor = Color(0x330E5F57))
         .clip(shape)
         .background(fill)
         .border(1.dp, edge, shape)
@@ -111,7 +114,7 @@ fun Modifier.glassBackdrop(dark: Boolean): Modifier = this.drawBehind {
     drawRect(
         Brush.verticalGradient(
             if (dark) listOf(Color(0xFF062420), Color(0xFF050D0C), Color(0xFF040A0A))
-            else listOf(Color(0xFFE3F5F1), Color(0xFFF1F7F6), Color(0xFFEAF4F8))
+            else listOf(Color(0xFFF2FAF8), Color(0xFFF7FAFA), Color(0xFFF0F6F9))
         )
     )
     fun blob(cx: Float, cy: Float, r: Float, c: Color) =
@@ -122,12 +125,13 @@ fun Modifier.glassBackdrop(dark: Boolean): Modifier = this.drawBehind {
         blob(w * 0.10f, h * 0.62f, w * 0.80f, Color(0xFF10B981).copy(alpha = 0.18f))
         blob(w * 0.95f, h * 0.92f, w * 0.85f, Color(0xFF06B6D4).copy(alpha = 0.20f))
     } else {
-        blob(w * 0.0f, h * 0.02f, w * 1.05f, Color(0xFF5EEAD4).copy(alpha = 0.55f))
-        blob(w * 1.05f, h * 0.30f, w * 0.90f, Color(0xFF7DD3FC).copy(alpha = 0.45f))
-        blob(w * 0.10f, h * 0.65f, w * 0.80f, Color(0xFF6EE7B7).copy(alpha = 0.35f))
-        blob(w * 0.95f, h * 0.95f, w * 0.85f, Color(0xFF67E8F9).copy(alpha = 0.35f))
+        // Light: airy near-white with distinct teal, sky and warm-gold lights the glass can pick up.
+        blob(w * -0.05f, h * 0.0f, w * 0.95f, Color(0xFF2DD4BF).copy(alpha = 0.38f))
+        blob(w * 1.05f, h * 0.22f, w * 0.85f, Color(0xFF38BDF8).copy(alpha = 0.30f))
+        blob(w * 0.0f, h * 0.62f, w * 0.75f, Color(0xFFFBBF24).copy(alpha = 0.16f))
+        blob(w * 1.0f, h * 0.9f, w * 0.9f, Color(0xFF34D399).copy(alpha = 0.26f))
     }
-}
+}}
 
 @Composable
 fun ScreenHeader(title: String, eyebrow: String, trailing: @Composable (() -> Unit)? = null) {
@@ -302,14 +306,17 @@ fun SettingRow(
 @Composable
 fun SegmentedToggle(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceVariant).padding(4.dp),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(50))
+            .background(if (isDarkTheme()) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.45f))
+            .border(1.dp, if (isDarkTheme()) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.9f), RoundedCornerShape(50))
+            .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         options.forEachIndexed { i, label ->
             val on = i == selected
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(50))
-                    .background(if (on) MaterialTheme.colorScheme.surface else Color.Transparent)
+                    .background(if (on) (if (isDarkTheme()) Color.White.copy(alpha = 0.16f) else Color.White) else Color.Transparent)
                     .clickable { onSelect(i) }
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center

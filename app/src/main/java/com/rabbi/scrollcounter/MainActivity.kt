@@ -162,7 +162,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                         if (AdsConsent.canRequestAds) BannerAd()
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         NavigationBar(
-                            containerColor = if (dark) androidx.compose.ui.graphics.Color(0xE6071312) else androidx.compose.ui.graphics.Color(0xE6FFFFFF),
+                            containerColor = if (dark) androidx.compose.ui.graphics.Color(0xE6071312) else androidx.compose.ui.graphics.Color(0xCCFFFFFF),
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             tonalElevation = 0.dp
                         ) {
