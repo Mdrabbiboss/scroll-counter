@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Scroll Counter</string>
-    <string name="accessibility_description">Scroll Counter only notices when you scroll or open supported social media apps (Facebook, Instagram, TikTok, YouTube and others). It uses this to count your scrolls, show a small check-in card every 5 scrolls, and take you back to the home screen once your daily limit is reached. It does not read text, messages, or anything shown on your screen, and all data stays on your device.</string>
+    <string name="accessibility_description">Scroll Counter counts the Reels, Shorts and short videos you watch in supported apps (Facebook, Instagram, TikTok, YouTube, Snapchat and others). To recognise a Reels feed it looks only at the layout of the screen (the size of the video player and its view names). It does not read or store text, messages, captions or anything you type, and all data stays on your device. It also shows a small counter at the top while you watch, and takes you to the home screen once your daily limit is reached.</string>
     <string name="widget_description">Today\'s scrolls and how tired your thumb is</string>
 </resources>

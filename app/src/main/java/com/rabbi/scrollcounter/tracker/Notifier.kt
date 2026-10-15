@@ -35,7 +35,7 @@ object Notifier {
     fun almostThere(context: Context, count: Int, limit: Int) = post(
         context, WARN_ID,
         "80% of today's limit used",
-        "$count of $limit scrolls. Only ${limit - count} left today."
+        "$count of $limit reels. Only ${limit - count} left today."
     )
 
     /** Sends a test notification from Settings so the user can check alerts work. */

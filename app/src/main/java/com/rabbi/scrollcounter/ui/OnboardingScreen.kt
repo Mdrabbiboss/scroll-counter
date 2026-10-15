@@ -91,7 +91,7 @@ fun OnboardingScreen(
                     1 -> if (status.trackerOn) StepBody(
                         Icons.Rounded.AccessibilityNew, MaterialTheme.colorScheme.primary,
                         "Allow scroll tracking",
-                        "Scroll tracking is on. Scroll Counter can now count your scrolls in the apps you chose.",
+                        "Scroll tracking is on. Scroll Counter can now count your reels in the apps you chose.",
                         done = true,
                         badge = "REQUIRED"
                     ) else AccessibilityStep()
@@ -143,10 +143,10 @@ fun OnboardingScreen(
 private fun Welcome() {
     WelcomeShowcase(Modifier.fillMaxWidth())
     Spacer(Modifier.height(18.dp))
-    Text("See your scroll count", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    Text("See your reels count", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Every swipe on social media, counted live — and a little face that gets tired as you go.",
+        "Every Reel, Short and TikTok you swipe — counted live, with a little buddy that gets tired as you go.",
         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
     )
     Spacer(Modifier.height(16.dp))
@@ -231,7 +231,7 @@ private fun RequiredNote() {
         Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(6.dp))
         Text(
-            "Required — Scroll Counter can't count scrolls without it",
+            "Required — Scroll Counter can't count reels without it",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

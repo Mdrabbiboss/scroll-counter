@@ -45,7 +45,7 @@ class ScrollWidget : AppWidgetProvider() {
             return RemoteViews(context.packageName, R.layout.widget_scroll).apply {
                 setImageViewBitmap(R.id.widget_face, FaceRenderer.bitmap(faceSize, mood))
                 setTextViewText(R.id.widget_count, total.toString())
-                setTextViewText(R.id.widget_limit, "of $limit scrolls today")
+                setTextViewText(R.id.widget_limit, "of $limit reels today")
                 setTextViewText(R.id.widget_mood, if (store.paused) "Tracking paused" else mood.label)
                 setProgressBar(R.id.widget_progress, 100, pct, false)
                 setOnClickPendingIntent(R.id.widget_root, open)

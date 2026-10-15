@@ -144,9 +144,9 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
             Text(
                 when {
                     value == null -> "Type a number"
-                    value < MIN_LIMIT -> "Minimum is $MIN_LIMIT scrolls"
-                    value > MAX_LIMIT -> "Maximum is $MAX_LIMIT scrolls"
-                    else -> "scrolls per day  ·  tap the number to type"
+                    value < MIN_LIMIT -> "Minimum is $MIN_LIMIT reels"
+                    value > MAX_LIMIT -> "Maximum is $MAX_LIMIT reels"
+                    else -> "reels per day  ·  tap the number to type"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (valid) Color.White.copy(alpha = 0.65f) else Brand.Over
@@ -338,12 +338,12 @@ fun DeleteHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 }
 
 const val DISCLOSURE_TEXT =
-    "Scroll Counter uses Android's Accessibility Service only to notice when you scroll in the " +
-        "social apps you choose (Facebook, Instagram, TikTok, YouTube and others).\n\n" +
-        "• It does NOT read text, messages, photos or anything shown on your screen\n" +
-        "• It does nothing in any other app\n" +
-        "• It shows a small check-in card every 5 scrolls, and takes you to the home screen once your daily limit is reached\n" +
-        "• Your scroll data never leaves your phone\n\n" +
+    "Scroll Counter uses Android's Accessibility Service to count the Reels, Shorts and short videos you watch " +
+        "in the apps you choose (Facebook, Instagram, TikTok, YouTube, Snapchat and others).\n\n" +
+        "• To recognise a Reels feed it looks only at the screen's layout — the size of the video player and its view names\n" +
+        "• It does NOT read or store text, messages, captions, comments or anything you type\n" +
+        "• It shows a small counter at the top while you watch, and takes you to the home screen when your daily limit is reached\n" +
+        "• It does nothing in any other app, and your data never leaves your phone\n\n" +
         "On the next screen, tap \"Scroll Counter\" and switch it on."
 
 /** Prominent disclosure + animated how-to, shown before sending the user to Accessibility settings (Google Play policy). */
@@ -382,14 +382,15 @@ fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
 
 const val PRIVACY_POLICY_TEXT =
     "What we collect\n" +
-        "Only the number of times you scroll, an estimated scroll distance, and the hour it happened, " +
-        "for the social apps you turned on. Nothing about what you looked at.\n\n" +
+        "Only how many Reels / Shorts you watch, an estimated scroll distance, and the hour it happened, " +
+        "for the apps you turned on. Nothing about what you watched.\n\n" +
         "Where it is stored\n" +
         "On your phone only. Scroll Counter has no account, no server and no analytics. History older " +
         "than 60 days is deleted automatically, and you can delete everything in Settings.\n\n" +
         "Accessibility Service\n" +
-        "Used only to detect scroll events in the selected social apps. It cannot read screen content " +
-        "(the service is configured without window-content access).\n\n" +
+        "Used only to recognise when a Reels / Shorts feed is on screen and when you move to the next video. " +
+        "It looks at the screen's layout (sizes and view names) only; it does not read, store or send text, " +
+        "messages, captions or anything you type.\n\n" +
         "Ads\n" +
         "The app shows Google AdMob banner ads. Google may use your device's advertising ID to show ads, " +
         "and asks for your consent where the law requires it. You can change ad choices in Settings.\n\n" +

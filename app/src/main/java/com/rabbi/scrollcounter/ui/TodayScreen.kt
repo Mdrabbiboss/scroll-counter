@@ -112,13 +112,13 @@ fun TodayScreen(
                 StatTile(
                     Icons.Rounded.Schedule, "Peak hour",
                     peak?.let { formatHour(it) } ?: "—",
-                    peak?.let { "${hours[it]} scrolls" } ?: "No data yet", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary
+                    peak?.let { "${hours[it]} reels" } ?: "No data yet", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary
                 )
                 val top = today.topApp
                 StatTile(
                     Icons.Rounded.TouchApp, "Most scrolled",
                     top?.let { TrackedApps.forKey(it.key)?.name } ?: "—",
-                    top?.let { "${it.scrolls} scrolls" } ?: "Nothing yet", Modifier.weight(1f), tint = Color(0xFFE1306C)
+                    top?.let { "${it.scrolls} reels" } ?: "Nothing yet", Modifier.weight(1f), tint = Color(0xFFE1306C)
                 )
             }
         }
@@ -162,9 +162,9 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
     }
     val message = when {
         over -> "Limit reached. Time for a real-world break."
-        ratio >= 0.8f -> "Almost there — ${limit - count} scrolls left."
+        ratio >= 0.8f -> "Almost there — ${limit - count} reels left."
         count == 0 -> "A clean slate. Let's keep it mindful."
-        else -> "${limit - count} scrolls left today."
+        else -> "${limit - count} reels left today."
     }
 
     val shown by animateIntAsState(count, tween(700), label = "count")
@@ -194,7 +194,7 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("$shown", style = MaterialTheme.typography.displayLarge, color = Color.White)
-                    Text("SCROLLS TODAY", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.6f))
+                    Text("REELS TODAY", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.6f))
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -215,7 +215,7 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("DAILY LIMIT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
-                    Text("$limit scrolls · ${(ratio * 100).toInt()}% used", style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text("$limit reels · ${(ratio * 100).toInt()}% used", style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
                 TextButton(onClick = onEditLimit) {
                     Icon(Icons.Rounded.Edit, null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -246,7 +246,7 @@ private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text("Put your count on the home screen", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text("See today's scrolls without opening the app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                Text("See today's reels without opening the app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
             }
             Spacer(Modifier.width(8.dp))
             PillButton("Add", gold = true, onClick = onAdd)
@@ -260,7 +260,7 @@ private fun SetupBanner(onEnable: () -> Unit) {
         Text("Turn on scroll tracking", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Allow Scroll Counter in Accessibility settings so it can count scrolls in your social apps. Nothing on your screen is read.",
+            "Allow Scroll Counter in Accessibility settings so it can count the Reels and Shorts you watch. It never reads your messages.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
@@ -277,7 +277,7 @@ private fun PausedBanner(onResume: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("Tracking is paused", style = MaterialTheme.typography.titleMedium)
-                Text("Scrolls aren't being counted right now.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Reels aren't being counted right now.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Button(onClick = onResume, colors = ButtonDefaults.buttonColors(containerColor = Brand.Warn, contentColor = Color(0xFF2A1A00))) { Text("Resume") }
         }

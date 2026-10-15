@@ -107,7 +107,7 @@ fun SettingsScreen(
                 }
                 SettingRow(
                     Icons.Rounded.PauseCircle, "Pause tracking",
-                    if (paused) "Paused — scrolls aren't counted" else "Stop counting for a while",
+                    if (paused) "Paused — reels aren't counted" else "Stop counting for a while",
                     iconTint = Brand.Warn,
                     onClick = { store.paused = !paused }
                 ) { PremiumSwitch(checked = paused, onCheckedChange = { store.paused = it }) }
@@ -125,7 +125,7 @@ fun SettingsScreen(
         item { SectionLabel("Daily goal") }
         item {
             PremiumCard {
-                SettingRow(Icons.Rounded.Flag, "Daily scroll limit", "$limit scrolls per day", onClick = onEditLimit)
+                SettingRow(Icons.Rounded.Flag, "Daily scroll limit", "$limit reels per day", onClick = onEditLimit)
             }
         }
 
@@ -134,14 +134,14 @@ fun SettingsScreen(
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.Mood, "Scroll check-in",
-                    "A card with a face every ${ScrollTrackerService.BUBBLE_EVERY} scrolls — it gets tired as you scroll more",
+                    Icons.Rounded.Mood, "On-screen reel counter",
+                    "Your buddy and today's count at the top while you watch Reels — it gets tired as you go",
                     iconTint = MaterialTheme.colorScheme.secondary,
                     onClick = { store.bubbleOn = !bubbleOn }
                 ) { PremiumSwitch(checked = bubbleOn, onCheckedChange = { store.bubbleOn = it }) }
                 SettingRow(
                     Icons.Rounded.Block, "Close apps at limit",
-                    "Takes you out of social apps once you hit $limit scrolls (5 extra minutes once a day)",
+                    "Takes you out of the app once you hit $limit reels (5 extra minutes once a day)",
                     iconTint = MaterialTheme.colorScheme.error,
                     onClick = { store.blockOn = !blockOn }
                 ) { PremiumSwitch(checked = blockOn, onCheckedChange = { store.blockOn = it }) }
@@ -171,13 +171,13 @@ fun SettingsScreen(
                 }
                 SettingRow(
                     Icons.Rounded.WarningAmber, "80% heads-up",
-                    "When you reach ${(limit * ScrollTrackerService.WARN_AT).toInt()} scrolls",
+                    "When you reach ${(limit * ScrollTrackerService.WARN_AT).toInt()} reels",
                     iconTint = Brand.Warn,
                     onClick = { store.warnAlertsOn = !warnAlerts }
                 ) { PremiumSwitch(checked = warnAlerts, onCheckedChange = { store.warnAlertsOn = it }) }
                 SettingRow(
                     Icons.Rounded.Campaign, "Limit reached alert",
-                    "When you pass $limit scrolls",
+                    "When you pass $limit reels",
                     iconTint = MaterialTheme.colorScheme.error,
                     onClick = { store.limitAlertsOn = !limitAlerts }
                 ) { PremiumSwitch(checked = limitAlerts, onCheckedChange = { store.limitAlertsOn = it }) }

@@ -283,9 +283,9 @@ fun WelcomeShowcase(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(14.dp))
         // Narration chip so it's clear what's happening
         val caption = when (beat) {
-            0 -> "Every swipe  =  +1 scroll"
+            0 -> "Every new reel  =  +1"
             1 -> "It adds up fast…  ${mood.label.lowercase()}"
-            else -> "1000 scrolls. Time for a break!"
+            else -> "1000 reels. Time for a break!"
         }
         androidx.compose.animation.AnimatedContent(targetState = caption, label = "caption") { c ->
             Text(

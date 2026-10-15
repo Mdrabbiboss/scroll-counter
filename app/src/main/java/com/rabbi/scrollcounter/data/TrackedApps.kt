@@ -25,6 +25,10 @@ object TrackedApps {
         TrackedApp("reddit", "Reddit", 0xFFFF4500, packages = listOf("com.reddit.frontpage")),
         TrackedApp("linkedin", "LinkedIn", 0xFF0A66C2, packages = listOf("com.linkedin.android")),
         TrackedApp("pinterest", "Pinterest", 0xFFE60023, packages = listOf("com.pinterest")),
+        TrackedApp("likee", "Likee", 0xFFFF2D7A, packages = listOf("video.like", "video.like.lite")),
+        TrackedApp("kwai", "Kwai", 0xFFFF7E1B, packages = listOf("com.kwai.video")),
+        TrackedApp("snack", "Snack Video", 0xFFFFD21E, 0xFF111111, listOf("com.kwai.bulldog")),
+        TrackedApp("moj", "Moj", 0xFF7C3AED, packages = listOf("in.mohalla.video")),
     )
 
     private val byPackage: Map<String, TrackedApp> =

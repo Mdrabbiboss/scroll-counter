@@ -2,7 +2,6 @@ package com.rabbi.scrollcounter.tracker
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -11,39 +10,47 @@ import com.rabbi.scrollcounter.block.BlockActivity
 import com.rabbi.scrollcounter.data.ScrollStore
 import com.rabbi.scrollcounter.data.TrackedApps
 import java.time.LocalDate
-import kotlin.math.abs
 
 /**
- * Counts scroll *gestures* in supported social apps, shows a check-in card every few scrolls,
- * and sends the user out of the app once the daily limit is reached.
- *
- * Apps fire many TYPE_VIEW_SCROLLED events for a single swipe (one per frame of the fling),
- * so raw events are grouped: a new scroll is counted only after [GESTURE_GAP_MS] of silence.
- *
- * Distance: we add up the pixel deltas the app reports (Android 9+). Apps that don't report
- * deltas (e.g. full-screen video feeds) get an estimate of [FALLBACK_SCREEN_FRACTION] of the
- * screen height per swipe. Pixels are converted to real-world meters using the screen's DPI.
+ * Counts Reels / Shorts / short videos — one new reel = +1 — in supported apps, keeps a small
+ * live counter on screen while you watch, and sends you out of the app once the daily limit
+ * is reached. Ordinary feed, chat or profile scrolling is ignored.
  */
 class ScrollTrackerService : AccessibilityService() {
 
     private var store: ScrollStore? = null
-    private var bubble: ScrollBubble? = null
+    private var pill: ReelCounterPill? = null
+    private var detector: ReelDetector? = null
     private val handler = Handler(Looper.getMainLooper())
 
-    private val lastEventAt = HashMap<String, Long>()
-    private val gesturePx = HashMap<String, Float>()
-    private val pendingFinalize = HashMap<String, Runnable>()
     private var lastBlockAt = 0L
-
-    private var screenHeightPx = 2000f
     private var metersPerPx = 0.0254f / 400f
+    private var currentPkg: String? = null
+    private var lastScanAt = 0L
+
+    /** While the counter is up, check every so often whether the user is still in a reels feed. */
+    private val watcher = object : Runnable {
+        override fun run() {
+            val p = pill ?: return
+            if (!p.isShowing) return
+            val activePkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+            val stillTracked = activePkg != null && TrackedApps.forPackage(activePkg) != null
+            val inReels = detector?.stillInReels() == true
+            if (!stillTracked || !inReels || store?.bubbleOn != true || store?.paused == true) {
+                p.hide()
+                detector?.forgetPager()
+            } else {
+                handler.postDelayed(this, WATCH_MS)
+            }
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         store = ScrollStore.get(this)
-        bubble = ScrollBubble(this)
+        pill = ReelCounterPill(this)
         val dm = resources.displayMetrics
-        screenHeightPx = dm.heightPixels.toFloat()
+        detector = ReelDetector(dm.widthPixels, dm.heightPixels)
         val dpi = if (dm.ydpi > 0f) dm.ydpi else dm.densityDpi.toFloat()
         metersPerPx = 0.0254f / dpi
         Notifier.ensureChannel(this)
@@ -52,59 +59,67 @@ class ScrollTrackerService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         val store = store ?: return
-        if (store.paused) return
         val pkg = event.packageName?.toString() ?: return
         val app = TrackedApps.forPackage(pkg) ?: return
-        if (!store.isAppEnabled(app.key)) return
+        if (store.paused || !store.isAppEnabled(app.key)) return
 
-        // Limit reached → don't let the user stay in the app (opening it or scrolling in it).
-        if (shouldBlock(store)) {
-            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
-            ) block(app.name)
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            if (pkg != currentPkg) {
+                currentPkg = pkg
+                detector?.reset(app.key)
+            }
+            // Limit reached → don't let the user stay in the app.
+            if (shouldBlock(store)) block(app.name)
+            return
+        }
+
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            // Cheap, throttled check: did the user just open a Reels / Shorts feed?
+            val now = SystemClock.uptimeMillis()
+            if (store.bubbleOn && pill?.isShowing != true && now - lastScanAt > SCAN_GAP_MS) {
+                lastScanAt = now
+                val det = detector ?: return
+                if (det.findReelPager(runCatching { rootInActiveWindow }.getOrNull())) {
+                    showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+                }
+            }
             return
         }
 
         if (event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
+        val det = detector ?: return
+        val newReel = det.onScroll(app.key, event)
 
-        val key = app.key
-        val now = SystemClock.uptimeMillis()
-        val last = lastEventAt[key] ?: 0L
-        lastEventAt[key] = now
-
-        if (now - last > GESTURE_GAP_MS) {
-            // Previous gesture still pending? Close it out before starting a new one.
-            pendingFinalize.remove(key)?.let {
-                handler.removeCallbacks(it)
-                it.run()
-            }
-            gesturePx[key] = 0f
-            store.addScroll(key)
-            onNewScroll(store, key, app.name)
-        }
-
-        reportedDeltaPx(event)?.let { gesturePx[key] = (gesturePx[key] ?: 0f) + it }
-
-        // (Re)schedule the end-of-gesture handler.
-        pendingFinalize.remove(key)?.let { handler.removeCallbacks(it) }
-        val r = Runnable { finalizeGesture(key) }
-        pendingFinalize[key] = r
-        handler.postDelayed(r, GESTURE_GAP_MS)
-    }
-
-    private fun onNewScroll(store: ScrollStore, key: String, appName: String) {
-        val total = store.todayTotal()
-        val limit = store.dailyLimit
-        val appCount = store.todayCount(key)
-
-        checkAlerts(store, total, limit)
-
-        if (store.blockOn && !store.inGrace && total >= limit) {
-            block(appName)
+        if (shouldBlock(store) && det.lastPager != null) {
+            block(app.name)
             return
         }
-        if (store.bubbleOn && appCount % BUBBLE_EVERY == 0) {
-            bubble?.show(appName, appCount, total, limit)
+
+        if (newReel) {
+            store.addScroll(app.key)
+            store.addDistance(app.key, det.lastPagerHeight * metersPerPx)
+            val total = store.todayTotal()
+            val limit = store.dailyLimit
+            checkAlerts(store, total, limit)
+            if (store.blockOn && !store.inGrace && total >= limit) {
+                block(app.name)
+                return
+            }
+            showPill(store, total, limit, bump = true)
+        } else if (det.lastPager != null && pill?.isShowing != true && store.bubbleOn) {
+            // Entered a reels feed: bring the counter up even before the first swipe.
+            if (det.stillInReels()) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+        }
+    }
+
+    private fun showPill(store: ScrollStore, total: Int, limit: Int, bump: Boolean) {
+        if (!store.bubbleOn) return
+        val p = pill ?: return
+        val wasShowing = p.isShowing
+        p.show(total, limit, bump)
+        if (!wasShowing) {
+            handler.removeCallbacks(watcher)
+            handler.postDelayed(watcher, WATCH_MS)
         }
     }
 
@@ -115,26 +130,13 @@ class ScrollTrackerService : AccessibilityService() {
         val now = SystemClock.uptimeMillis()
         if (now - lastBlockAt < 1500) return
         lastBlockAt = now
-        bubble?.destroy()
+        pill?.hide()
+        detector?.forgetPager()
         performGlobalAction(GLOBAL_ACTION_HOME)
         val i = Intent(this, BlockActivity::class.java)
             .putExtra(BlockActivity.EXTRA_APP, appName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         handler.postDelayed({ runCatching { startActivity(i) } }, 250)
-    }
-
-    private fun reportedDeltaPx(event: AccessibilityEvent): Float? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
-        val dy = abs(event.scrollDeltaY)
-        // -1 / 0 = "not reported"; huge values are bogus resets.
-        return if (dy > 1 && dy < screenHeightPx * 3) dy.toFloat() else null
-    }
-
-    private fun finalizeGesture(key: String) {
-        pendingFinalize.remove(key)
-        val px = gesturePx.remove(key) ?: return
-        val distancePx = if (px > 0f) px else screenHeightPx * FALLBACK_SCREEN_FRACTION
-        store?.addDistance(key, distancePx * metersPerPx)
     }
 
     private fun checkAlerts(store: ScrollStore, total: Int, limit: Int) {
@@ -156,14 +158,14 @@ class ScrollTrackerService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        bubble?.destroy()
+        pill?.destroy()
         super.onDestroy()
     }
 
     companion object {
-        private const val GESTURE_GAP_MS = 600L
-        private const val FALLBACK_SCREEN_FRACTION = 0.7f
-        const val BUBBLE_EVERY = 5
+        private const val WATCH_MS = 1200L
+        private const val SCAN_GAP_MS = 900L
+        const val BUBBLE_EVERY = 1
         const val WARN_AT = 0.8f
     }
 }

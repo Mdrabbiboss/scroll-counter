@@ -144,7 +144,7 @@ class ScrollStore private constructor(context: Context) {
 
     /** CSV of the whole stored history: date,app,scrolls,meters */
     fun exportCsv(): String {
-        val sb = StringBuilder("date,app,scrolls,distance_m\n")
+        val sb = StringBuilder("date,app,reels,distance_m\n")
         lastDays(HISTORY_DAYS).forEach { day ->
             day.apps.forEach { s ->
                 val name = TrackedApps.forKey(s.key)?.name ?: s.key

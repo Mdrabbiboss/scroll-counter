@@ -94,7 +94,7 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("${sel.totalScrolls}", style = MaterialTheme.typography.headlineMedium)
                     Text(
-                        "  scrolls · ${formatDistance(sel.totalMeters)}",
+                        "  reels · ${formatDistance(sel.totalMeters)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -112,13 +112,13 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
         }
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(Icons.Rounded.Insights, "Daily avg", "$avg", "scrolls per day", Modifier.weight(1f))
+                StatTile(Icons.Rounded.Insights, "Daily avg", "$avg", "reels per day", Modifier.weight(1f))
                 StatTile(Icons.Rounded.CheckCircle, "On target", "$under/${tracked.size}", "days under limit", Modifier.weight(1f), tint = Brand.Good)
             }
         }
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(Icons.Rounded.TrendingUp, "Total", "$total", "scrolls in $n days", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary)
+                StatTile(Icons.Rounded.TrendingUp, "Total", "$total", "reels in $n days", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary)
                 StatTile(Icons.Rounded.Straighten, "Distance", formatDistance(meters), distanceComparison(meters), Modifier.weight(1f), tint = Brand.Warn)
             }
         }
@@ -202,7 +202,7 @@ private fun DayRow(day: DayStats, limit: Int, isToday: Boolean, onClick: () -> U
         Column(Modifier.weight(1f)) {
             Text(if (isToday) "Today" else day.date.format(DayFmt), style = MaterialTheme.typography.bodyLarge)
             Text(
-                if (day.totalScrolls == 0) "No scrolls" else formatDistance(day.totalMeters) + (day.topApp?.let { " · most on " + (com.rabbi.scrollcounter.data.TrackedApps.forKey(it.key)?.name ?: "") } ?: ""),
+                if (day.totalScrolls == 0) "No reels" else formatDistance(day.totalMeters) + (day.topApp?.let { " · most on " + (com.rabbi.scrollcounter.data.TrackedApps.forKey(it.key)?.name ?: "") } ?: ""),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -232,7 +232,7 @@ private fun DaySheet(store: ScrollStore, tick: Long, date: LocalDate, limit: Int
             Row(verticalAlignment = Alignment.Bottom) {
                 Text("${day.totalScrolls}", style = MaterialTheme.typography.displayMedium,
                     color = if (day.totalScrolls >= limit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                Text("  / $limit scrolls", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 10.dp))
+                Text("  / $limit reels", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 10.dp))
             }
             Text(
                 "${formatDistance(day.totalMeters)} · ${distanceComparison(day.totalMeters)}" + (peak?.let { " · busiest at ${formatHour(it)}" } ?: ""),

@@ -24,6 +24,11 @@
         <package android:name="com.reddit.frontpage" />
         <package android:name="com.linkedin.android" />
         <package android:name="com.pinterest" />
+        <package android:name="video.like" />
+        <package android:name="video.like.lite" />
+        <package android:name="com.kwai.video" />
+        <package android:name="com.kwai.bulldog" />
+        <package android:name="in.mohalla.video" />
     </queries>
 
     <application
