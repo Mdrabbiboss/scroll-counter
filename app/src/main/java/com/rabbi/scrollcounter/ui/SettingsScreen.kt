@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.rounded.Mood
+import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.FilledTonalButton
@@ -101,8 +102,8 @@ fun SettingsScreen(
                     if (status.trackerOn) "On — allowed in Accessibility" else "Off — tap Enable to start counting",
                     iconTint = if (status.trackerOn) Brand.Good else MaterialTheme.colorScheme.error,
                 ) {
-                    if (status.trackerOn) FilledTonalButton(onClick = { TrackerStatus.openAccessibilitySettings(context) }) { Text("Manage") }
-                    else Button(onClick = onEnableTracking) { Text("Enable") }
+                    if (status.trackerOn) PillButton("Manage", Icons.Rounded.OpenInNew) { TrackerStatus.openAccessibilitySettings(context) }
+                    else PillButton("Enable", gold = true, onClick = onEnableTracking)
                 }
                 SettingRow(
                     Icons.Rounded.PauseCircle, "Pause tracking",
@@ -162,11 +163,11 @@ fun SettingsScreen(
                     if (status.notificationsOn) "Allowed" else "Off — alerts can't be shown",
                     iconTint = if (status.notificationsOn) Brand.Good else MaterialTheme.colorScheme.error,
                 ) {
-                    if (status.notificationsOn) FilledTonalButton(onClick = {
+                    if (status.notificationsOn) PillButton("Test", Icons.Rounded.NotificationsActive) {
                         Notifier.test(context)
                         Toast.makeText(context, "Test notification sent", Toast.LENGTH_SHORT).show()
-                    }) { Text("Test") }
-                    else Button(onClick = onRequestNotifications) { Text("Allow") }
+                    }
+                    else PillButton("Allow", gold = true, onClick = onRequestNotifications)
                 }
                 SettingRow(
                     Icons.Rounded.WarningAmber, "80% heads-up",
@@ -263,12 +264,10 @@ fun SettingsScreen(
             },
             onDismiss = { confirm = null }
         )
-        Confirm.DELETE_ALL -> ConfirmDialog(
-            "Delete all history?", "Every stored day is removed from this phone. This can't be undone.",
-            "Delete", destructive = true,
+        Confirm.DELETE_ALL -> DeleteHistoryDialog(
             onConfirm = {
                 store.clearAll(); confirm = null
-                Toast.makeText(context, "History deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "All history deleted", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { confirm = null }
         )

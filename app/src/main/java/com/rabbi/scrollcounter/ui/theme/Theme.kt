@@ -89,6 +89,8 @@ object Brand {
     val Warn = Color(0xFFF5A524)
     val Over = Color(0xFFFF7A7A)
     val Good = Color(0xFF2FBF71)
+    val Gold = Color(0xFFF8C33A)
+    val GoldDeep = Color(0xFF5C3D00)
 }
 
 private val AppTypography = Typography().run {

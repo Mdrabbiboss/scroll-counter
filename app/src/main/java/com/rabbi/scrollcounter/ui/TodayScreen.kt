@@ -253,7 +253,7 @@ private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
                 Text("See today's scrolls without opening the app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
             }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = onAdd) { Text("Add") }
+            PillButton("Add", gold = true, onClick = onAdd)
         }
     }
 }

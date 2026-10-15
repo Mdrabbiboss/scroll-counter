@@ -1,6 +1,10 @@
 package com.rabbi.scrollcounter.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -250,6 +254,86 @@ fun ConfirmDialog(
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+/**
+ * Deleting all history needs a deliberate step: a strong warning and a small sum to solve,
+ * so it can't happen by an accidental tap.
+ */
+@Composable
+fun DeleteHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val a = remember { (3..19).random() }
+    val b = remember { (2..15).random() }
+    val plus = remember { listOf(true, false).random() || a <= b }
+    val answer = if (plus) a + b else a - b
+    var input by remember { mutableStateOf("") }
+    val correct = input.toIntOrNull() == answer
+    val wrong = input.isNotEmpty() && input.length >= answer.toString().length && !correct
+    val danger = MaterialTheme.colorScheme.error
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                Modifier.size(56.dp).clip(CircleShape).background(danger.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Rounded.WarningAmber, null, tint = danger, modifier = Modifier.size(30.dp)) }
+        },
+        title = { Text("Delete all history?", textAlign = TextAlign.Center) },
+        text = {
+            Column {
+                Box(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                        .background(danger.copy(alpha = 0.10f))
+                        .border(1.dp, danger.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        "This permanently removes from this phone:\n" +
+                            "• Every day's scroll count and distance\n" +
+                            "• Your hourly activity and app breakdown\n" +
+                            "• Your streak (it starts again from zero)\n\n" +
+                            "This can't be undone.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Solve this to confirm", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "$a ${if (plus) "+" else "−"} $b  =",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { v -> input = v.filter { it.isDigit() || it == '-' }.take(4) },
+                        singleLine = true,
+                        isError = wrong,
+                        placeholder = { Text("?") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        textStyle = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.width(96.dp)
+                    )
+                }
+                if (wrong) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Not quite — try again", style = MaterialTheme.typography.bodySmall, color = danger)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = correct,
+                colors = ButtonDefaults.buttonColors(containerColor = danger, contentColor = Color.White)
+            ) { Text("Delete everything", fontWeight = FontWeight.SemiBold) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Keep my history") } }
     )
 }
 

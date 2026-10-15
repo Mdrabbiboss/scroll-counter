@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rabbi.scrollcounter.data.AppStat
+import com.rabbi.scrollcounter.ui.theme.Brand
 import com.rabbi.scrollcounter.data.TrackedApp
 import com.rabbi.scrollcounter.data.TrackedApps
 import java.util.Locale
@@ -167,7 +168,9 @@ fun StatusChip(text: String, color: Color) {
 fun StatTile(icon: ImageVector, label: String, value: String, hint: String?, modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.primary) {
     PremiumCard(modifier.fillMaxHeight()) {
         Box(
-            Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(tint.copy(alpha = 0.13f)),
+            Modifier.size(36.dp).clip(RoundedCornerShape(12.dp))
+                .background(Brush.linearGradient(listOf(tint.copy(alpha = 0.30f), tint.copy(alpha = 0.10f))))
+                .border(1.dp, tint.copy(alpha = 0.30f), RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(19.dp)) }
         Spacer(Modifier.height(12.dp))
@@ -278,7 +281,9 @@ fun SettingRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(iconTint.copy(alpha = 0.12f)),
+            Modifier.size(40.dp).clip(RoundedCornerShape(13.dp))
+                .background(Brush.linearGradient(listOf(iconTint.copy(alpha = 0.30f), iconTint.copy(alpha = 0.10f))))
+                .border(1.dp, iconTint.copy(alpha = 0.30f), RoundedCornerShape(13.dp)),
             contentAlignment = Alignment.Center
         ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp)) }
         Spacer(Modifier.width(14.dp))
@@ -388,15 +393,35 @@ fun PremiumSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
         },
         colors = SwitchDefaults.colors(
             checkedThumbColor = Color.White,
-            checkedTrackColor = MaterialTheme.colorScheme.primary,
-            checkedIconColor = MaterialTheme.colorScheme.primary,
-            checkedBorderColor = Color.Transparent,
-            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-            uncheckedIconColor = MaterialTheme.colorScheme.surfaceVariant,
-            uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+            checkedTrackColor = Brand.Gold,
+            checkedIconColor = Brand.GoldDeep,
+            checkedBorderColor = Brand.GoldDeep.copy(alpha = 0.35f),
+            uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
+            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+            uncheckedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            uncheckedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f),
         )
     )
+}
+
+/** Clear, solid action button used inside setting rows (Manage, Test, Allow, Enable). */
+@Composable
+fun PillButton(text: String, icon: ImageVector? = null, gold: Boolean = false, onClick: () -> Unit) {
+    val bg = if (gold) Brand.Gold else MaterialTheme.colorScheme.primary
+    val fg = if (gold) Brand.GoldDeep else MaterialTheme.colorScheme.onPrimary
+    androidx.compose.material3.Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = bg, contentColor = fg),
+        elevation = androidx.compose.material3.ButtonDefaults.buttonElevation(defaultElevation = 2.dp, pressedElevation = 0.dp)
+    ) {
+        if (icon != null) {
+            Icon(icon, null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(text, fontWeight = FontWeight.Bold)
+    }
 }
 
 // ---------- Formatting ----------
