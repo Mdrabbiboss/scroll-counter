@@ -167,12 +167,8 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, onEditLimit: () -> Uni
         count == 0 -> "A clean slate. Keep it mindful today."
         else -> "${limit - count} reels left in today's limit."
     }
-    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "hero")
-    val phase by t.animateFloat(
-        0f, 1f,
-        androidx.compose.animation.core.infiniteRepeatable(tween(3600, easing = androidx.compose.animation.core.LinearEasing)),
-        label = "phase"
-    )
+    // Calm, still background — no moving sparkles behind the numbers.
+    val phase = 0f
     val density = androidx.compose.ui.platform.LocalDensity.current.density
 
     Box(

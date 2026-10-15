@@ -195,7 +195,7 @@ object WidgetArt {
 
     // -------------------------------------------------------------------------- public pieces (in-app hero)
 
-    /** The mood scene alone — gradient, glow, hills, decorations, sheen — for the app's hero card. */
+    /** The mood scene alone — gradient, glow, hills, sheen (no sparkles) — for the app's hero card. */
     @Synchronized
     fun drawScene(c: Canvas, w: Float, h: Float, dp: Float, state: WidgetState, phase: Float, radius: Float) {
         val sc = scene(state)
@@ -212,7 +212,6 @@ object WidgetArt {
         p.shader = null
         hill(c, w, h, 0.74f, 0.05f, 0.05f, phase)
         hill(c, w, h, 0.84f, -0.04f, 0.07f, phase)
-        decorations(c, w, h, dp, sc, false, phase)
         p.reset(); p.isAntiAlias = true
         p.shader = LinearGradient(0f, 0f, 0f, h * 0.45f, 0x1FFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
         c.drawRect(0f, 0f, w, h * 0.45f, p)

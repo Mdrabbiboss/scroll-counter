@@ -37,6 +37,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var lastCountAt = 0L
         var primedKey = ""
         var primedIndex: Int? = null
+        var lastIdx = Int.MIN_VALUE      // index seen at the previous settle
+        var indexReliable = false        // the item number has been seen to change → trust it
+        var opaque = false               // container exposes no children (e.g. Facebook Lite)
+        var lastScrollY = -1
     }
 
     private val states = HashMap<String, AppState>()
@@ -63,12 +67,14 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
         if (!isReelPager(src)) return false
+        val opaque = lastWasOpaque
         lastPager = src
         lastPagerHeight = rect.height().coerceAtLeast(1)
         src.viewIdResourceName?.let { id -> src.packageName?.toString()?.let { knownPagerIds[it] = id } }
 
         val st = states.getOrPut(appKey) { AppState() }
         val key = "${src.viewIdResourceName}|${src.className}"
+        st.opaque = opaque
         val from = event.fromIndex
         val to = event.toIndex
         if (key != st.pagerKey) {
@@ -78,6 +84,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             st.maxIndex = if (st.primedIndex != null && st.primedKey == key) st.primedIndex!!
                 else if (from >= 0) from else Int.MIN_VALUE
             st.eventIndex = Int.MIN_VALUE
+            st.lastIdx = Int.MIN_VALUE
+            st.indexReliable = false
+            st.lastScrollY = -1
             st.accum = 0f
         }
 
@@ -85,12 +94,14 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             st.hadIndex = true
             if (from == to) st.eventIndex = from
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val dy = event.scrollDeltaY
-            if (dy != 0 && abs(dy) < screenH * 3) {
-                st.accum += dy
-                st.hadDelta = true
-            }
+        var dy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) event.scrollDeltaY else 0
+        // Older phones / custom views: work the distance out from the scroll position instead.
+        val y = event.scrollY
+        if (dy == 0 && y >= 0 && st.lastScrollY >= 0) dy = y - st.lastScrollY
+        if (y >= 0) st.lastScrollY = y
+        if (dy != 0 && abs(dy) < screenH * 3) {
+            st.accum += dy
+            st.hadDelta = true
         }
         st.pending = true
         return true
@@ -110,27 +121,39 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         st.hadDelta = false
         st.accum = 0f
 
+        val h = lastPagerHeight.toFloat().coerceAtLeast(1f)
+
+        // Apps that draw everything themselves (Facebook Lite…) expose a single full-screen view
+        // with no children. There, only a swipe that moved exactly ~one screen is a reel.
+        if (st.opaque) {
+            if (!hadDelta) return 0
+            val pages = accum / h
+            val whole = pages.roundToInt()
+            return if (whole in 1..3 && abs(pages - whole) <= 0.18f * whole) mark(st, whole) else 0
+        }
+
         // 1. Best: ask the pager which item fills the screen right now.
         var index = currentItemIndex()
         // 2. Next best: the last settled index the scroll events reported.
         if (index == null && hadIndex && st.eventIndex != Int.MIN_VALUE) index = st.eventIndex
 
+        var n = 0
         if (index != null) {
-            if (st.maxIndex == Int.MIN_VALUE) {
-                // First swipe seen in this feed: remember where we are. If it clearly went forward
-                // a page to get here, that was a new reel.
+            if (st.lastIdx != Int.MIN_VALUE && index != st.lastIdx) st.indexReliable = true
+            st.lastIdx = index
+            if (st.maxIndex == Int.MIN_VALUE) st.maxIndex = index
+            else if (index > st.maxIndex) {
+                n = (index - st.maxIndex).coerceAtMost(3)
                 st.maxIndex = index
-                return if (hadDelta && accum >= lastPagerHeight * 0.5f) mark(st) else 0
             }
-            val n = index - st.maxIndex
-            if (n <= 0) return 0                       // bounced back, or rewatching an older reel
-            st.maxIndex = index
-            return mark(st, n.coerceAtMost(3))
+            // A trusted item number that didn't move forward = bounced back or rewatching.
+            if (n == 0 && st.indexReliable) return 0
         }
+        if (n > 0) return mark(st, n)
 
-        // 3. No item numbers: whole pages moved forward.
+        // 3. No trustworthy item numbers: whole pages moved forward.
         if (hadDelta) {
-            val pages = accum / lastPagerHeight
+            val pages = accum / h
             if (pages < 0.5f) return 0                 // half swipe that snapped back, or going up
             return mark(st, pages.roundToInt().coerceIn(1, 3))
         }
@@ -168,13 +191,17 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         }
     }
 
+    /** Set by [isReelPager] when the accepted container has no children (self-drawn apps). */
+    private var lastWasOpaque = false
+
     private fun isReelPager(src: AccessibilityNodeInfo): Boolean {
+        lastWasOpaque = false
         src.getBoundsInScreen(rect)
-        // 1. Must fill the screen: full width, most of the height, starting at the top.
-        //    Comment / share sheets slide up from the bottom, so they start lower and are rejected.
+        // 1. Must fill the screen: full width and most of the height. Comment / share sheets
+        //    slide up from the bottom and start low on the screen, so they're rejected.
         if (rect.width() < screenW * 0.85f) return false
-        if (rect.height() < screenH * 0.7f) return false
-        if (rect.top > screenH * 0.15f) return false
+        if (rect.height() < screenH * 0.6f) return false
+        if (rect.top > screenH * 0.22f) return false
 
         val id = src.viewIdResourceName ?: ""
         val cls = src.className?.toString() ?: ""
@@ -188,11 +215,22 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             return remember(cacheKey, false)
         if (scrollsOnlySideways(src)) return remember(cacheKey, false)
         val ci = src.collectionInfo
-        if (ci != null && ci.columnCount > 1) return remember(cacheKey, false)
+        if (ci != null && ci.columnCount > 1 && ci.rowCount <= 1) return remember(cacheKey, false)
+
+        val named = ID_HINTS.any { lower.contains(it) }
+        val n = minOf(src.childCount, 6)
+        if (n == 0) {
+            // Self-drawn apps (Facebook Lite…) expose no children. Accept a full-screen scroller
+            // in a known short-video app; counting then needs an exact one-screen swipe.
+            val pkg = src.packageName?.toString() ?: ""
+            if (rect.height() >= screenH * 0.75f && (named || com.rabbi.scrollcounter.data.TrackedApps.isKnown(pkg))) {
+                lastWasOpaque = true
+                return true
+            }
+            return false // maybe still loading; decide later (not cached)
+        }
 
         // 3. Its visible items must be full-screen pages stacked vertically.
-        val n = minOf(src.childCount, 6)
-        if (n == 0) return false // still loading; decide later
         var fullPages = 0
         var shortItems = 0
         var sideBySide = 0
@@ -202,15 +240,14 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             val c = runCatching { src.getChild(i) }.getOrNull() ?: continue
             c.getBoundsInScreen(child)
             if (child.isEmpty) continue
-            if (child.height() >= rect.height() * 0.85f && child.width() >= rect.width() * 0.9f) fullPages++
+            if (child.height() >= rect.height() * 0.8f && child.width() >= rect.width() * 0.9f) fullPages++
             else if (child.height() < rect.height() * 0.6f && !partlyOffScreen(child)) shortItems++
             if (prevTop != Int.MIN_VALUE && abs(child.top - prevTop) < 8 && abs(child.left - prevLeft) > rect.width() / 4) sideBySide++
             prevTop = child.top; prevLeft = child.left
         }
-        val pagesOk = fullPages >= 1 && shortItems == 0 && sideBySide == 0
-        // The app's own id naming it a reels pager is a strong hint, but the layout must agree.
-        val named = ID_HINTS.any { lower.contains(it) }
-        return remember(cacheKey, pagesOk || (named && fullPages >= 1 && shortItems <= 1 && sideBySide == 0))
+        val ok = sideBySide == 0 && fullPages >= 1 && shortItems <= (if (named) 2 else 1)
+        // Only remember a "yes": a "no" may just be a moment mid-transition, so look again next time.
+        return if (ok) remember(cacheKey, true) else false
     }
 
     /** A page mid-swipe is cut off at the container edge; it's not a "short row". */
@@ -239,7 +276,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         return try {
             node.refresh() && node.isVisibleToUser && run {
                 node.getBoundsInScreen(rect)
-                rect.height() >= screenH * 0.7f && rect.top <= screenH * 0.15f
+                rect.height() >= screenH * 0.6f && rect.top <= screenH * 0.22f
             }
         } catch (e: Exception) {
             false
