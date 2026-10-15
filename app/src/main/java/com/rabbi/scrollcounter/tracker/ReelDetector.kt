@@ -41,6 +41,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var indexReliable = false        // the item number has been seen to change → trust it
         var opaque = false               // container exposes no children (e.g. Facebook Lite)
         var lastScrollY = -1
+        var retries = 0
     }
 
     private val states = HashMap<String, AppState>()
@@ -67,6 +68,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
         val accepted = isReelPager(src)
+        val cn = src.className?.toString() ?: ""
+        lastSourceNativeList = NATIVE_LISTS.any { cn.endsWith(it) }
         DetectLog.add(
             src.packageName?.toString() ?: appKey,
             "${src.className?.toString()?.substringAfterLast('.') ?: "?"}" +
@@ -124,6 +127,16 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     fun settle(appKey: String): Int {
         val st = states[appKey] ?: return 0
         if (!st.pending) return 0
+        // A reels feed always comes to rest with one video filling it exactly. If it isn't
+        // snapped yet, it's still animating (try again shortly) — or it's not a reels feed at all.
+        if (!st.opaque && !isSnapped()) {
+            if (st.retries < MAX_RETRIES) { st.retries++; return RETRY }
+            st.retries = 0
+            st.pending = false
+            st.hadIndex = false; st.hadDelta = false; st.accum = 0f
+            return 0
+        }
+        st.retries = 0
         st.pending = false
         val hadIndex = st.hadIndex
         val hadDelta = st.hadDelta
@@ -173,6 +186,27 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         return if (stillInReels()) mark(st) else 0
     }
 
+    /** True when one page fills the pager exactly (the feed has snapped onto a video). */
+    private fun isSnapped(): Boolean {
+        val pager = lastPager ?: return false
+        return try {
+            if (!pager.refresh()) return false
+            pager.getBoundsInScreen(rect)
+            val h = rect.height()
+            if (h <= 0) return false
+            val n = minOf(pager.childCount, 6)
+            if (n == 0) return true
+            for (i in 0 until n) {
+                val c = pager.getChild(i) ?: continue
+                c.getBoundsInScreen(child)
+                if (abs(child.top - rect.top) <= h * 0.03f && child.height() >= h * 0.96f) return true
+            }
+            false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun mark(st: AppState, n: Int = 1): Int {
         val now = SystemClock.uptimeMillis()
         if (now - st.lastCountAt < MIN_COUNT_GAP_MS) return 0
@@ -204,6 +238,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     /** Set by [isReelPager] when the accepted container has no children (self-drawn apps). */
     private var lastWasOpaque = false
+
+    /** The last rejected scroller was a standard Android list, whose layout we can read reliably. */
+    var lastSourceNativeList = false
+        private set
     private var lastReason = ""
 
     private fun isReelPager(src: AccessibilityNodeInfo): Boolean {
@@ -244,9 +282,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             return false // maybe still loading; decide later (not cached)
         }
 
-        // 3. Its visible items must be full-screen pages stacked vertically.
-        var fullPages = 0
-        var shortItems = 0
+        // 3. Its items must be pages exactly as tall as the feed itself, stacked vertically.
+        //    A news feed has posts of different heights, so a fully visible item that is
+        //    shorter than the feed means it's NOT reels — even if one big post fills most of it.
+        val hh = rect.height()
+        var exactPages = 0
+        var otherItems = 0
         var sideBySide = 0
         var prevTop = Int.MIN_VALUE
         var prevLeft = Int.MIN_VALUE
@@ -254,16 +295,25 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             val c = runCatching { src.getChild(i) }.getOrNull() ?: continue
             c.getBoundsInScreen(child)
             if (child.isEmpty) continue
-            if (child.height() >= rect.height() * 0.8f && child.width() >= rect.width() * 0.9f) fullPages++
-            else if (child.height() < rect.height() * 0.6f && !partlyOffScreen(child)) shortItems++
+            val touchesEdge = child.top <= rect.top + 3 || child.bottom >= rect.bottom - 3
+            if (abs(child.height() - hh) <= hh * 0.04f && child.width() >= rect.width() * 0.9f) exactPages++
+            else if (!touchesEdge && child.height() > hh * 0.05f) otherItems++
+            else if (touchesEdge && child.height() < hh * 0.96f && child.width() >= rect.width() * 0.9f) {
+                // a page partly scrolled in/out at the edge — fine
+            }
             if (prevTop != Int.MIN_VALUE && abs(child.top - prevTop) < 8 && abs(child.left - prevLeft) > rect.width() / 4) sideBySide++
             prevTop = child.top; prevLeft = child.left
         }
-        val ok = sideBySide == 0 && fullPages >= 1 && shortItems <= (if (named) 2 else 1)
-        // Only remember a "yes": a "no" may just be a moment mid-transition, so look again next time.
-        if (!ok) lastReason = "items full$fullPages short$shortItems row$sideBySide"
-        return if (ok) remember(cacheKey, true) else false
+        // Mid-swipe two pages are each partly visible; at rest one fills it exactly.
+        val midSwipe = exactPages == 0 && otherItems == 0 && n in 1..3
+        val ok = sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || (midSwipe && (named || lastPager?.let { samePager(it, src) } == true)))
+        if (!ok) lastReason = "items exact$exactPages other$otherItems row$sideBySide"
+        // Not cached: a feed and a reels viewer can share the same view class and size.
+        return ok
     }
+
+    private fun samePager(a: AccessibilityNodeInfo, b: AccessibilityNodeInfo): Boolean =
+        a.viewIdResourceName == b.viewIdResourceName && a.className == b.className && a.packageName == b.packageName
 
     /** A page mid-swipe is cut off at the container edge; it's not a "short row". */
     private fun partlyOffScreen(r: Rect): Boolean =
@@ -355,6 +405,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     companion object {
         /** How long the feed must be still before a swipe is judged. */
         const val SETTLE_MS = 350L
+        /** [settle] result meaning "still moving — call again in a moment". */
+        const val RETRY = -1
+        private val NATIVE_LISTS = listOf("RecyclerView", "ListView", "ScrollView", "ViewPager", "ViewPager2", "GridView")
+        private const val MAX_RETRIES = 3
         private const val MIN_COUNT_GAP_MS = 200L
         private val ID_HINTS = listOf("clips", "reel", "shorts", "spotlight", "short_video", "video_pager", "viewpager_vertical", "feed_pager")
         private val EXCLUDE_HINTS = listOf(

@@ -43,9 +43,15 @@ class ScrollTrackerService : AccessibilityService() {
 
     // ---- settle timers: a swipe is judged once the feed has been still for a moment ----
     private var settleApp: TrackedApp? = null
-    private val settleRunnable = Runnable {
+    private val settleRunnableRef: Runnable get() = settleRunnable
+    private val settleRunnable: Runnable = Runnable {
         val app = settleApp ?: return@Runnable
         val n = detector?.settle(app.key) ?: 0
+        if (n == ReelDetector.RETRY) {
+            // Still snapping into place — look again in a moment.
+            handler.postDelayed(settleRunnableRef, 250)
+            return@Runnable
+        }
         DetectLog.add(app.packages.first(), if (n > 0) "swipe settled → +$n reel" else "swipe settled → same reel")
         if (n > 0) onNewReels(app, n, detector?.lastPagerHeight ?: 0)
     }
@@ -233,6 +239,8 @@ class ScrollTrackerService : AccessibilityService() {
         if (!det.onScroll(app.key, event)) {
             // Not a recognisable pager (web-based, Flutter, React Native or custom apps):
             // fall back to how the feed moves — exact one-screen snaps, twice in a row = reels.
+            // Standard Android lists are read reliably by their layout, so a "no" there is final.
+            if (det.lastSourceNativeList) return
             val sn = snap ?: return
             sn.onScroll(app.key, event)
             if (sn.inReels(app.key) && shouldBlock(store)) { block(app.name); return }

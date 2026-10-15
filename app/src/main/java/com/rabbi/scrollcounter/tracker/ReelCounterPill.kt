@@ -103,7 +103,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
         val ctx = service
         face = FaceView(ctx)
         countText = TextView(ctx).apply {
-            textSize = 21f
+            textSize = 23f
             typeface = com.rabbi.scrollcounter.ui.theme.AppFonts.numbers
             letterSpacing = 0.01f
             setShadowLayer(dp(3f), 0f, dp(1f), 0x66000000)

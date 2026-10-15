@@ -156,7 +156,7 @@ object WidgetArt {
         val maxW = (fx - faceR - 6f * dp) - textX
         val headSize = if (wide) h * 0.13f else u * 0.10f
         val subSize = headSize * 0.64f
-        tp.typeface = black
+        tp.typeface = com.rabbi.scrollcounter.ui.theme.AppFonts.headline
         tp.textSize = headSize
         val lines = wrap(sc.headline, if (wide) w - pad - textX else maxW, 2)
         val blockH = lines.size * headSize * 1.08f + subSize * 1.6f

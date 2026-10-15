@@ -257,7 +257,8 @@ class BrowserReelDetector(private val screenH: Int) {
         val pages = abs(moved) / vp
         val whole = pages.roundToInt()
         val snapped = whole in 1..3 && abs(pages - whole) <= 0.12f * whole
-        val aligned = st.landedY < 0 || run {
+        // We must know where the page stopped: a reels feed always lands exactly on a video.
+        val aligned = st.landedY >= 0 && run {
             val off = st.landedY % vp
             minOf(off, vp - off) <= vp * 0.06f
         }
