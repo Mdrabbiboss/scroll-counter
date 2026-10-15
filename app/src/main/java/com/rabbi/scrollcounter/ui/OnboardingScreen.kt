@@ -141,10 +141,7 @@ fun OnboardingScreen(
 
 @Composable
 private fun Welcome() {
-    Box(
-        Modifier.size(104.dp).clip(RoundedCornerShape(32.dp)).background(Brand.hero),
-        contentAlignment = Alignment.Center
-    ) { Icon(Icons.Rounded.SwipeVertical, null, tint = Color.White, modifier = Modifier.size(52.dp)) }
+    AppLogo(112.dp)
     Spacer(Modifier.height(24.dp))
     Text("Know your scroll", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(8.dp))

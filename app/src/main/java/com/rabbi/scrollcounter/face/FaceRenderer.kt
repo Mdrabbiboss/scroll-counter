@@ -33,7 +33,7 @@ enum class Mood(val label: String, val face: Int, val accent: Int) {
 
 object FaceRenderer {
     private const val INK = 0xFF1C1917.toInt()
-    private const val CHEEK = 0x66FB7185
+    private const val CHEEK = 0xBFFB7185.toInt()
     private const val SWEAT = 0xFF60A5FA.toInt()
     private const val BAGS = 0x55553C9A
 

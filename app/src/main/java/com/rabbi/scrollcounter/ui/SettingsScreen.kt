@@ -91,7 +91,7 @@ fun SettingsScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item { ScreenHeader("Settings", "Scroll Counter") }
+        item { ScreenHeader("Settings", "Scroll Counter") { AppLogo(48.dp) } }
 
         // ---- Tracking ----
         item { SectionLabel("Tracking") }
