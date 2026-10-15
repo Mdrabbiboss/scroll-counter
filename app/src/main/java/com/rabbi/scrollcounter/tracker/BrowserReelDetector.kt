@@ -4,22 +4,26 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Counts short videos watched on websites — TikTok, YouTube Shorts, Facebook / Instagram Reels…
- * — in Chrome or any other browser.
+ * Counts short videos watched on websites — TikTok, YouTube Shorts, Instagram / Facebook Reels,
+ * Snapchat Spotlight, Douyin, Likee, Kwai… — in Chrome or any other browser.
  *
- * Web pages don't expose a "pager", and we deliberately never read the address bar or page text.
- * Instead we use how a reels feed *moves*: every swipe snaps by exactly one screen-tall video and
- * lands perfectly aligned. Ordinary reading scrolls by random amounts. So:
+ * Two signals, merged so one video is never counted twice:
  *
- *  1. Scroll events are added up per swipe (until the page is still for a moment).
- *  2. A swipe that moved ~1 (or 2–3) full viewport heights AND landed on a page boundary is a snap.
- *  3. Two snaps in a row → we're in a reels feed; from then on every snap = +1.
- *     (The two snaps that proved it are counted too.)
- *  4. Any ordinary, non-snapping scroll leaves reels mode.
+ *  1. The page address. Each short video has its own address (…/shorts/ID, …/reel/ID,
+ *     …/video/ID). When the ID changes, you moved to a new video → +1. The address is only
+ *     compared in memory to spot that change — it is never stored or sent anywhere.
+ *  2. How the feed moves. On a short-video page every swipe moves exactly one screen-tall video.
+ *     Sites whose address doesn't change per video (e.g. TikTok's For You feed) are counted this
+ *     way. On ordinary websites a feed only counts after two perfectly snapping swipes in a row,
+ *     so normal reading and scrolling are never counted.
+ *
+ * Only reels are counted: YouTube videos, Facebook / Instagram feeds, profiles, search pages etc.
+ * are recognised as not-reels and ignored.
  */
 class BrowserReelDetector(private val screenH: Int) {
 
@@ -32,32 +36,146 @@ class BrowserReelDetector(private val screenH: Int) {
         var inReels = false
         var lastSnapAt = 0L
         var lastCountAt = 0L
+
+        // address-based tracking
+        var urlKind = UrlKind.UNKNOWN
+        var reelId: String? = null
+        var lastUrl: String? = null
+        var lastUrlAt = 0L
+        // reels already counted by one signal, waiting to be matched by the other
+        var urlCredit = 0
+        var urlCreditAt = 0L
+        var scrollCredit = 0
+        var scrollCreditAt = 0L
     }
+
+    private enum class UrlKind { UNKNOWN, NOT_REELS, REELS }
 
     private val states = HashMap<String, State>()
     private val rect = Rect()
+    private val urlIdCache = HashMap<String, String>()
 
-    fun reset(pkg: String) { states.remove(pkg) }
+    fun reset(pkg: String) {
+        // Keep the address state (same tab is still open); clear only the swipe in progress.
+        states[pkg]?.let { it.gesture = 0f; it.lastY.clear() }
+    }
 
     fun inReels(pkg: String): Boolean {
         val st = states[pkg] ?: return false
-        // A reels session with no swipe for 3 minutes has probably ended.
+        if (st.urlKind == UrlKind.REELS) return true
+        if (st.urlKind == UrlKind.NOT_REELS) return false
         if (st.inReels && SystemClock.uptimeMillis() - st.lastSnapAt > 180_000) st.inReels = false
         return st.inReels
     }
 
+    // ------------------------------------------------------------------ address signal
+
+    /**
+     * Reads the browser's address bar (by its view id) and returns how many NEW reels the address
+     * change represents (0 or 1). Call it, throttled, on browser events.
+     */
+    fun checkAddress(pkg: String, root: AccessibilityNodeInfo?): Int {
+        root ?: return 0
+        val st = states.getOrPut(pkg) { State() }
+        val url = readUrl(pkg, root) ?: return 0
+        if (url == st.lastUrl) return 0
+        st.lastUrl = url
+        st.lastUrlAt = SystemClock.uptimeMillis()
+
+        val (kind, id) = classify(url)
+        st.urlKind = kind
+        if (kind != UrlKind.REELS) {
+            st.reelId = null
+            st.inReels = false
+            st.streak = 0
+            return 0
+        }
+        if (id == null || id == st.reelId) return 0
+        st.reelId = id
+        // Every new video counts — including the first one you open. If the swipe signal counted
+        // this same video a moment ago, don't count it again.
+        val now = SystemClock.uptimeMillis()
+        if (st.scrollCredit > 0 && now - st.scrollCreditAt < CREDIT_MS) {
+            st.scrollCredit--
+            return 0
+        }
+        st.urlCredit++
+        st.urlCreditAt = now
+        st.lastCountAt = now
+        return 1
+    }
+
+    private fun readUrl(pkg: String, root: AccessibilityNodeInfo): String? {
+        val ids = urlIdCache[pkg]?.let { listOf(it) } ?: URL_BAR_IDS.map { "$pkg:id/$it" }
+        for (id in ids) {
+            val nodes = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull() ?: continue
+            val text = nodes.firstNotNullOfOrNull { n -> n.text?.toString()?.takeIf { it.isNotBlank() } } ?: continue
+            urlIdCache[pkg] = id
+            return normalize(text)
+        }
+        return null
+    }
+
+    private fun normalize(raw: String): String {
+        var u = raw.trim().lowercase()
+        u = u.removePrefix("https://").removePrefix("http://")
+        u = u.removePrefix("www.").removePrefix("m.").removePrefix("mobile.").removePrefix("web.")
+        return u.substringBefore('#')
+    }
+
+    private fun classify(url: String): Pair<UrlKind, String?> {
+        val host = url.substringBefore('/').substringBefore('?')
+        val path = "/" + url.substringAfter('/', "").substringBefore('?')
+        fun idAfter(marker: String): String? =
+            path.substringAfter(marker, "").substringBefore('/').takeIf { it.length >= 4 }
+
+        return when {
+            host.endsWith("youtube.com") ->
+                if (path.startsWith("/shorts")) UrlKind.REELS to idAfter("/shorts/") else UrlKind.NOT_REELS to null
+            host.endsWith("tiktok.com") -> when {
+                path.contains("/video/") || path.contains("/photo/") -> UrlKind.REELS to (idAfter("/video/") ?: idAfter("/photo/"))
+                path.startsWith("/@") || path.startsWith("/search") || path.startsWith("/messages") ||
+                    path.startsWith("/upload") || path.startsWith("/login") -> UrlKind.NOT_REELS to null
+                else -> UrlKind.REELS to null // For You / Following / Explore feeds
+            }
+            host.endsWith("instagram.com") -> when {
+                path.startsWith("/reel/") -> UrlKind.REELS to idAfter("/reel/")
+                path.startsWith("/reels") -> UrlKind.REELS to idAfter("/reels/")
+                else -> UrlKind.NOT_REELS to null
+            }
+            host.endsWith("facebook.com") || host.endsWith("fb.com") -> when {
+                path.startsWith("/reel/") -> UrlKind.REELS to idAfter("/reel/")
+                path.startsWith("/reels") -> UrlKind.REELS to idAfter("/reels/")
+                path.contains("/reel/") -> UrlKind.REELS to idAfter("/reel/")
+                else -> UrlKind.NOT_REELS to null
+            }
+            host.endsWith("snapchat.com") ->
+                if (path.startsWith("/spotlight")) UrlKind.REELS to idAfter("/spotlight/") else UrlKind.NOT_REELS to null
+            host.endsWith("douyin.com") || host.endsWith("kwai.com") || host.endsWith("likee.video") ||
+                host.endsWith("snackvideo.com") || host.endsWith("triller.co") || host.endsWith("moj.in") ||
+                host.endsWith("sharechat.com") || host.endsWith("kuaishou.com") ->
+                if (path.contains("/video/")) UrlKind.REELS to idAfter("/video/") else UrlKind.REELS to null
+            host.endsWith("pinterest.com") || host.endsWith("reddit.com") || host.endsWith("x.com") ||
+                host.endsWith("twitter.com") || host.endsWith("google.com") || host.endsWith("wikipedia.org") ->
+                UrlKind.NOT_REELS to null
+            else -> UrlKind.UNKNOWN to null
+        }
+    }
+
+    // ------------------------------------------------------------------ movement signal
+
     /** Feed one scroll event. Call [settle] once the page has been still for ~400 ms. */
     fun onScroll(pkg: String, event: AccessibilityEvent) {
         val st = states.getOrPut(pkg) { State() }
+        if (st.urlKind == UrlKind.NOT_REELS) return
         val src = event.source
         var vp = 0
         if (src != null) {
             src.getBoundsInScreen(rect)
             vp = rect.height()
         }
-        // Tiny scrollers (carousels, comment boxes) are not a video feed.
-        if (vp < screenH * 0.45f) return
-        // Sideways swipes never count.
+        // Small scrollers (carousels, comment boxes, menus) are never the video feed.
+        if (vp < screenH * 0.55f) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return
 
@@ -75,48 +193,75 @@ class BrowserReelDetector(private val screenH: Int) {
         if (abs(dy) < screenH * 4) st.gesture += dy
     }
 
-    /**
-     * The swipe has finished. Returns how many new reels it represents (0 if none).
-     */
+    /** The swipe has finished. Returns how many new reels it represents (0 if none). */
     fun settle(pkg: String): Int {
         val st = states[pkg] ?: return 0
         val vp = st.viewport
-        val moved = abs(st.gesture)
+        val moved = st.gesture
         st.gesture = 0f
-        if (vp <= 0 || moved < vp * 0.12f) return 0 // a nudge, not a swipe
+        if (vp <= 0 || abs(moved) < vp * 0.12f) return 0 // a nudge, not a swipe
+        val now = SystemClock.uptimeMillis()
 
-        val pages = moved / vp
+        if (st.urlKind == UrlKind.NOT_REELS) return 0
+
+        if (st.urlKind == UrlKind.REELS) {
+            // Known short-video page: every forward swipe of ~a screen is a new video.
+            if (moved < vp * 0.5f) return 0
+            val n = (moved / vp).roundToInt().coerceIn(1, 3)
+            return merge(st, n, now)
+        }
+
+        // Unknown site: only a run of perfectly snapping swipes proves it's a reels feed.
+        val pages = abs(moved) / vp
         val whole = pages.roundToInt()
         val snapped = whole in 1..3 && abs(pages - whole) <= 0.12f * whole
-        // Landing exactly on a video boundary (when the browser tells us the position).
         val aligned = st.landedY < 0 || run {
             val off = st.landedY % vp
             minOf(off, vp - off) <= vp * 0.06f
         }
-
-        val now = SystemClock.uptimeMillis()
         if (!(snapped && aligned)) {
             st.streak = 0
             st.inReels = false
             return 0
         }
-        // Snaps far apart in time don't prove a feed.
         if (now - st.lastSnapAt > 90_000) st.streak = 0
         st.lastSnapAt = now
         st.streak++
-
-        if (st.inReels) return countable(st, whole, now)
+        if (moved < 0) return 0 // going back to a video already seen
+        if (st.inReels) return merge(st, whole, now)
         if (st.streak >= 2) {
             st.inReels = true
-            // Count the snap that started the run as well as this one.
-            return countable(st, whole + 1, now)
+            return merge(st, whole + 1, now)
         }
         return 0
     }
 
-    private fun countable(st: State, n: Int, now: Long): Int {
-        if (now - st.lastCountAt < 250) return 0
+    /** Subtract reels the address signal already counted for this same swipe. */
+    private fun merge(st: State, n: Int, now: Long): Int {
+        var count = n
+        if (st.urlCredit > 0 && now - st.urlCreditAt < CREDIT_MS) {
+            val used = minOf(st.urlCredit, count)
+            st.urlCredit -= used
+            count -= used
+        } else st.urlCredit = 0
+        if (count <= 0) return 0
+        if (now - st.lastCountAt < 200) return 0
         st.lastCountAt = now
-        return n
+        // The address may update a moment later for this same video.
+        if (st.urlKind != UrlKind.UNKNOWN || st.reelId != null) {
+            st.scrollCredit = count
+            st.scrollCreditAt = now
+        }
+        return count
+    }
+
+    companion object {
+        private const val CREDIT_MS = 2500L
+        /** Address-bar view ids used by Chrome and the popular browsers built on it, Samsung, Firefox, Opera… */
+        private val URL_BAR_IDS = listOf(
+            "url_bar", "location_bar_edit_text", "url_field", "mozac_browser_toolbar_url_view",
+            "omnibarTextInput", "url", "search_box_text", "address_bar_edit_text", "sbrowser_url_bar",
+            "url_edittext", "addressbar_url", "title_bar_url", "tv_url",
+        )
     }
 }

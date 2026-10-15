@@ -179,9 +179,15 @@ class ScrollStore private constructor(context: Context) {
         get() = settings.getInt("daily_limit", 500).coerceIn(10, 2000)
         set(value) { settings.edit().putInt("daily_limit", value).apply(); bump() }
 
+    /** Pausing was removed: tracking is always on while the Accessibility service is enabled. */
     var paused: Boolean
-        get() = settings.getBoolean("paused", false)
-        set(value) { settings.edit().putBoolean("paused", value).apply(); bump() }
+        get() = false
+        set(@Suppress("UNUSED_PARAMETER") value) { }
+
+    /** "Prevent app uninstall" is on (device admin + guard in the tracking service). */
+    var uninstallGuard: Boolean
+        get() = settings.getBoolean("uninstall_guard", false)
+        set(value) { settings.edit().putBoolean("uninstall_guard", value).apply(); bump() }
 
     var limitAlertsOn: Boolean
         get() = settings.getBoolean("limit_alerts", true)
@@ -207,13 +213,13 @@ class ScrollStore private constructor(context: Context) {
 
     /** Floating check-in card every few scrolls. */
     var bubbleOn: Boolean
-        get() = settings.getBoolean("bubble_on", true)
-        set(value) { settings.edit().putBoolean("bubble_on", value).apply(); bump() }
+        get() = true
+        set(@Suppress("UNUSED_PARAMETER") value) { }
 
     /** Send the user out of social apps once the daily limit is reached. */
     var blockOn: Boolean
-        get() = settings.getBoolean("block_on", true)
-        set(value) { settings.edit().putBoolean("block_on", value).apply(); bump() }
+        get() = true
+        set(@Suppress("UNUSED_PARAMETER") value) { }
 
     /** End time (epoch ms) of a "5 more minutes" break from blocking. */
     var graceUntil: Long

@@ -31,6 +31,8 @@ class ScrollTrackerService : AccessibilityService() {
     private var metersPerPx = 0.0254f / 400f
     private var currentPkg: String? = null
     private var lastScanAt = 0L
+    private var lastUrlCheckAt = 0L
+    private var lastGuardCheckAt = 0L
 
     /** Packages that never contain reels: this app, system UI, home screens, keyboards, settings. */
     private val ignored = HashSet<String>()
@@ -108,10 +110,27 @@ class ScrollTrackerService : AccessibilityService() {
         if (event == null) return
         val store = store ?: return
         val pkg = event.packageName?.toString() ?: return
+
+        // Uninstall protection: keep the user away from Scroll Counter's uninstall / deactivate screens.
+        if (store.uninstallGuard && pkg != packageName &&
+            (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) &&
+            UninstallGuard.isGuardedScreen(pkg)
+        ) {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastGuardCheckAt > GUARD_GAP_MS || event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                lastGuardCheckAt = now
+                if (UninstallGuard.shouldBlock(this, runCatching { rootInActiveWindow }.getOrNull())) {
+                    UninstallGuard.kickOut(this)
+                    return
+                }
+            }
+        }
+
         if (pkg in ignored || store.paused) return
 
         val isBrowser = TrackedApps.isBrowser(pkg)
         if (isBrowser && !store.browsersOn) return
+        if (isBrowser) checkBrowserAddress(store, pkg)
 
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
@@ -166,6 +185,30 @@ class ScrollTrackerService : AccessibilityService() {
         webApp = app
         handler.removeCallbacks(webSettleRunnable)
         handler.postDelayed(webSettleRunnable, WEB_SETTLE_MS)
+    }
+
+    /** Throttled look at the browser's address bar: a new short-video address = a new reel. */
+    private fun checkBrowserAddress(store: ScrollStore, pkg: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastUrlCheckAt < URL_GAP_MS) {
+            handler.removeCallbacks(urlRecheck)
+            handler.postDelayed(urlRecheck, URL_GAP_MS)
+            return
+        }
+        lastUrlCheckAt = now
+        val app = TrackedApps.forPackage(pkg)
+        if (!store.isAppEnabled(app.key)) return
+        val n = web?.checkAddress(app.key, runCatching { rootInActiveWindow }.getOrNull()) ?: 0
+        if (n > 0) onNewReels(app, n, resources.displayMetrics.heightPixels)
+    }
+
+    private val urlRecheck = Runnable {
+        val s = store ?: return@Runnable
+        val pkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull() ?: return@Runnable
+        if (TrackedApps.isBrowser(pkg) && s.browsersOn) {
+            lastUrlCheckAt = 0L
+            checkBrowserAddress(s, pkg)
+        }
     }
 
     private fun onNewReels(app: TrackedApp, n: Int, pageHeightPx: Int) {
@@ -244,6 +287,8 @@ class ScrollTrackerService : AccessibilityService() {
         private const val WATCH_MS = 1200L
         private const val SCAN_GAP_MS = 900L
         private const val WEB_SETTLE_MS = 420L
+        private const val URL_GAP_MS = 350L
+        private const val GUARD_GAP_MS = 400L
         const val BUBBLE_EVERY = 1
         const val WARN_AT = 0.8f
     }

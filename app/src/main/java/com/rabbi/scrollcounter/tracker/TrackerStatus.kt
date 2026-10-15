@@ -15,6 +15,7 @@ data class DeviceStatus(
     val notificationsOn: Boolean,
     val batteryUnrestricted: Boolean,
     val widgetPlaced: Boolean = false,
+    val uninstallProtected: Boolean = false,
 )
 
 object TrackerStatus {
@@ -24,6 +25,7 @@ object TrackerStatus {
         notificationsOn = NotificationManagerCompat.from(context).areNotificationsEnabled(),
         batteryUnrestricted = isBatteryUnrestricted(context),
         widgetPlaced = com.rabbi.scrollcounter.widget.WidgetPin.isPlaced(context),
+        uninstallProtected = com.rabbi.scrollcounter.guard.UninstallGuard.isAdminActive(context),
     )
 
     fun isEnabled(context: Context): Boolean {

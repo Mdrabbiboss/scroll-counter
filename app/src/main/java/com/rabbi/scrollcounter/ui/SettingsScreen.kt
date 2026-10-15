@@ -21,23 +21,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessibilityNew
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.DeleteForever
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material.icons.rounded.PrivacyTip
-import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.WarningAmber
-import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Button
@@ -64,7 +59,7 @@ import com.rabbi.scrollcounter.tracker.TrackerStatus
 import com.rabbi.scrollcounter.ui.theme.Brand
 import java.time.LocalDate
 
-private enum class Confirm { RESET_TODAY, DELETE_ALL }
+private enum class Confirm { UNPROTECT, DELETE_ALL }
 
 @Composable
 fun SettingsScreen(
@@ -78,12 +73,21 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val limit = remember(tick) { store.dailyLimit }
-    val paused = remember(tick) { store.paused }
     val limitAlerts = remember(tick) { store.limitAlertsOn }
     val warnAlerts = remember(tick) { store.warnAlertsOn }
     val theme = remember(tick) { store.themeMode }
-    val bubbleOn = remember(tick) { store.bubbleOn }
-    val blockOn = remember(tick) { store.blockOn }
+    var protectedNow by remember(status) { mutableStateOf(status.uninstallProtected) }
+    val adminLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        protectedNow = com.rabbi.scrollcounter.guard.UninstallGuard.isAdminActive(context)
+        store.uninstallGuard = protectedNow
+        if (protectedNow) Toast.makeText(context, "Uninstall protection is on", Toast.LENGTH_SHORT).show()
+    }
+    val onProtect: () -> Unit = {
+        runCatching { adminLauncher.launch(com.rabbi.scrollcounter.guard.UninstallGuard.activateIntent(context)) }
+            .onFailure { Toast.makeText(context, "This phone doesn't allow it", Toast.LENGTH_SHORT).show() }
+    }
     val browsersOn = remember(tick) { store.browsersOn }
     // Only apps installed on this phone — rebuilt every time Settings opens, so new apps appear.
     var apps by remember { mutableStateOf<List<com.rabbi.scrollcounter.data.TrackedApp>?>(null) }
@@ -119,12 +123,6 @@ fun SettingsScreen(
                     else PillButton("Enable", gold = true, onClick = onEnableTracking)
                 }
                 SettingRow(
-                    Icons.Rounded.PauseCircle, "Pause tracking",
-                    if (paused) "Paused — reels aren't counted" else "Stop counting for a while",
-                    iconTint = Brand.Warn,
-                    onClick = { store.paused = !paused }
-                ) { PremiumSwitch(checked = paused, onCheckedChange = { store.paused = it }) }
-                SettingRow(
                     Icons.Rounded.BatteryChargingFull, "Battery optimization",
                     if (status.batteryUnrestricted) "Unrestricted — tracking stays reliable"
                     else "Restricted — some phones may stop tracking",
@@ -142,22 +140,22 @@ fun SettingsScreen(
             }
         }
 
-        // ---- While scrolling ----
-        item { SectionLabel("While you scroll") }
+        // ---- Protection ----
+        item { SectionLabel("Protection") }
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.Mood, "On-screen reel counter",
-                    "Your buddy and today's count at the top while you watch Reels — it gets tired as you go",
-                    iconTint = MaterialTheme.colorScheme.secondary,
-                    onClick = { store.bubbleOn = !bubbleOn }
-                ) { PremiumSwitch(checked = bubbleOn, onCheckedChange = { store.bubbleOn = it }) }
-                SettingRow(
-                    Icons.Rounded.Block, "Close apps at limit",
-                    "Takes you out of the app once you hit $limit reels (5 extra minutes once a day)",
-                    iconTint = MaterialTheme.colorScheme.error,
-                    onClick = { store.blockOn = !blockOn }
-                ) { PremiumSwitch(checked = blockOn, onCheckedChange = { store.blockOn = it }) }
+                    Icons.Rounded.Shield, "Prevent app uninstall",
+                    if (protectedNow) "On — Scroll Counter can't be uninstalled until you turn this off here"
+                    else "Stops you from uninstalling Scroll Counter on impulse",
+                    iconTint = if (protectedNow) Brand.Good else Brand.Gold,
+                    onClick = { if (protectedNow) confirm = Confirm.UNPROTECT else onProtect() }
+                ) {
+                    PremiumSwitch(
+                        checked = protectedNow,
+                        onCheckedChange = { on -> if (on) onProtect() else confirm = Confirm.UNPROTECT }
+                    )
+                }
                 SettingRow(
                     Icons.Rounded.Widgets, "Home screen widget",
                     if (status.widgetPlaced) "On your home screen ✓" else "Tap to add it to your home screen",
@@ -253,10 +251,6 @@ fun SettingsScreen(
         item { SectionLabel("Your data") }
         item {
             PremiumCard {
-                SettingRow(Icons.Rounded.FileDownload, "Export as CSV", "Last ${ScrollStore.HISTORY_DAYS} days, to Drive, Sheets, email…",
-                    onClick = { exportCsv(context, store) })
-                SettingRow(Icons.Rounded.Restore, "Reset today", "Set today's count back to zero", iconTint = Brand.Warn,
-                    onClick = { confirm = Confirm.RESET_TODAY })
                 SettingRow(Icons.Rounded.DeleteForever, "Delete all history", "Removes every stored day", iconTint = MaterialTheme.colorScheme.error,
                     onClick = { confirm = Confirm.DELETE_ALL })
             }
@@ -279,12 +273,17 @@ fun SettingsScreen(
     }
 
     when (confirm) {
-        Confirm.RESET_TODAY -> ConfirmDialog(
-            "Reset today?", "Today's scroll count, distance and hourly activity go back to zero.",
-            "Reset", destructive = false,
+        Confirm.UNPROTECT -> DeleteHistoryDialog(
+            title = "Turn off uninstall protection?",
+            body = "Scroll Counter will be uninstallable again, and the device-admin protection is removed.\n\n" +
+                "Sure you want to drop this commitment?",
+            confirmLabel = "Turn off",
+            dismissLabel = "Keep protection",
             onConfirm = {
-                store.clearDay(LocalDate.now()); confirm = null
-                Toast.makeText(context, "Today reset", Toast.LENGTH_SHORT).show()
+                com.rabbi.scrollcounter.guard.UninstallGuard.turnOff(context)
+                protectedNow = false
+                confirm = null
+                Toast.makeText(context, "Uninstall protection turned off", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { confirm = null }
         )
@@ -298,20 +297,6 @@ fun SettingsScreen(
         null -> Unit
     }
     if (showPolicy) PrivacyPolicyDialog { showPolicy = false }
-}
-
-private fun exportCsv(context: Context, store: ScrollStore) {
-    val csv = store.exportCsv()
-    if (csv.lines().count { it.isNotBlank() } <= 1) {
-        Toast.makeText(context, "Nothing to export yet", Toast.LENGTH_SHORT).show()
-        return
-    }
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "Scroll Counter export (${LocalDate.now()})")
-        putExtra(Intent.EXTRA_TEXT, csv)
-    }
-    context.startActivity(Intent.createChooser(send, "Export scroll history").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 private fun rateApp(context: Context) {

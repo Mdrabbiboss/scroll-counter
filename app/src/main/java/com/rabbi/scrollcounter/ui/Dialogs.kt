@@ -262,7 +262,18 @@ fun ConfirmDialog(
  * so it can't happen by an accidental tap.
  */
 @Composable
-fun DeleteHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun DeleteHistoryDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    title: String = "Delete all history?",
+    body: String = "This permanently removes from this phone:\n" +
+        "• Every day's scroll count and distance\n" +
+        "• Your hourly activity and app breakdown\n" +
+        "• Your streak (it starts again from zero)\n\n" +
+        "This can't be undone.",
+    confirmLabel: String = "Delete everything",
+    dismissLabel: String = "Keep my history",
+) {
     val a = remember { (3..19).random() }
     val b = remember { (2..15).random() }
     val plus = remember { listOf(true, false).random() || a <= b }
@@ -280,7 +291,7 @@ fun DeleteHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Rounded.WarningAmber, null, tint = danger, modifier = Modifier.size(30.dp)) }
         },
-        title = { Text("Delete all history?", textAlign = TextAlign.Center) },
+        title = { Text(title, textAlign = TextAlign.Center) },
         text = {
             Column {
                 Box(
@@ -290,11 +301,7 @@ fun DeleteHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
                         .padding(14.dp)
                 ) {
                     Text(
-                        "This permanently removes from this phone:\n" +
-                            "• Every day's scroll count and distance\n" +
-                            "• Your hourly activity and app breakdown\n" +
-                            "• Your streak (it starts again from zero)\n\n" +
-                            "This can't be undone.",
+                        body,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -331,9 +338,9 @@ fun DeleteHistoryDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
                 onClick = onConfirm,
                 enabled = correct,
                 colors = ButtonDefaults.buttonColors(containerColor = danger, contentColor = Color.White)
-            ) { Text("Delete everything", fontWeight = FontWeight.SemiBold) }
+            ) { Text(confirmLabel, fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Keep my history") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel) } }
     )
 }
 
@@ -341,7 +348,8 @@ const val DISCLOSURE_TEXT =
     "Scroll Counter uses Android's Accessibility Service to count the Reels, Shorts and short videos you watch " +
         "in any social or video app (Facebook, Instagram, TikTok, YouTube, Snapchat and others) and on short-video websites in your browser.\n\n" +
         "• To recognise a Reels feed it looks only at the screen's layout — the size of the video player, its view names and how it scrolls\n" +
-        "• It does NOT read or store text, web addresses, messages, captions, comments or anything you type\n" +
+        "• In browsers it checks the address bar only to tell when a short-video page (TikTok, Shorts, Reels) is open — addresses are never stored\n" +
+        "• It does NOT read or store messages, captions, comments or anything you type\n" +
         "• It shows a small counter at the top while you watch, and takes you to the home screen when your daily limit is reached\n" +
         "• Chats, comments, normal feeds and reading are ignored, and your data never leaves your phone\n\n" +
         "On the next screen, tap \"Scroll Counter\" and switch it on."
@@ -383,14 +391,14 @@ fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
 const val PRIVACY_POLICY_TEXT =
     "What we collect\n" +
         "Only how many Reels / Shorts you watch, an estimated scroll distance, and the hour it happened, " +
-        "per app (and per browser for short-video websites). Nothing about what you watched, and no web addresses.\n\n" +
+        "per app (and per browser for short-video websites). Nothing about what you watched; web addresses are never stored.\n\n" +
         "Where it is stored\n" +
         "On your phone only. Scroll Counter has no account, no server and no analytics. History older " +
         "than 60 days is deleted automatically, and you can delete everything in Settings.\n\n" +
         "Accessibility Service\n" +
         "Used only to recognise when a Reels / Shorts feed is on screen and when you move to the next video. " +
-        "It looks at the screen's layout (sizes, view names and how it scrolls) only; it does not read, store or send text, web addresses, " +
-        "messages, captions or anything you type.\n\n" +
+        "It looks at the screen's layout (sizes, view names and how it scrolls) only; in browsers it also checks the address bar to recognise short-video pages, without storing it. It does not read, store or send messages, " +
+        "captions or anything you type.\n\n" +
         "Ads\n" +
         "The app shows Google AdMob banner ads. Google may use your device's advertising ID to show ads, " +
         "and asks for your consent where the law requires it. You can change ad choices in Settings.\n\n" +
