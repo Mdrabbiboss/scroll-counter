@@ -42,6 +42,11 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var opaque = false               // container exposes no children (e.g. Facebook Lite)
         var lastScrollY = -1
         var retries = 0
+        var opaqueStreak = 0
+        var allReels = false             // TikTok-style app: the whole feed is short videos
+        var currentChild: Int? = null    // identity of the page view that filled the pager last
+        var currentFp: String? = null
+        val seenFps = LinkedHashSet<String>()
     }
 
     private val states = HashMap<String, AppState>()
@@ -89,6 +94,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val st = states.getOrPut(appKey) { AppState() }
         val key = "${src.viewIdResourceName}|${src.className}"
         st.opaque = opaque
+        st.allReels = (src.packageName?.toString() ?: "") in ALL_REELS_APPS
         val from = event.fromIndex
         val to = event.toIndex
         if (key != st.pagerKey) {
@@ -129,7 +135,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (!st.pending) return 0
         // A reels feed always comes to rest with one video filling it exactly. If it isn't
         // snapped yet, it's still animating (try again shortly) — or it's not a reels feed at all.
-        if (!st.opaque && !isSnapped()) {
+        if (!st.opaque && !st.allReels && !isSnapped()) {
             if (st.retries < MAX_RETRIES) { st.retries++; return RETRY }
             st.retries = 0
             st.pending = false
@@ -150,40 +156,128 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // Apps that draw everything themselves (Facebook Lite…) expose a single full-screen view
         // with no children. There, only a swipe that moved exactly ~one screen is a reel.
         if (st.opaque) {
+            // Self-drawn screen: only a run of exact one-screen swipes is a reels feed. A normal
+            // feed fling never lands on exactly one screen twice in a row.
             if (!hadDelta) return 0
             val pages = accum / h
             val whole = pages.roundToInt()
-            return if (whole in 1..3 && abs(pages - whole) <= 0.18f * whole) mark(st, whole) else 0
-        }
-
-        // 1. Best: ask the pager which item fills the screen right now.
-        var index = currentItemIndex()
-        // 2. Next best: the last settled index the scroll events reported.
-        if (index == null && hadIndex && st.eventIndex != Int.MIN_VALUE) index = st.eventIndex
-
-        var n = 0
-        if (index != null) {
-            if (st.lastIdx != Int.MIN_VALUE && index != st.lastIdx) st.indexReliable = true
-            st.lastIdx = index
-            if (st.maxIndex == Int.MIN_VALUE) st.maxIndex = index
-            else if (index > st.maxIndex) {
-                n = (index - st.maxIndex).coerceAtMost(3)
-                st.maxIndex = index
+            val exact = accum > 0 && whole in 1..2 && abs(pages - whole) <= 0.08f * whole
+            if (!exact) { st.opaqueStreak = 0; DetectLog.add(appKey, "opaque swipe ${"%.2f".format(pages)} pages → no"); return 0 }
+            st.opaqueStreak++
+            DetectLog.add(appKey, "opaque snap #${st.opaqueStreak}")
+            return when {
+                st.opaqueStreak >= 3 -> mark(st, whole)
+                st.opaqueStreak == 2 -> mark(st, whole + 1)
+                else -> 0
             }
-            // A trusted item number that didn't move forward = bounced back or rewatching.
-            if (n == 0 && st.indexReliable) return 0
-        }
-        if (n > 0) return mark(st, n)
-
-        // 3. No trustworthy item numbers: whole pages moved forward.
-        if (hadDelta) {
-            val pages = accum / h
-            if (pages < 0.5f) return 0                 // half swipe that snapped back, or going up
-            return mark(st, pages.roundToInt().coerceIn(1, 3))
         }
 
-        // 4. Nothing reported at all: one settled swipe on a still-full-screen pager = one reel.
-        return if (stillInReels()) mark(st) else 0
+        // ---- Evidence that the feed really moved to another video ----
+        var index = currentItemIndex()
+        if (index == null && hadIndex && st.eventIndex != Int.MIN_VALUE) index = st.eventIndex
+        val prevIdx = st.lastIdx
+        val idxMoved = index != null && prevIdx != Int.MIN_VALUE && index != prevIdx
+        if (idxMoved) st.indexReliable = true
+        if (index != null) st.lastIdx = index
+        val pages = accum / h
+        val moved = idxMoved || (hadDelta && abs(pages) >= 0.35f) || (!hadDelta && !hadIndex)
+        if (!moved) return 0   // a small shift (comment box, layout change, half swipe) — same reel
+
+        // ---- Which video is on screen now? ----
+        // A fingerprint of the video page's labels (kept only in memory, never stored) tells a
+        // new reel from the same one or one you already saw.
+        val fp = pageFingerprint()
+        if (fp != null) {
+            if (fp == st.currentFp) return 0                 // still the same reel
+            st.currentFp = fp
+            if (fp in st.seenFps) return 0                   // went back to an earlier reel
+            st.seenFps.add(fp)
+            if (st.seenFps.size > 80) st.seenFps.remove(st.seenFps.first())
+            var n = 1
+            if (index != null && st.indexReliable && st.maxIndex != Int.MIN_VALUE && index - st.maxIndex > 1) n = index - st.maxIndex
+            else if (hadDelta && pages >= 1.5f) n = pages.roundToInt()
+            if (index != null && index > st.maxIndex) st.maxIndex = index
+            return mark(st, n.coerceIn(1, 3))
+        }
+
+        // ---- No fingerprint: the page view itself. Moving to another reel brings a different
+        // page onto the screen; a resize or bounce (e.g. opening comments) keeps the same one.
+        val ck = snappedChildKey()
+        if (ck != null) {
+            if (ck == st.currentChild) return 0
+            st.currentChild = ck
+        }
+
+        // ---- Then item numbers, then distance. Never count without evidence. ----
+        if (index != null) {
+            if (st.maxIndex == Int.MIN_VALUE) { st.maxIndex = index; return 0 }
+            if (index > st.maxIndex) {
+                val n = (index - st.maxIndex).coerceAtMost(3)
+                st.maxIndex = index
+                return mark(st, n)
+            }
+            if (st.indexReliable) return 0
+        }
+        if (hadDelta && pages >= 0.5f) return mark(st, pages.roundToInt().coerceIn(1, 3))
+        // TikTok-style apps whose pager reports nothing at all: one settled swipe = one video.
+        if (st.allReels && !hadDelta && !hadIndex) return mark(st)
+        return 0
+    }
+
+    /**
+     * Hash of the labels on the page that fills the pager (view ids + descriptions, skipping
+     * anything with digits such as times, likes or view counts, which change while you watch).
+     */
+    private fun pageFingerprint(): String? {
+        val pager = lastPager ?: return null
+        return try {
+            pager.getBoundsInScreen(rect)
+            val h = rect.height()
+            var page: AccessibilityNodeInfo? = null
+            for (i in 0 until minOf(pager.childCount, 6)) {
+                val c = pager.getChild(i) ?: continue
+                c.getBoundsInScreen(child)
+                if (abs(child.top - rect.top) <= h * 0.03f && child.height() >= h * 0.96f) { page = c; break }
+            }
+            page ?: return null
+            val sb = StringBuilder()
+            val queue = ArrayDeque<AccessibilityNodeInfo>()
+            queue.add(page)
+            var visited = 0
+            var labels = 0
+            while (queue.isNotEmpty() && visited < 60) {
+                val n = queue.removeFirst()
+                visited++
+                for (t in arrayOf(n.contentDescription, n.text)) {
+                    val v = t?.toString()?.trim() ?: continue
+                    if (v.length < 2 || v.any { it.isDigit() }) continue
+                    sb.append(v.take(80)).append('|')
+                    labels++
+                }
+                for (i in 0 until minOf(n.childCount, 12)) n.getChild(i)?.let { queue.add(it) }
+            }
+            if (labels == 0) null else sb.toString().hashCode().toString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** Identity of the page view that exactly fills the pager, or null. No text is read. */
+    private fun snappedChildKey(): Int? {
+        val pager = lastPager ?: return null
+        return try {
+            pager.getBoundsInScreen(rect)
+            val h = rect.height()
+            if (h <= 0) return null
+            for (i in 0 until minOf(pager.childCount, 6)) {
+                val c = pager.getChild(i) ?: continue
+                c.getBoundsInScreen(child)
+                if (abs(child.top - rect.top) <= h * 0.03f && child.height() >= h * 0.96f) return c.hashCode()
+            }
+            null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** True when one page fills the pager exactly (the feed has snapped onto a video). */
@@ -306,7 +400,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         }
         // Mid-swipe two pages are each partly visible; at rest one fills it exactly.
         val midSwipe = exactPages == 0 && otherItems == 0 && n in 1..3
-        val ok = sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || (midSwipe && (named || lastPager?.let { samePager(it, src) } == true)))
+        val pkgName = src.packageName?.toString() ?: ""
+        // Apps that are short videos all the way through (TikTok, Likee, Kwai…): any full-screen
+        // vertical pager is the video feed. Profile grids and comment sheets are still rejected.
+        val allReels = pkgName in ALL_REELS_APPS
+        val ok = if (allReels) sideBySide == 0 && otherItems <= 2
+            else sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || (midSwipe && (named || lastPager?.let { samePager(it, src) } == true)))
         if (!ok) lastReason = "items exact$exactPages other$otherItems row$sideBySide"
         // Not cached: a feed and a reels viewer can share the same view class and size.
         return ok
@@ -396,6 +495,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val st = states.getOrPut(appKey) { AppState() }
         st.primedKey = "${pager.viewIdResourceName}|${pager.className}"
         st.primedIndex = currentItemIndex()
+        // Remember the reel you opened on, so the first swipe away from it counts once.
+        if (isSnapped()) pageFingerprint()?.let { st.currentFp = it; st.seenFps.add(it) }
+        st.currentChild = snappedChildKey()
     }
 
     fun forgetPager() {
@@ -407,6 +509,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         const val SETTLE_MS = 350L
         /** [settle] result meaning "still moving — call again in a moment". */
         const val RETRY = -1
+        private val ALL_REELS_APPS = setOf(
+            "com.zhiliaoapp.musically", "com.ss.android.ugc.trill", "com.zhiliaoapp.musically.go", "com.tiktok.lite.go",
+            "com.ss.android.ugc.aweme", "com.ss.android.ugc.aweme.lite", "video.like", "video.like.lite",
+            "com.kwai.video", "com.kwai.bulldog", "in.mohalla.video", "com.eterno.shortvideos", "io.chingari.app",
+            "com.next.innovation.takatak", "com.smile.gifmaker", "com.kuaishou.nebula", "co.triller.droid",
+        )
         private val NATIVE_LISTS = listOf("RecyclerView", "ListView", "ScrollView", "ViewPager", "ViewPager2", "GridView")
         private const val MAX_RETRIES = 3
         private const val MIN_COUNT_GAP_MS = 200L
