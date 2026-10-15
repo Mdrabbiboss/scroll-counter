@@ -3,6 +3,10 @@ package com.rabbi.scrollcounter.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.drawBehind
@@ -69,7 +73,7 @@ import java.util.Locale
 @Composable
 fun isDarkTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
-/** Frosted-glass card: translucent fill over the app's color backdrop, with a light top-edge highlight. */
+/** Frosted-glass card: a soft translucent sheen over the colored backdrop, a bright top edge, readable text. */
 @Composable
 fun PremiumCard(
     modifier: Modifier = Modifier,
@@ -79,42 +83,48 @@ fun PremiumCard(
 ) {
     val dark = isDarkTheme()
     val shape = RoundedCornerShape(26.dp)
-    val fill = container ?: if (dark) Color(0xFF13211F).copy(alpha = 0.62f) else Color.White.copy(alpha = 0.72f)
-    val colors = CardDefaults.cardColors(containerColor = fill)
-    val border = BorderStroke(
-        1.dp,
-        Brush.verticalGradient(
-            if (dark) listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.03f))
-            else listOf(Color.White, Color.White.copy(alpha = 0.4f))
-        )
-    )
-    val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, border = border, elevation = elevation) {
-            Column(Modifier.padding(18.dp), content = content)
-        }
-    } else {
-        Card(modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, border = border, elevation = elevation) {
-            Column(Modifier.padding(18.dp), content = content)
-        }
+    val fill: Brush = if (container != null) SolidColor(container) else if (dark)
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.04f)))
+    else
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.88f), Color.White.copy(alpha = 0.62f)))
+    val edge = if (dark)
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.05f)))
+    else
+        Brush.verticalGradient(listOf(Color.White, Color(0xFFCFE3DF)))
+
+    var m = modifier.fillMaxWidth()
+        .shadow(if (dark) 0.dp else 10.dp, shape, ambientColor = Color(0x220E8C7F), spotColor = Color(0x220E8C7F))
+        .clip(shape)
+        .background(fill)
+        .border(1.dp, edge, shape)
+    if (onClick != null) m = m.clickable(onClick = onClick)
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+        Column(m.padding(18.dp), content = content)
     }
 }
 
-/** Soft colored light blobs behind everything, so the translucent cards read as glass. */
+/** Colored light blobs behind everything, so the translucent cards read as frosted glass. */
 fun Modifier.glassBackdrop(dark: Boolean): Modifier = this.drawBehind {
-    drawRect(if (dark) Color(0xFF061110) else Color(0xFFEFF5F3))
     val w = size.width
     val h = size.height
+    drawRect(
+        Brush.verticalGradient(
+            if (dark) listOf(Color(0xFF062420), Color(0xFF050D0C), Color(0xFF040A0A))
+            else listOf(Color(0xFFE3F5F1), Color(0xFFF1F7F6), Color(0xFFEAF4F8))
+        )
+    )
     fun blob(cx: Float, cy: Float, r: Float, c: Color) =
         drawCircle(Brush.radialGradient(listOf(c, Color.Transparent), Offset(cx, cy), r), r, Offset(cx, cy))
     if (dark) {
-        blob(w * 0.05f, h * 0.06f, w * 0.95f, Color(0xFF0FB5A0).copy(alpha = 0.30f))
-        blob(w * 1.0f, h * 0.38f, w * 0.85f, Color(0xFF0EA5E9).copy(alpha = 0.18f))
-        blob(w * 0.2f, h * 0.85f, w * 0.9f, Color(0xFF14B8A6).copy(alpha = 0.16f))
+        blob(w * 0.0f, h * 0.02f, w * 1.05f, Color(0xFF14B8A6).copy(alpha = 0.42f))
+        blob(w * 1.05f, h * 0.30f, w * 0.90f, Color(0xFF0EA5E9).copy(alpha = 0.26f))
+        blob(w * 0.10f, h * 0.62f, w * 0.80f, Color(0xFF10B981).copy(alpha = 0.18f))
+        blob(w * 0.95f, h * 0.92f, w * 0.85f, Color(0xFF06B6D4).copy(alpha = 0.20f))
     } else {
-        blob(w * 0.05f, h * 0.05f, w * 0.95f, Color(0xFF5EEAD4).copy(alpha = 0.45f))
-        blob(w * 1.0f, h * 0.4f, w * 0.85f, Color(0xFF7DD3FC).copy(alpha = 0.35f))
-        blob(w * 0.15f, h * 0.88f, w * 0.9f, Color(0xFF99F6E4).copy(alpha = 0.40f))
+        blob(w * 0.0f, h * 0.02f, w * 1.05f, Color(0xFF5EEAD4).copy(alpha = 0.55f))
+        blob(w * 1.05f, h * 0.30f, w * 0.90f, Color(0xFF7DD3FC).copy(alpha = 0.45f))
+        blob(w * 0.10f, h * 0.65f, w * 0.80f, Color(0xFF6EE7B7).copy(alpha = 0.35f))
+        blob(w * 0.95f, h * 0.95f, w * 0.85f, Color(0xFF67E8F9).copy(alpha = 0.35f))
     }
 }
 

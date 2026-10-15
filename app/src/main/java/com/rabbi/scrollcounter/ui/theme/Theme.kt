@@ -1,6 +1,8 @@
 package com.rabbi.scrollcounter.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -102,9 +104,10 @@ private val AppTypography = Typography().run {
 
 @Composable
 fun ScrollCounterTheme(dark: Boolean, content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (dark) Dark else Light,
-        typography = AppTypography,
-        content = content
-    )
+    val colors = if (dark) Dark else Light
+    MaterialTheme(colorScheme = colors, typography = AppTypography) {
+        // Glass surfaces are translucent, so Material can't infer a text color from them.
+        // Make every Text default to the readable foreground for this theme.
+        CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+    }
 }

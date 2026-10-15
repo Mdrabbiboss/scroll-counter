@@ -151,11 +151,16 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
             Scaffold(
                 modifier = Modifier.glassBackdrop(dark),
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onBackground,
                 bottomBar = {
                     Column {
                         if (AdsConsent.canRequestAds) BannerAd()
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f), tonalElevation = 0.dp) {
+                        NavigationBar(
+                            containerColor = if (dark) androidx.compose.ui.graphics.Color(0xE6071312) else androidx.compose.ui.graphics.Color(0xE6FFFFFF),
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            tonalElevation = 0.dp
+                        ) {
                             Tab.entries.forEach { t ->
                                 NavigationBarItem(
                                     selected = tab == t,

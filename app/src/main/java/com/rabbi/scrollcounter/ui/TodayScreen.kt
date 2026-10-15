@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -169,6 +170,7 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
     val shown by animateIntAsState(count, tween(700), label = "count")
     Box(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Brand.hero)
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.28f), Color.White.copy(alpha = 0.04f))), RoundedCornerShape(28.dp))
             .drawBehind {
                 // Soft light glows for depth.
                 val r1 = size.width * 0.75f
