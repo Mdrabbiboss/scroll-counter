@@ -14,6 +14,7 @@ data class DeviceStatus(
     val trackerOn: Boolean,
     val notificationsOn: Boolean,
     val batteryUnrestricted: Boolean,
+    val widgetPlaced: Boolean = false,
 )
 
 object TrackerStatus {
@@ -22,6 +23,7 @@ object TrackerStatus {
         trackerOn = isEnabled(context),
         notificationsOn = NotificationManagerCompat.from(context).areNotificationsEnabled(),
         batteryUnrestricted = isBatteryUnrestricted(context),
+        widgetPlaced = com.rabbi.scrollcounter.widget.WidgetPin.isPlaced(context),
     )
 
     fun isEnabled(context: Context): Boolean {

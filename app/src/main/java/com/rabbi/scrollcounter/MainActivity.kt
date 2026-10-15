@@ -122,6 +122,20 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     var showLimit by remember { mutableStateOf(false) }
     val onboarded = remember(tick) { store.onboarded }
 
+    // Home-screen widget: system "Add to home screen" prompt, or manual steps if the launcher can't.
+    var showWidgetHelp by remember { mutableStateOf(false) }
+    val addWidget: () -> Unit = {
+        if (!com.rabbi.scrollcounter.widget.WidgetPin.request(context)) showWidgetHelp = true
+    }
+    // Offer it once automatically, right after setup (or on first open after updating).
+    LaunchedEffect(onboarded) {
+        if (onboarded && !store.widgetPrompted && !status.widgetPlaced) {
+            store.widgetPrompted = true
+            kotlinx.coroutines.delay(900)
+            com.rabbi.scrollcounter.widget.WidgetPin.request(context)
+        }
+    }
+
     ScrollCounterTheme(dark) {
         if (!onboarded) {
             OnboardingScreen(
@@ -158,17 +172,35 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
             ) { padding ->
                 Box(Modifier.fillMaxSize().padding(padding)) {
                     when (tab) {
-                        Tab.Today -> TodayScreen(store, tick, status, { showDisclosure = true }, { showLimit = true })
+                        Tab.Today -> TodayScreen(store, tick, status, { showDisclosure = true }, { showLimit = true }, onAddWidget = addWidget)
                         Tab.History -> HistoryScreen(store, tick)
                         Tab.Settings -> SettingsScreen(
                             store, tick, status,
                             onEnableTracking = { showDisclosure = true },
                             onEditLimit = { showLimit = true },
-                            onRequestNotifications = requestNotifications
+                            onRequestNotifications = requestNotifications,
+                            onAddWidget = addWidget
                         )
                     }
                 }
             }
+        }
+
+        if (showWidgetHelp) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showWidgetHelp = false },
+                title = { Text("Add the widget") },
+                text = {
+                    Text(
+                        "Your launcher doesn't support one-tap adding, so do it by hand:\n\n" +
+                            "1. Go to your home screen\n" +
+                            "2. Touch and hold an empty spot\n" +
+                            "3. Tap \"Widgets\"\n" +
+                            "4. Find \"Scroll Counter\", then drag it onto the home screen"
+                    )
+                },
+                confirmButton = { androidx.compose.material3.TextButton(onClick = { showWidgetHelp = false }) { Text("Got it") } }
+            )
         }
 
         if (showDisclosure) {

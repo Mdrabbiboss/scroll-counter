@@ -65,6 +65,7 @@ fun TodayScreen(
     status: DeviceStatus,
     onEnableTracking: () -> Unit,
     onEditLimit: () -> Unit,
+    onAddWidget: () -> Unit = {},
 ) {
     val now = LocalDate.now()
     val today = remember(tick) { store.dayStats(now) }
@@ -93,6 +94,7 @@ fun TodayScreen(
         else if (paused) item { PausedBanner { store.paused = false } }
 
         item { HeroCard(today.totalScrolls, limit, onEditLimit) }
+        if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
 
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -223,6 +225,33 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
                     Text("Change", color = Color.White)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
+    val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
+    PremiumCard(container = MaterialTheme.colorScheme.primaryContainer, onClick = onAdd) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Mini preview of the widget
+            Box(
+                Modifier.size(58.dp).clip(RoundedCornerShape(16.dp)).background(Brand.hero),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(Modifier.size(34.dp)) {
+                    drawIntoCanvas {
+                        com.rabbi.scrollcounter.face.FaceRenderer.draw(it.nativeCanvas, size.width / 2, size.height / 2, size.minDimension / 2 * 0.96f, mood)
+                    }
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Put your count on the home screen", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("See today's scrolls without opening the app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+            }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onAdd) { Text("Add") }
         }
     }
 }

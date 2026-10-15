@@ -123,12 +123,13 @@ private fun BlockScreen(
             OutlinedButton(
                 onClick = onFiveMore,
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) { Text("5 more minutes (once a day)", color = Color.White) }
+                shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White.copy(alpha = 0.55f))
+            ) { Text("5 more minutes (once a day)", color = Color.White, fontWeight = FontWeight.Medium) }
         } else {
             Text("You've already used today's 5 extra minutes.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
         }
         Spacer(Modifier.height(6.dp))
-        TextButton(onClick = onOpenApp) { Text("Open Scroll Counter", color = Color.White.copy(alpha = 0.75f)) }
+        TextButton(onClick = onOpenApp) { Text("Open Scroll Counter", color = Color.White, fontWeight = FontWeight.Medium) }
     }
 }

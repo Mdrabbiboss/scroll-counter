@@ -71,6 +71,7 @@ fun SettingsScreen(
     onEnableTracking: () -> Unit,
     onEditLimit: () -> Unit,
     onRequestNotifications: () -> Unit,
+    onAddWidget: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val limit = remember(tick) { store.dailyLimit }
@@ -145,8 +146,9 @@ fun SettingsScreen(
                 ) { PremiumSwitch(checked = blockOn, onCheckedChange = { store.blockOn = it }) }
                 SettingRow(
                     Icons.Rounded.Widgets, "Home screen widget",
-                    "Long-press your home screen → Widgets → Scroll Counter",
-                    iconTint = Brand.Good
+                    if (status.widgetPlaced) "On your home screen ✓" else "Tap to add it to your home screen",
+                    iconTint = Brand.Good,
+                    onClick = onAddWidget
                 )
             }
         }
