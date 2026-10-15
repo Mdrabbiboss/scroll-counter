@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Ads (AdMob) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
+    <!-- Daily limit / 80% warning notifications (Android 13+ asks the user) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Lets the app see whether each supported social app is installed (no QUERY_ALL_PACKAGES needed) -->
+    <queries>
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.lite" />
+        <package android:name="com.instagram.android" />
+        <package android:name="com.instagram.barcelona" />
+        <package android:name="com.zhiliaoapp.musically" />
+        <package android:name="com.ss.android.ugc.trill" />
+        <package android:name="com.zhiliaoapp.musically.go" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.twitter.android" />
+        <package android:name="com.snapchat.android" />
+        <package android:name="com.reddit.frontpage" />
+        <package android:name="com.linkedin.android" />
+        <package android:name="com.pinterest" />
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ScrollCounter">
+
+        <!-- AdMob App ID: TEST id. Replace with your own before publishing. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Scroll detection. Only the system can bind to it (BIND_ACCESSIBILITY_SERVICE). -->
+        <service
+            android:name=".tracker.ScrollTrackerService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/scroll_tracker_config" />
+        </service>
+    </application>
+</manifest>

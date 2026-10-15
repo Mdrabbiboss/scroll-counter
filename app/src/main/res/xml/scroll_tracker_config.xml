@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Listens ONLY to scroll events, ONLY in the social apps listed below.
+     It cannot read screen content (canRetrieveWindowContent=false). -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeViewScrolled"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_description"
+    android:notificationTimeout="0"
+    android:packageNames="com.facebook.katana,com.facebook.lite,com.instagram.android,com.instagram.barcelona,com.zhiliaoapp.musically,com.ss.android.ugc.trill,com.zhiliaoapp.musically.go,com.google.android.youtube,com.twitter.android,com.snapchat.android,com.reddit.frontpage,com.linkedin.android,com.pinterest" />

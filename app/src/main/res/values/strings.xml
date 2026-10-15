@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Scroll Counter</string>
+    <string name="accessibility_description">Scroll Counter only detects when you scroll inside supported social media apps (Facebook, Instagram, TikTok, YouTube and others) so it can count your scrolls and estimate the distance. It does not read text, messages, or anything shown on your screen, and all data stays on your device.</string>
+</resources>
