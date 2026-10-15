@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
-private val QuickLimits = listOf(200, 300, 500, 800, 1000)
+private val QuickLimits = listOf(10, 50, 100, 300, 500, 1000)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -44,9 +44,9 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                 Spacer(Modifier.height(12.dp))
                 Slider(
                     value = value,
-                    onValueChange = { value = ((it / 50f).roundToInt() * 50).toFloat() },
-                    valueRange = 100f..2000f,
-                    steps = 37,
+                    // 10-scroll steps up to 200, then 50-scroll steps
+                    onValueChange = { value = (if (it < 200f) (it / 10f).roundToInt() * 10 else (it / 50f).roundToInt() * 50).coerceIn(10, 2000).toFloat() },
+                    valueRange = 10f..2000f,
                     modifier = Modifier.fillMaxWidth()
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -98,6 +98,7 @@ const val DISCLOSURE_TEXT =
         "social apps you choose (Facebook, Instagram, TikTok, YouTube and others).\n\n" +
         "• It does NOT read text, messages, photos or anything shown on your screen\n" +
         "• It does nothing in any other app\n" +
+        "• It shows a small check-in card every 5 scrolls, and takes you to the home screen once your daily limit is reached\n" +
         "• Your scroll data never leaves your phone\n\n" +
         "On the next screen, tap \"Scroll Counter\" and switch it on."
 

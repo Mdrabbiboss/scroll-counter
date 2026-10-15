@@ -49,6 +49,26 @@
             </intent-filter>
         </activity>
 
+        <!-- Shown when the daily limit is reached and the user is sent out of a social app. -->
+        <activity
+            android:name=".block.BlockActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.rabbi.scrollcounter.block" />
+
+        <!-- Home-screen widget -->
+        <receiver
+            android:name=".widget.ScrollWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/scroll_widget_info" />
+        </receiver>
+
         <!-- Scroll detection. Only the system can bind to it (BIND_ACCESSIBILITY_SERVICE). -->
         <service
             android:name=".tracker.ScrollTrackerService"

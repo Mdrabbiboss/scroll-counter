@@ -34,6 +34,9 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material.icons.rounded.Mood
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +78,8 @@ fun SettingsScreen(
     val limitAlerts = remember(tick) { store.limitAlertsOn }
     val warnAlerts = remember(tick) { store.warnAlertsOn }
     val theme = remember(tick) { store.themeMode }
+    val bubbleOn = remember(tick) { store.bubbleOn }
+    val blockOn = remember(tick) { store.blockOn }
     val installed = remember { TrackedApps.all.associate { it.key to TrackedApps.isInstalled(context, it) } }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var showPolicy by remember { mutableStateOf(false) }
@@ -119,6 +124,30 @@ fun SettingsScreen(
         item {
             PremiumCard {
                 SettingRow(Icons.Rounded.Flag, "Daily scroll limit", "$limit scrolls per day", onClick = onEditLimit)
+            }
+        }
+
+        // ---- While scrolling ----
+        item { SectionLabel("While you scroll") }
+        item {
+            PremiumCard {
+                SettingRow(
+                    Icons.Rounded.Mood, "Scroll check-in",
+                    "A card with a face every ${ScrollTrackerService.BUBBLE_EVERY} scrolls — it gets tired as you scroll more",
+                    iconTint = MaterialTheme.colorScheme.secondary,
+                    onClick = { store.bubbleOn = !bubbleOn }
+                ) { PremiumSwitch(checked = bubbleOn, onCheckedChange = { store.bubbleOn = it }) }
+                SettingRow(
+                    Icons.Rounded.Block, "Close apps at limit",
+                    "Takes you out of social apps once you hit $limit scrolls (5 extra minutes once a day)",
+                    iconTint = MaterialTheme.colorScheme.error,
+                    onClick = { store.blockOn = !blockOn }
+                ) { PremiumSwitch(checked = blockOn, onCheckedChange = { store.blockOn = it }) }
+                SettingRow(
+                    Icons.Rounded.Widgets, "Home screen widget",
+                    "Long-press your home screen → Widgets → Scroll Counter",
+                    iconTint = Brand.Good
+                )
             }
         }
 

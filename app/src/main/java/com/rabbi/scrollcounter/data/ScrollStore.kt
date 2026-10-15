@@ -35,8 +35,15 @@ class ScrollStore private constructor(context: Context) {
     /** Ticks whenever stats or settings change, so Compose can re-read. */
     val changes: StateFlow<Long> = _changes
 
+    private val appContext = context.applicationContext
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val widgetRefresh = Runnable { com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(appContext) }
+
     private fun bump() {
         _changes.value = _changes.value + 1
+        // Coalesce widget updates so fast scrolling doesn't redraw the widget every frame.
+        main.removeCallbacks(widgetRefresh)
+        main.postDelayed(widgetRefresh, 700)
     }
 
     // ---------------- Stats ----------------
@@ -68,6 +75,15 @@ class ScrollStore private constructor(context: Context) {
             if (c == 0) null else AppStat(app.key, c, stats.getFloat("d|$d|${app.key}", 0f))
         }
         return DayStats(date, apps)
+    }
+
+    /** Today's scrolls in one app. */
+    fun todayCount(appKey: String): Int = stats.getInt("c|${LocalDate.now()}|$appKey", 0)
+
+    /** Today's scrolls across all apps. */
+    fun todayTotal(): Int {
+        val d = LocalDate.now().toString()
+        return TrackedApps.all.sumOf { stats.getInt("c|$d|${it.key}", 0) }
     }
 
     /** Scrolls per hour (index 0..23) for [date]. */
@@ -143,7 +159,7 @@ class ScrollStore private constructor(context: Context) {
     // ---------------- Settings ----------------
 
     var dailyLimit: Int
-        get() = settings.getInt("daily_limit", 500)
+        get() = settings.getInt("daily_limit", 500).coerceIn(10, 2000)
         set(value) { settings.edit().putInt("daily_limit", value).apply(); bump() }
 
     var paused: Boolean
@@ -166,6 +182,29 @@ class ScrollStore private constructor(context: Context) {
         get() = runCatching { ThemeMode.valueOf(settings.getString("theme", null) ?: "SYSTEM") }
             .getOrDefault(ThemeMode.SYSTEM)
         set(value) { settings.edit().putString("theme", value.name).apply(); bump() }
+
+    /** Floating check-in card every few scrolls. */
+    var bubbleOn: Boolean
+        get() = settings.getBoolean("bubble_on", true)
+        set(value) { settings.edit().putBoolean("bubble_on", value).apply(); bump() }
+
+    /** Send the user out of social apps once the daily limit is reached. */
+    var blockOn: Boolean
+        get() = settings.getBoolean("block_on", true)
+        set(value) { settings.edit().putBoolean("block_on", value).apply(); bump() }
+
+    /** End time (epoch ms) of a "5 more minutes" break from blocking. */
+    var graceUntil: Long
+        get() = settings.getLong("grace_until", 0L)
+        set(value) { settings.edit().putLong("grace_until", value).apply(); bump() }
+
+    /** Date the one-per-day "5 more minutes" was used. */
+    var graceDate: String?
+        get() = settings.getString("grace_date", null)
+        set(value) { settings.edit().putString("grace_date", value).apply() }
+
+    val graceAvailableToday: Boolean get() = graceDate != LocalDate.now().toString()
+    val inGrace: Boolean get() = System.currentTimeMillis() < graceUntil
 
     fun isAppEnabled(key: String): Boolean = settings.getBoolean("app_$key", true)
 

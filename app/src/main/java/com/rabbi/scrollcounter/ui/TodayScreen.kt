@@ -3,6 +3,8 @@ package com.rabbi.scrollcounter.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -192,7 +194,19 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Text(message, style = MaterialTheme.typography.bodyLarge, color = Color.White, textAlign = TextAlign.Center)
+            val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Canvas(Modifier.size(34.dp)) {
+                    drawIntoCanvas {
+                        com.rabbi.scrollcounter.face.FaceRenderer.draw(it.nativeCanvas, size.width / 2, size.height / 2, size.minDimension / 2 * 0.96f, mood)
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(mood.label, style = MaterialTheme.typography.labelLarge, color = Color(mood.face), fontWeight = FontWeight.SemiBold)
+                    Text(message, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                }
+            }
             Spacer(Modifier.height(14.dp))
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.10f))
