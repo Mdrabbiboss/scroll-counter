@@ -72,7 +72,11 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val src = event.source ?: return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
-        val accepted = isReelPager(src)
+        // A reels pager never shows more than two items at once (the one leaving and the one
+        // arriving). A list reporting 3+ visible items is a feed, inbox, comments… — not reels.
+        val span = if (event.fromIndex >= 0 && event.toIndex >= 0) event.toIndex - event.fromIndex else 0
+        val accepted = span < 2 && isReelPager(src)
+        if (span >= 2) lastReason = "list shows ${span + 1} items"
         val cn = src.className?.toString() ?: ""
         lastSourceNativeList = NATIVE_LISTS.any { cn.endsWith(it) }
         DetectLog.add(
@@ -390,7 +394,13 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             c.getBoundsInScreen(child)
             if (child.isEmpty) continue
             val touchesEdge = child.top <= rect.top + 3 || child.bottom >= rect.bottom - 3
-            if (abs(child.height() - hh) <= hh * 0.04f && child.width() >= rect.width() * 0.9f) exactPages++
+            if (child.height() >= hh * 0.5f && child.height() < hh * 0.96f && pageLooksLikeList(c)) { lastReason = "holds a list"; return false }
+            if (abs(child.height() - hh) <= hh * 0.04f && child.width() >= rect.width() * 0.9f) {
+                // A wrapper whose single child is a whole scrolling list (inbox, feed, settings)
+                // looks like a "page" — but a reel page is never itself a list.
+                if (pageLooksLikeList(c)) { lastReason = "page is a list"; return false }
+                exactPages++
+            }
             else if (!touchesEdge && child.height() > hh * 0.05f) otherItems++
             else if (touchesEdge && child.height() < hh * 0.96f && child.width() >= rect.width() * 0.9f) {
                 // a page partly scrolled in/out at the edge — fine
@@ -404,11 +414,40 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // Apps that are short videos all the way through (TikTok, Likee, Kwai…): any full-screen
         // vertical pager is the video feed. Profile grids and comment sheets are still rejected.
         val allReels = pkgName in ALL_REELS_APPS
-        val ok = if (allReels) sideBySide == 0 && otherItems <= 2
+        val ok = if (allReels) sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || midSwipe)
             else sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || (midSwipe && (named || lastPager?.let { samePager(it, src) } == true)))
         if (!ok) lastReason = "items exact$exactPages other$otherItems row$sideBySide"
         // Not cached: a feed and a reels viewer can share the same view class and size.
         return ok
+    }
+
+    private val tmp = Rect()
+
+    /** True if this "page" is (or is mostly filled by) a scrolling list rather than a video page. */
+    private fun pageLooksLikeList(page: AccessibilityNodeInfo): Boolean {
+        fun isList(n: AccessibilityNodeInfo): Boolean {
+            val cls = n.className?.toString() ?: ""
+            val rows = n.collectionInfo?.rowCount ?: 0
+            return rows > 2 || (n.isScrollable && (cls.endsWith("RecyclerView") || cls.endsWith("ListView") || cls.endsWith("ScrollView")))
+        }
+        return try {
+            if (isList(page)) return true
+            page.getBoundsInScreen(tmp)
+            val ph = tmp.height().coerceAtLeast(1)
+            val queue = ArrayDeque<Pair<AccessibilityNodeInfo, Int>>()
+            for (i in 0 until minOf(page.childCount, 10)) page.getChild(i)?.let { queue.add(it to 1) }
+            var visited = 0
+            while (queue.isNotEmpty() && visited < 40) {
+                val (n, depth) = queue.removeFirst()
+                visited++
+                n.getBoundsInScreen(tmp)
+                if (tmp.height() >= ph * 0.55f && isList(n)) return true
+                if (depth < 3) for (i in 0 until minOf(n.childCount, 10)) n.getChild(i)?.let { queue.add(it to depth + 1) }
+            }
+            false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun samePager(a: AccessibilityNodeInfo, b: AccessibilityNodeInfo): Boolean =
