@@ -34,7 +34,14 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug bundleRelease assembleRelease --stacktrace
+          set -o pipefail
+          ./gradlew assembleDebug bundleRelease assembleRelease 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          MSG=$(grep -E "^e: |What went wrong|error:|ERROR:|Missing class|> " build.log | head -25 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::error title=Build failed::${MSG}"
 
       - name: Upload debug APK (install on your phone to test)
         uses: actions/upload-artifact@v4
