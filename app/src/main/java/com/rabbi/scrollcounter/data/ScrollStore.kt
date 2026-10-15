@@ -202,8 +202,8 @@ class ScrollStore private constructor(context: Context) {
 
     /** We asked once to add the widget automatically. */
     var widgetPrompted: Boolean
-        get() = settings.getBoolean("widget_prompted", false)
-        set(value) { settings.edit().putBoolean("widget_prompted", value).apply() }
+        get() = settings.getBoolean("widget_prompted_v2", false)
+        set(value) { settings.edit().putBoolean("widget_prompted_v2", value).apply() }
 
     /** Floating check-in card every few scrolls. */
     var bubbleOn: Boolean

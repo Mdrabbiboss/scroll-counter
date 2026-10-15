@@ -14,6 +14,10 @@ object WidgetPin {
             AppWidgetManager.getInstance(context).getAppWidgetIds(provider(context)).isNotEmpty()
         }.getOrDefault(false)
 
+    /** How many Scroll Counter widgets are on the home screen. */
+    fun count(context: Context): Int =
+        runCatching { AppWidgetManager.getInstance(context).getAppWidgetIds(provider(context)).size }.getOrDefault(0)
+
     /** Whether the launcher supports the one-tap "Add to home screen" prompt (most do on Android 8+). */
     fun canPin(context: Context): Boolean =
         runCatching { AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported }.getOrDefault(false)

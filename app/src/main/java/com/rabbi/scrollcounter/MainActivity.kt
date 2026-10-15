@@ -56,6 +56,7 @@ import com.rabbi.scrollcounter.data.ThemeMode
 import com.rabbi.scrollcounter.tracker.Notifier
 import com.rabbi.scrollcounter.tracker.TrackerStatus
 import com.rabbi.scrollcounter.ui.DisclosureDialog
+import com.rabbi.scrollcounter.ui.WidgetPromoScreen
 import com.rabbi.scrollcounter.ui.HistoryScreen
 import com.rabbi.scrollcounter.ui.LimitDialog
 import com.rabbi.scrollcounter.ui.OnboardingScreen
@@ -129,17 +130,31 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     var showLimit by remember { mutableStateOf(false) }
     val onboarded = remember(tick) { store.onboarded }
 
-    // Home-screen widget: system "Add to home screen" prompt, or manual steps if the launcher can't.
+    // Home-screen widget: a full-screen showcase, then the system "Add to home screen" prompt
+    // (or manual steps if the launcher can't pin widgets).
     var showWidgetHelp by remember { mutableStateOf(false) }
-    val addWidget: () -> Unit = {
-        if (!com.rabbi.scrollcounter.widget.WidgetPin.request(context)) showWidgetHelp = true
-    }
+    var showWidgetPromo by remember { mutableStateOf(false) }
+    var widgetPlaced by remember { mutableStateOf(false) }
+    val addWidget: () -> Unit = { showWidgetPromo = true }
     // Offer it once automatically, right after setup (or on first open after updating).
     LaunchedEffect(onboarded) {
-        if (onboarded && !store.widgetPrompted && !status.widgetPlaced) {
+        if (onboarded && !store.widgetPrompted) {
             store.widgetPrompted = true
-            kotlinx.coroutines.delay(900)
-            com.rabbi.scrollcounter.widget.WidgetPin.request(context)
+            kotlinx.coroutines.delay(350)
+            showWidgetPromo = true
+        }
+    }
+    // While the showcase is open, watch for the widget landing on the home screen.
+    LaunchedEffect(showWidgetPromo) {
+        widgetPlaced = false
+        if (!showWidgetPromo) return@LaunchedEffect
+        val before = com.rabbi.scrollcounter.widget.WidgetPin.count(context)
+        while (!widgetPlaced) {
+            kotlinx.coroutines.delay(600)
+            if (com.rabbi.scrollcounter.widget.WidgetPin.count(context) > before) {
+                widgetPlaced = true
+                com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(context)
+            }
         }
     }
 
@@ -223,6 +238,21 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                     }
                 }
             }
+        }
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = onboarded && showWidgetPromo,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(350)) +
+                androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(400), initialScale = 1.04f),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300))
+        ) {
+            WidgetPromoScreen(
+                placed = widgetPlaced && showWidgetPromo,
+                onAdd = {
+                    if (!com.rabbi.scrollcounter.widget.WidgetPin.request(context)) showWidgetHelp = true
+                },
+                onClose = { showWidgetPromo = false; status = TrackerStatus.read(context) }
+            )
         }
 
         if (showWidgetHelp) {
