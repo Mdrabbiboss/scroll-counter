@@ -71,9 +71,9 @@ object WidgetArt {
     private val tp = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val rf = RectF()
     private val path = Path()
-    private val black = Typeface.create("sans-serif-black", Typeface.NORMAL)
-    private val bold = Typeface.create("sans-serif", Typeface.BOLD)
-    private val medium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    private val black: Typeface get() = com.rabbi.scrollcounter.ui.theme.AppFonts.numbers
+    private val bold: Typeface get() = com.rabbi.scrollcounter.ui.theme.AppFonts.textBold
+    private val medium: Typeface get() = com.rabbi.scrollcounter.ui.theme.AppFonts.textMedium
 
     /** Renders the full widget into a bitmap of [wPx]×[hPx]; [dp] = pixels per dp. */
     fun bitmap(wPx: Int, hPx: Int, dp: Float, state: WidgetState): Bitmap {

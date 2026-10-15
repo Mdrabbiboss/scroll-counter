@@ -370,7 +370,7 @@ const val DISCLOSURE_TEXT =
     "Scroll Counter uses Android's Accessibility Service to count the Reels, Shorts and short videos you watch " +
         "in any social or video app (Facebook, Instagram, TikTok, YouTube, Snapchat and others) and on short-video websites in your browser.\n\n" +
         "• To recognise a Reels feed it looks only at the screen's layout — the size of the video player, its view names and how it scrolls\n" +
-        "• In browsers it checks the address bar only to tell when a short-video page (TikTok, Shorts, Reels) is open — addresses are never stored\n" +
+        "• In browsers it checks the address bar and page title only to tell when a short-video page (TikTok, Shorts, Reels) is open — never stored\n" +
         "• It does NOT read or store messages, captions, comments or anything you type\n" +
         "• It shows a small counter at the top while you watch, and takes you to the home screen when your daily limit is reached\n" +
         "• Chats, comments, normal feeds and reading are ignored, and your data never leaves your phone\n\n" +

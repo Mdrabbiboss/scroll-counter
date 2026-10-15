@@ -66,7 +66,18 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val src = event.source ?: return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
-        if (!isReelPager(src)) return false
+        val accepted = isReelPager(src)
+        DetectLog.add(
+            src.packageName?.toString() ?: appKey,
+            "${src.className?.toString()?.substringAfterLast('.') ?: "?"}" +
+                (src.viewIdResourceName?.substringAfter(":id/")?.let { " #$it" } ?: "") +
+                " h${rect.height() * 100 / screenH.coerceAtLeast(1)}% top${rect.top * 100 / screenH.coerceAtLeast(1)}%" +
+                " kids${src.childCount}" +
+                (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) " dy${event.scrollDeltaY}" else "") +
+                " y${event.scrollY} i${event.fromIndex}-${event.toIndex}" +
+                if (accepted) " → REELS" else " → no ($lastReason)"
+        )
+        if (!accepted) return false
         val opaque = lastWasOpaque
         lastPager = src
         lastPagerHeight = rect.height().coerceAtLeast(1)
@@ -193,29 +204,31 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     /** Set by [isReelPager] when the accepted container has no children (self-drawn apps). */
     private var lastWasOpaque = false
+    private var lastReason = ""
 
     private fun isReelPager(src: AccessibilityNodeInfo): Boolean {
         lastWasOpaque = false
+        lastReason = ""
         src.getBoundsInScreen(rect)
         // 1. Must fill the screen: full width and most of the height. Comment / share sheets
         //    slide up from the bottom and start low on the screen, so they're rejected.
-        if (rect.width() < screenW * 0.85f) return false
-        if (rect.height() < screenH * 0.6f) return false
-        if (rect.top > screenH * 0.22f) return false
+        if (rect.width() < screenW * 0.85f) { lastReason = "narrow"; return false }
+        if (rect.height() < screenH * 0.6f) { lastReason = "short"; return false }
+        if (rect.top > screenH * 0.22f) { lastReason = "starts low"; return false }
 
         val id = src.viewIdResourceName ?: ""
         val cls = src.className?.toString() ?: ""
         val cacheKey = "${src.packageName}|$id|$cls|${rect.height()}"
-        pagerCache[cacheKey]?.let { return it }
+        pagerCache[cacheKey]?.let { if (!it) lastReason = "excluded"; return it }
 
         val lower = id.lowercase()
         // 2. Never a reel: comments, replies, chats, sheets, menus, search results, grids.
-        if (EXCLUDE_HINTS.any { lower.contains(it) }) return remember(cacheKey, false)
+        if (EXCLUDE_HINTS.any { lower.contains(it) }) { lastReason = "comments/chat id"; return remember(cacheKey, false) }
         if (cls.contains("WebView") || cls.endsWith("HorizontalScrollView") || cls.contains("GridView"))
-            return remember(cacheKey, false)
-        if (scrollsOnlySideways(src)) return remember(cacheKey, false)
+            { lastReason = "web/grid"; return remember(cacheKey, false) }
+        if (scrollsOnlySideways(src)) { lastReason = "sideways"; return remember(cacheKey, false) }
         val ci = src.collectionInfo
-        if (ci != null && ci.columnCount > 1 && ci.rowCount <= 1) return remember(cacheKey, false)
+        if (ci != null && ci.columnCount > 1 && ci.rowCount <= 1) { lastReason = "horizontal list"; return remember(cacheKey, false) }
 
         val named = ID_HINTS.any { lower.contains(it) }
         val n = minOf(src.childCount, 6)
@@ -227,6 +240,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 lastWasOpaque = true
                 return true
             }
+            lastReason = "no children"
             return false // maybe still loading; decide later (not cached)
         }
 
@@ -247,6 +261,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         }
         val ok = sideBySide == 0 && fullPages >= 1 && shortItems <= (if (named) 2 else 1)
         // Only remember a "yes": a "no" may just be a moment mid-transition, so look again next time.
+        if (!ok) lastReason = "items full$fullPages short$shortItems row$sideBySide"
         return if (ok) remember(cacheKey, true) else false
     }
 

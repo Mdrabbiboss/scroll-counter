@@ -41,6 +41,8 @@ class BrowserReelDetector(private val screenH: Int) {
         var urlKind = UrlKind.UNKNOWN
         var reelId: String? = null
         var lastUrl: String? = null
+        var titleKey: String? = null
+        var pendingTitle: String? = null
         var lastUrlAt = 0L
         // reels already counted by one signal, waiting to be matched by the other
         var urlCredit = 0
@@ -77,23 +79,39 @@ class BrowserReelDetector(private val screenH: Int) {
     fun checkAddress(pkg: String, root: AccessibilityNodeInfo?): Int {
         root ?: return 0
         val st = states.getOrPut(pkg) { State() }
-        val url = readUrl(pkg, root) ?: return 0
-        if (url == st.lastUrl) return 0
-        st.lastUrl = url
-        st.lastUrlAt = SystemClock.uptimeMillis()
-
-        val (kind, id) = classify(url)
-        st.urlKind = kind
-        if (kind != UrlKind.REELS) {
-            st.reelId = null
-            st.inReels = false
-            st.streak = 0
-            return 0
+        val url = readUrl(pkg, root)
+        if (url == null) {
+            DetectLog.add(pkg, "browser: address bar not found")
+        } else if (url != st.lastUrl) {
+            st.lastUrl = url
+            st.lastUrlAt = SystemClock.uptimeMillis()
+            val (kind, id) = classify(url)
+            st.urlKind = kind
+            DetectLog.add(pkg, "browser: ${url.substringBefore('/').substringBefore('?')} → $kind" + if (id != null) " (video id)" else "")
+            if (kind != UrlKind.REELS) {
+                st.reelId = null
+                st.titleKey = null
+                if (kind == UrlKind.NOT_REELS) { st.inReels = false; st.streak = 0 }
+                return 0
+            }
+            if (id != null) return newVideo(st, "u:$id")
         }
-        if (id == null || id == st.reelId) return 0
+
+        // Short-video page whose address doesn't change per video: the page title does.
+        if (st.urlKind == UrlKind.REELS && (st.reelId == null || st.reelId!!.startsWith("t:"))) {
+            val title = pageTitle(root) ?: return 0
+            if (title != st.pendingTitle) { st.pendingTitle = title; return 0 } // wait until it's stable
+            if (title == st.titleKey) return 0
+            st.titleKey = title
+            return newVideo(st, "t:$title")
+        }
+        return 0
+    }
+
+    /** A new video id/title on a short-video page: +1, unless the swipe signal just counted it. */
+    private fun newVideo(st: State, id: String): Int {
+        if (id == st.reelId) return 0
         st.reelId = id
-        // Every new video counts — including the first one you open. If the swipe signal counted
-        // this same video a moment ago, don't count it again.
         val now = SystemClock.uptimeMillis()
         if (st.scrollCredit > 0 && now - st.scrollCreditAt < CREDIT_MS) {
             st.scrollCredit--
@@ -103,6 +121,24 @@ class BrowserReelDetector(private val screenH: Int) {
         st.urlCreditAt = now
         st.lastCountAt = now
         return 1
+    }
+
+    /** The web page's title (Chrome & co. put it on the web-content node). Only its hash is kept. */
+    private fun pageTitle(root: AccessibilityNodeInfo): String? {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var visited = 0
+        while (queue.isNotEmpty() && visited < 60) {
+            val n = queue.removeFirst()
+            visited++
+            val cls = n.className?.toString() ?: ""
+            if (cls.contains("WebView")) {
+                val t = (n.text ?: n.contentDescription)?.toString()?.trim()
+                return t?.takeIf { it.length > 3 }?.hashCode()?.toString()
+            }
+            for (i in 0 until minOf(n.childCount, 10)) runCatching { n.getChild(i) }.getOrNull()?.let { queue.add(it) }
+        }
+        return null
     }
 
     private fun readUrl(pkg: String, root: AccessibilityNodeInfo): String? {
@@ -126,6 +162,12 @@ class BrowserReelDetector(private val screenH: Int) {
     private fun classify(url: String): Pair<UrlKind, String?> {
         val host = url.substringBefore('/').substringBefore('?')
         val path = "/" + url.substringAfter('/', "").substringBefore('?')
+        // Many browsers show only the domain. Then we can't tell Shorts from normal pages, so
+        // let the swipe/title signals decide (TikTok is short videos all the way through).
+        if (!url.contains('/') || path == "/") {
+            return if (host.endsWith("tiktok.com") || host.endsWith("douyin.com")) UrlKind.REELS to null
+            else UrlKind.UNKNOWN to null
+        }
         fun idAfter(marker: String): String? =
             path.substringAfter(marker, "").substringBefore('/').takeIf { it.length >= 4 }
 

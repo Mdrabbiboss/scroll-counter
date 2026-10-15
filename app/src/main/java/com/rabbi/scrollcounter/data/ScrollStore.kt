@@ -37,7 +37,10 @@ class ScrollStore private constructor(context: Context) {
 
     private val appContext = context.applicationContext
 
-    init { TrackedApps.attach(appContext) }
+    init {
+        TrackedApps.attach(appContext)
+        com.rabbi.scrollcounter.ui.theme.AppFonts.load(appContext)
+    }
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val widgetRefresh = Runnable { com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(appContext) }
 

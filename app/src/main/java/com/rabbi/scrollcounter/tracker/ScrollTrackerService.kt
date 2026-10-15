@@ -46,7 +46,19 @@ class ScrollTrackerService : AccessibilityService() {
     private val settleRunnable = Runnable {
         val app = settleApp ?: return@Runnable
         val n = detector?.settle(app.key) ?: 0
+        DetectLog.add(app.packages.first(), if (n > 0) "swipe settled → +$n reel" else "swipe settled → same reel")
         if (n > 0) onNewReels(app, n, detector?.lastPagerHeight ?: 0)
+    }
+    /** Movement-based reels detection for apps whose layout we can't read (see [onAppScroll]). */
+    private var snap: BrowserReelDetector? = null
+    private var snapApp: TrackedApp? = null
+    private val snapSettleRunnable = Runnable {
+        val app = snapApp ?: return@Runnable
+        val n = snap?.settle(app.key) ?: 0
+        if (n > 0) {
+            DetectLog.add(app.packages.first(), "swipe pattern → +$n reel")
+            onNewReels(app, n, resources.displayMetrics.heightPixels)
+        }
     }
     private var webApp: TrackedApp? = null
     private val webSettleRunnable = Runnable {
@@ -65,7 +77,7 @@ class ScrollTrackerService : AccessibilityService() {
             val inReels = when {
                 activePkg == null || activePkg in ignored -> false
                 TrackedApps.isBrowser(activePkg) -> web?.inReels(TrackedApps.forPackage(activePkg).key) == true
-                else -> detector?.stillInReels() == true
+                else -> detector?.stillInReels() == true || snap?.inReels(TrackedApps.forPackage(activePkg).key) == true
             }
             // Before hiding, look again on the current screen (the old pager node can go stale
             // after the app redraws), and only hide after two misses in a row — no flicker.
@@ -127,6 +139,7 @@ class ScrollTrackerService : AccessibilityService() {
         val dm = resources.displayMetrics
         detector = ReelDetector(dm.widthPixels, dm.heightPixels)
         web = BrowserReelDetector(dm.heightPixels)
+        snap = BrowserReelDetector(dm.heightPixels)
         val dpi = if (dm.ydpi > 0f) dm.ydpi else dm.densityDpi.toFloat()
         metersPerPx = 0.0254f / dpi
         buildIgnoreList()
@@ -183,6 +196,7 @@ class ScrollTrackerService : AccessibilityService() {
                     currentPkg = pkg
                     detector?.reset(app.key)
                     web?.reset(app.key)
+                    snap?.reset(app.key)
                 }
                 // Limit reached → don't let the user stay in a social app.
                 if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app) && shouldBlock(store)) { block(app.name); return }
@@ -216,7 +230,17 @@ class ScrollTrackerService : AccessibilityService() {
 
     private fun onAppScroll(store: ScrollStore, app: TrackedApp, event: AccessibilityEvent) {
         val det = detector ?: return
-        if (!det.onScroll(app.key, event)) return
+        if (!det.onScroll(app.key, event)) {
+            // Not a recognisable pager (web-based, Flutter, React Native or custom apps):
+            // fall back to how the feed moves — exact one-screen snaps, twice in a row = reels.
+            val sn = snap ?: return
+            sn.onScroll(app.key, event)
+            if (sn.inReels(app.key) && shouldBlock(store)) { block(app.name); return }
+            snapApp = app
+            handler.removeCallbacks(snapSettleRunnable)
+            handler.postDelayed(snapSettleRunnable, WEB_SETTLE_MS)
+            return
+        }
         if (shouldBlock(store)) { block(app.name); return }
         // Judge the swipe once the feed is still.
         settleApp = app

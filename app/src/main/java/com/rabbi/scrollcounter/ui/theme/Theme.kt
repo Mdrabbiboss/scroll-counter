@@ -94,13 +94,24 @@ object Brand {
 }
 
 private val AppTypography = Typography().run {
+    val d = AppFonts.Display
+    val t = AppFonts.Text
     copy(
-        displayLarge = displayLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = (-2).sp),
-        displayMedium = displayMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1.5).sp),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.Bold),
-        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelMedium = labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp),
+        displayLarge = displayLarge.copy(fontFamily = d, fontWeight = FontWeight.Bold, letterSpacing = (-1.5).sp),
+        displayMedium = displayMedium.copy(fontFamily = d, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+        displaySmall = displaySmall.copy(fontFamily = d, fontWeight = FontWeight.Bold),
+        headlineLarge = headlineLarge.copy(fontFamily = d, fontWeight = FontWeight.Bold),
+        headlineMedium = headlineMedium.copy(fontFamily = d, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp),
+        headlineSmall = headlineSmall.copy(fontFamily = d, fontWeight = FontWeight.Bold),
+        titleLarge = titleLarge.copy(fontFamily = t, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
+        titleMedium = titleMedium.copy(fontFamily = t, fontWeight = FontWeight.SemiBold),
+        titleSmall = titleSmall.copy(fontFamily = t, fontWeight = FontWeight.SemiBold),
+        bodyLarge = bodyLarge.copy(fontFamily = t),
+        bodyMedium = bodyMedium.copy(fontFamily = t),
+        bodySmall = bodySmall.copy(fontFamily = t),
+        labelLarge = labelLarge.copy(fontFamily = t, fontWeight = FontWeight.SemiBold),
+        labelMedium = labelMedium.copy(fontFamily = t, fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp),
+        labelSmall = labelSmall.copy(fontFamily = t, fontWeight = FontWeight.Medium, letterSpacing = 0.6.sp),
     )
 }
 
@@ -109,7 +120,11 @@ fun ScrollCounterTheme(dark: Boolean, content: @Composable () -> Unit) {
     val colors = if (dark) Dark else Light
     MaterialTheme(colorScheme = colors, typography = AppTypography) {
         // Glass surfaces are translucent, so Material can't infer a text color from them.
-        // Make every Text default to the readable foreground for this theme.
-        CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+        // Make every Text default to the readable foreground for this theme, in the app font.
+        CompositionLocalProvider(
+            LocalContentColor provides colors.onBackground,
+            androidx.compose.material3.LocalTextStyle provides AppTypography.bodyLarge,
+            content = content
+        )
     }
 }

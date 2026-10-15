@@ -206,7 +206,7 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
                         append("one glance away")
                     }
                 },
-                color = Color.White, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black,
+                color = Color.White, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, fontFamily = com.rabbi.scrollcounter.ui.theme.AppFonts.Display,
                 textAlign = TextAlign.Center, letterSpacing = (-0.6).sp,
                 modifier = Modifier.graphicsLayer { alpha = enter.value; translationY = (1 - enter.value) * 30f }
             )

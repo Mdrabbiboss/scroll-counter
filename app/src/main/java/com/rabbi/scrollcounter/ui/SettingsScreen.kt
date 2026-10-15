@@ -103,6 +103,7 @@ fun SettingsScreen(
     }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var showPolicy by remember { mutableStateOf(false) }
+    var showLog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -264,6 +265,8 @@ fun SettingsScreen(
         item {
             PremiumCard {
                 SettingRow(Icons.Rounded.PrivacyTip, "Privacy policy", "What's stored and what isn't", onClick = { showPolicy = true })
+                SettingRow(Icons.Rounded.Info, "Detection check", "See live what the counter detects in each app — screenshot it if an app isn't counted",
+                    iconTint = MaterialTheme.colorScheme.secondary, onClick = { showLog = true })
                 if (AdsConsent.privacyOptionsRequired) {
                     SettingRow(Icons.Rounded.Shield, "Ad privacy choices", "Change your ad consent",
                         onClick = { (context as? Activity)?.let { AdsConsent.showPrivacyOptions(it) } })
@@ -300,6 +303,7 @@ fun SettingsScreen(
         null -> Unit
     }
     if (showPolicy) PrivacyPolicyDialog { showPolicy = false }
+    if (showLog) DetectionLogDialog { showLog = false }
 }
 
 private fun rateApp(context: Context) {
@@ -334,4 +338,42 @@ private fun TrackedAppRow(app: com.rabbi.scrollcounter.data.TrackedApp, subtitle
         }
         PremiumSwitch(checked = enabled, onCheckedChange = onChange)
     }
+}
+
+/** Live list of what the tracker saw recently (Settings → Detection check). */
+@Composable
+private fun DetectionLogDialog(onDismiss: () -> Unit) {
+    var lines by remember { mutableStateOf(com.rabbi.scrollcounter.tracker.DetectLog.snapshot()) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(1000)
+            lines = com.rabbi.scrollcounter.tracker.DetectLog.snapshot()
+        }
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detection check") },
+        text = {
+            Column {
+                Text(
+                    "Open an app, watch a few reels, then come back here. Newest first.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.height(380.dp)) {
+                    if (lines.isEmpty()) item { Text("Nothing yet — make sure tracking is on, then scroll some reels.", style = MaterialTheme.typography.bodySmall) }
+                    items(lines.size) { i ->
+                        Text(
+                            lines[i],
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+                            modifier = Modifier.padding(vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = { com.rabbi.scrollcounter.tracker.DetectLog.clear(); lines = emptyList() }) { Text("Clear") } }
+    )
 }
