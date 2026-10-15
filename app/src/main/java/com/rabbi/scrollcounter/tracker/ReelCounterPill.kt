@@ -8,7 +8,6 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -30,57 +29,69 @@ class ReelCounterPill(private val service: AccessibilityService) {
     private var pill: LinearLayout? = null
     private lateinit var face: FaceView
     private lateinit var countText: TextView
-    private var hiding = false
 
-    val isShowing: Boolean get() = root != null && !hiding
+    private var visible = false
+    val isShowing: Boolean get() = visible
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, service.resources.displayMetrics)
 
-    /** Show (or update) the pill. [bump] = a new reel was just counted. */
+    /**
+     * Show (or update) the pill. [bump] = a new reel was just counted.
+     * The overlay window is created once and kept, so showing it again is instant — no window
+     * is added or removed each time, which is what made it appear late or with a jerk.
+     */
     fun show(count: Int, limit: Int, bump: Boolean) {
         val mood = Mood.of(count, limit)
-        val firstAppearance = root == null || hiding
         if (root == null) attach()
         val p = pill ?: return
-        hiding = false
+        val firstAppearance = !visible
+        visible = true
 
         face.mood = mood
         countText.text = count.toString()
         val ratio = if (limit > 0) count.toFloat() / limit else 0f
+        // Frosted, slightly see-through glass — classy, never a solid block over the video.
         val (c1, c2) = when {
-            ratio >= 1f -> 0xF2B91C1C.toInt() to 0xF2E5484D.toInt()
-            ratio >= 0.8f -> 0xF29A3412.toInt() to 0xF2EA580C.toInt()
-            else -> 0xF2052A26.toInt() to 0xF20D5F55.toInt()
+            ratio >= 1f -> 0xB87F1D1D.toInt() to 0xB8DC2626.toInt()
+            ratio >= 0.8f -> 0xB87C2D12.toInt() to 0xB8EA580C.toInt()
+            else -> 0xB0061F1C.toInt() to 0xB00D5F55.toInt()
         }
         (p.background as GradientDrawable).apply {
             colors = intArrayOf(c1, c2)
-            setStroke(dp(1.2f).toInt(), (mood.accent and 0x00FFFFFF) or (0x99 shl 24))
+            setStroke(dp(1f).toInt(), 0x40FFFFFF)
         }
-        countText.setTextColor(if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFFF8C33A.toInt())
+        countText.setTextColor(if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFFFFD873.toInt())
 
-        p.animate().cancel()
         if (firstAppearance) {
-            p.translationY = -dp(80f); p.alpha = 0f
-            p.scaleX = 0.8f; p.scaleY = 0.8f
-            p.animate().translationY(0f).alpha(1f).scaleX(1f).scaleY(1f)
-                .setDuration(420).setInterpolator(OvershootInterpolator(1.4f)).start()
+            p.animate().cancel()
+            p.visibility = android.view.View.VISIBLE
+            p.translationY = -dp(14f); p.alpha = 0f
+            p.scaleX = 0.9f; p.scaleY = 0.9f
+            p.animate().translationY(0f).alpha(REST_ALPHA).scaleX(1f).scaleY(1f)
+                .setDuration(300).setInterpolator(DecelerateInterpolator(2f))
+                .withLayer().start()
         } else if (bump) {
-            p.scaleX = 1.12f; p.scaleY = 1.12f
-            p.animate().scaleX(1f).scaleY(1f).setDuration(320).setInterpolator(OvershootInterpolator(2.5f)).start()
-            countText.translationY = dp(6f); countText.alpha = 0.3f
-            countText.animate().translationY(0f).alpha(1f).setDuration(220).start()
+            p.animate().cancel()
+            p.alpha = REST_ALPHA; p.translationY = 0f
+            p.scaleX = 1.07f; p.scaleY = 1.07f
+            p.animate().scaleX(1f).scaleY(1f).setDuration(260)
+                .setInterpolator(DecelerateInterpolator(1.6f)).withLayer().start()
+            countText.translationY = dp(5f); countText.alpha = 0.35f
+            countText.animate().translationY(0f).alpha(1f).setDuration(200)
+                .setInterpolator(DecelerateInterpolator()).start()
         }
         if (bump) face.post { face.react() }
     }
 
     fun hide() {
         val p = pill ?: return
-        if (hiding) return
-        hiding = true
+        if (!visible) return
+        visible = false
         p.animate().cancel()
-        p.animate().translationY(-dp(80f)).alpha(0f).setDuration(260)
+        p.animate().translationY(-dp(10f)).alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(220)
             .setInterpolator(DecelerateInterpolator())
-            .withEndAction { if (hiding) detach() }
+            .withLayer()
+            .withEndAction { if (!visible) p.visibility = android.view.View.INVISIBLE }
             .start()
     }
 
@@ -104,7 +115,8 @@ class ReelCounterPill(private val service: AccessibilityService) {
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xF2052A26.toInt(), 0xF20D5F55.toInt())).apply {
                 cornerRadius = dp(30f)
             }
-            elevation = dp(8f)
+            elevation = dp(4f)
+            visibility = android.view.View.INVISIBLE
             addView(face, LinearLayout.LayoutParams(dp(34f).toInt(), dp(34f).toInt()))
             addView(countText, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7f).toInt() })
         }
@@ -142,7 +154,12 @@ class ReelCounterPill(private val service: AccessibilityService) {
         try { wm?.removeView(r) } catch (_: Exception) { }
         root = null
         pill = null
-        hiding = false
+        visible = false
+    }
+
+    companion object {
+        /** Resting opacity: a touch see-through so it sits lightly over the video. */
+        private const val REST_ALPHA = 0.9f
     }
 
     private fun statusBarHeight(): Int {

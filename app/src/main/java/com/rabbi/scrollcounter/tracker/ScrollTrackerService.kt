@@ -67,13 +67,56 @@ class ScrollTrackerService : AccessibilityService() {
                 TrackedApps.isBrowser(activePkg) -> web?.inReels(TrackedApps.forPackage(activePkg).key) == true
                 else -> detector?.stillInReels() == true
             }
-            if (!inReels || s?.bubbleOn != true || s.paused) {
+            // Before hiding, look again on the current screen (the old pager node can go stale
+            // after the app redraws), and only hide after two misses in a row — no flicker.
+            val stillThere = inReels || (activePkg != null && activePkg !in ignored && !TrackedApps.isBrowser(activePkg) &&
+                detector?.findReelPager(runCatching { rootInActiveWindow }.getOrNull()) == true)
+            if (stillThere) misses = 0 else misses++
+            if (misses >= 2 || s?.bubbleOn != true || s.paused) {
+                misses = 0
                 p.hide()
                 detector?.forgetPager()
+                startPresenceScan()
             } else {
                 handler.postDelayed(this, WATCH_MS)
             }
         }
+    }
+
+    private var misses = 0
+
+    /**
+     * While a social app is in front and the counter isn't up, keep looking for its reels feed a
+     * few times a second — so the counter appears right away when you come back to Reels, even if
+     * the app sends no events while the video just plays.
+     */
+    private val presenceScan = object : Runnable {
+        override fun run() {
+            val s = store ?: return
+            val p = pill ?: return
+            if (p.isShowing || s.paused || !s.bubbleOn) return
+            val root = runCatching { rootInActiveWindow }.getOrNull() ?: run { handler.postDelayed(this, PRESENCE_MS); return }
+            val pkg = root.packageName?.toString() ?: return
+            if (pkg in ignored || TrackedApps.isBrowser(pkg)) return
+            val app = TrackedApps.forPackage(pkg)
+            if (!s.isAppEnabled(app.key) || !isSocial(pkg, app)) return
+            val det = detector ?: return
+            if (det.findReelPager(root)) {
+                det.prime(app.key)
+                showPill(s, s.todayTotal(), s.dailyLimit, bump = false)
+            } else if (++presenceTries < PRESENCE_MAX_TRIES) {
+                // Keep looking for a little while; after that, screen-change events take over.
+                handler.postDelayed(this, PRESENCE_MS)
+            }
+        }
+    }
+
+    private var presenceTries = 0
+
+    private fun startPresenceScan(delay: Long = 120L) {
+        presenceTries = 0
+        handler.removeCallbacks(presenceScan)
+        handler.postDelayed(presenceScan, delay)
     }
 
     override fun onServiceConnected() {
@@ -142,7 +185,10 @@ class ScrollTrackerService : AccessibilityService() {
                     web?.reset(app.key)
                 }
                 // Limit reached → don't let the user stay in a social app.
-                if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app) && shouldBlock(store)) block(app.name)
+                if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app) && shouldBlock(store)) { block(app.name); return }
+                // Back in a social app: look for the reels feed straight away.
+                if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app)) startPresenceScan(80L)
+                else if (!isBrowser && pill?.isShowing == true) { pill?.hide(); detector?.forgetPager() }
             }
 
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
@@ -285,8 +331,10 @@ class ScrollTrackerService : AccessibilityService() {
     }
 
     companion object {
-        private const val WATCH_MS = 1200L
-        private const val SCAN_GAP_MS = 900L
+        private const val WATCH_MS = 800L
+        private const val SCAN_GAP_MS = 300L
+        private const val PRESENCE_MS = 450L
+        private const val PRESENCE_MAX_TRIES = 24
         private const val WEB_SETTLE_MS = 420L
         private const val URL_GAP_MS = 350L
         private const val GUARD_GAP_MS = 400L

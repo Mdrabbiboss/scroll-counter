@@ -65,6 +65,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (!isReelPager(src)) return false
         lastPager = src
         lastPagerHeight = rect.height().coerceAtLeast(1)
+        src.viewIdResourceName?.let { id -> src.packageName?.toString()?.let { knownPagerIds[it] = id } }
 
         val st = states.getOrPut(appKey) { AppState() }
         val key = "${src.viewIdResourceName}|${src.className}"
@@ -251,25 +252,40 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      */
     fun findReelPager(root: AccessibilityNodeInfo?): Boolean {
         root ?: return false
+        val pkg = root.packageName?.toString() ?: ""
+
+        // Fast path: the reels pager's view id we saw before in this app — found in one lookup.
+        knownPagerIds[pkg]?.let { id ->
+            val hits = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull().orEmpty()
+            for (n in hits) {
+                if (n.isVisibleToUser && isReelPager(n)) { found(pkg, n); return true }
+            }
+        }
+
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var visited = 0
-        while (queue.isNotEmpty() && visited < 80) {
+        while (queue.isNotEmpty() && visited < 160) {
             val n = queue.removeFirst()
             visited++
-            if (n.isScrollable && isReelPager(n)) {
-                lastPager = n
-                lastPagerHeight = rect.height().coerceAtLeast(1)
-                return true
-            }
+            if (n.isScrollable && isReelPager(n)) { found(pkg, n); return true }
             n.getBoundsInScreen(rect)
-            if (rect.height() >= screenH * 0.5f) {
-                for (i in 0 until minOf(n.childCount, 12)) {
+            if (rect.height() >= screenH * 0.4f) {
+                for (i in 0 until minOf(n.childCount, 14)) {
                     runCatching { n.getChild(i) }.getOrNull()?.let { queue.add(it) }
                 }
             }
         }
         return false
+    }
+
+    private val knownPagerIds = HashMap<String, String>()
+
+    private fun found(pkg: String, n: AccessibilityNodeInfo) {
+        lastPager = n
+        n.getBoundsInScreen(rect)
+        lastPagerHeight = rect.height().coerceAtLeast(1)
+        n.viewIdResourceName?.let { if (pkg.isNotEmpty()) knownPagerIds[pkg] = it }
     }
 
     /** Remember which reel is on screen when a feed opens, so the very first swipe counts too. */
