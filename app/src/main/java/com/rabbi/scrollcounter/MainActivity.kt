@@ -67,14 +67,18 @@ private const val BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/9214589741"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val store = ScrollStore.get(this)
-        store.prune()
-        store.firstDay // stamps the install day on first launch
-        Notifier.ensureChannel(this)
-        AdsConsent.gather(this)
         setContent { AppRoot(this, store) }
+        // Housekeeping and ads start after the first frame, so they never delay opening the app.
+        Thread {
+            store.prune()
+            store.firstDay // stamps the install day on first launch
+            Notifier.ensureChannel(this)
+        }.start()
+        window.decorView.post { AdsConsent.gather(this) }
     }
 }
 

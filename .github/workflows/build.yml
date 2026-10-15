@@ -60,8 +60,8 @@ jobs:
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           TAG="v${VERSION}-build${GITHUB_RUN_NUMBER}"
-          cp app/build/outputs/apk/debug/app-debug.apk "ScrollCounter-v${VERSION}-test.apk"
+          cp app/build/outputs/apk/release/app-release.apk "ScrollCounter-v${VERSION}-test.apk"
           gh release create "$TAG" "ScrollCounter-v${VERSION}-test.apk" \
             --title "Scroll Counter v${VERSION} (test build ${GITHUB_RUN_NUMBER})" \
-            --notes "Test APK for installing on your phone. Not for the Play Store (use the signed AAB for that)." \
+            --notes "Fast optimized test APK (release build, test key). For the Play Store, upload the AAB signed with your own key." \
             --latest

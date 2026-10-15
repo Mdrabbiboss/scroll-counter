@@ -12,13 +12,21 @@ android {
         applicationId = "com.rabbi.scrollcounter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.8.1"
+        versionCode = 11
+        versionName = "1.9"
     }
 
     // Release signing comes from environment variables (set by GitHub Actions secrets or your PC).
     val keystorePath: String? = System.getenv("SIGNING_KEYSTORE_PATH")
     signingConfigs {
+        // Fixed key for test builds, so every new test APK installs as an update over the previous one.
+        // (Not for Play Store: use your own upload key via the SIGNING_* variables for that.)
+        create("testing") {
+            storeFile = file("test-signing.jks")
+            storePassword = "scrolltest"
+            keyAlias = "scrolltest"
+            keyPassword = "scrolltest"
+        }
         create("release") {
             if (keystorePath != null) {
                 storeFile = file(keystorePath)
@@ -30,8 +38,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("testing")
+        }
         release {
-            if (keystorePath != null) signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName(if (keystorePath != null) "release" else "testing")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -59,6 +70,9 @@ dependencies {
     implementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    // Installs the Compose baseline profiles so the app starts faster
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
