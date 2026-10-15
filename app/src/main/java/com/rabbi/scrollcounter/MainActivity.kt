@@ -59,6 +59,7 @@ import com.rabbi.scrollcounter.ui.LimitDialog
 import com.rabbi.scrollcounter.ui.OnboardingScreen
 import com.rabbi.scrollcounter.ui.SettingsScreen
 import com.rabbi.scrollcounter.ui.TodayScreen
+import com.rabbi.scrollcounter.ui.glassBackdrop
 import com.rabbi.scrollcounter.ui.theme.ScrollCounterTheme
 
 /** TEST ad unit. Replace with your own AdMob banner unit id before publishing. */
@@ -148,12 +149,13 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
         } else {
             var tab by rememberSaveable { mutableStateOf(Tab.Today) }
             Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
+                modifier = Modifier.glassBackdrop(dark),
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 bottomBar = {
                     Column {
                         if (AdsConsent.canRequestAds) BannerAd()
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f), tonalElevation = 0.dp) {
                             Tab.entries.forEach { t ->
                                 NavigationBarItem(
                                     selected = tab == t,

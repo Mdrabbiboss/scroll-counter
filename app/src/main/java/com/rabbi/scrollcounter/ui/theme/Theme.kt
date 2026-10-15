@@ -28,6 +28,19 @@ private val Light = lightColorScheme(
     outline = Color(0xFFB9C8C4),
     outlineVariant = Color(0xFFE0E9E7),
     error = Color(0xFFE5484D),
+    secondaryContainer = Color(0xFFD3F4EE),
+    onSecondaryContainer = Color(0xFF053B35),
+    tertiary = Color(0xFF0284C7),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFD6EEFB),
+    onTertiaryContainer = Color(0xFF032A40),
+    surfaceTint = Color(0xFF0E8C7F),
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF7FAF9),
+    surfaceContainerHighest = Color(0xFFE6EEEC),
+    surfaceBright = Color.White,
+    surfaceDim = Color(0xFFDCE5E3),
+    inversePrimary = Color(0xFF3DDCC4),
 )
 
 private val Dark = darkColorScheme(
@@ -48,6 +61,19 @@ private val Dark = darkColorScheme(
     outline = Color(0xFF3A4C48),
     outlineVariant = Color(0xFF1D2B29),
     error = Color(0xFFFF7A7A),
+    secondaryContainer = Color(0xFF0E4A43),
+    onSecondaryContainer = Color(0xFFC9F7EE),
+    tertiary = Color(0xFF7DD3FC),
+    onTertiary = Color(0xFF00283D),
+    tertiaryContainer = Color(0xFF0B3A52),
+    onTertiaryContainer = Color(0xFFD6EEFB),
+    surfaceTint = Color(0xFF3DDCC4),
+    surfaceContainerLowest = Color(0xFF050D0C),
+    surfaceContainerLow = Color(0xFF0C1716),
+    surfaceContainerHighest = Color(0xFF1C2A28),
+    surfaceBright = Color(0xFF1C2A28),
+    surfaceDim = Color(0xFF071110),
+    inversePrimary = Color(0xFF0E8C7F),
 )
 
 /** Fixed brand colors that look the same in light and dark. Calm ocean teal with a mint→sky ring. */

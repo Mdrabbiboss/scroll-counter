@@ -3,6 +3,15 @@ package com.rabbi.scrollcounter.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,23 +67,54 @@ import java.util.Locale
 // ---------- Containers ----------
 
 @Composable
+fun isDarkTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+/** Frosted-glass card: translucent fill over the app's color backdrop, with a light top-edge highlight. */
+@Composable
 fun PremiumCard(
     modifier: Modifier = Modifier,
-    container: Color = MaterialTheme.colorScheme.surface,
+    container: Color? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(24.dp)
-    val colors = CardDefaults.cardColors(containerColor = container)
-    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    val dark = isDarkTheme()
+    val shape = RoundedCornerShape(26.dp)
+    val fill = container ?: if (dark) Color(0xFF13211F).copy(alpha = 0.62f) else Color.White.copy(alpha = 0.72f)
+    val colors = CardDefaults.cardColors(containerColor = fill)
+    val border = BorderStroke(
+        1.dp,
+        Brush.verticalGradient(
+            if (dark) listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.03f))
+            else listOf(Color.White, Color.White.copy(alpha = 0.4f))
+        )
+    )
+    val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, border = border) {
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, border = border, elevation = elevation) {
             Column(Modifier.padding(18.dp), content = content)
         }
     } else {
-        Card(modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, border = border) {
+        Card(modifier = modifier.fillMaxWidth(), shape = shape, colors = colors, border = border, elevation = elevation) {
             Column(Modifier.padding(18.dp), content = content)
         }
+    }
+}
+
+/** Soft colored light blobs behind everything, so the translucent cards read as glass. */
+fun Modifier.glassBackdrop(dark: Boolean): Modifier = this.drawBehind {
+    drawRect(if (dark) Color(0xFF061110) else Color(0xFFEFF5F3))
+    val w = size.width
+    val h = size.height
+    fun blob(cx: Float, cy: Float, r: Float, c: Color) =
+        drawCircle(Brush.radialGradient(listOf(c, Color.Transparent), Offset(cx, cy), r), r, Offset(cx, cy))
+    if (dark) {
+        blob(w * 0.05f, h * 0.06f, w * 0.95f, Color(0xFF0FB5A0).copy(alpha = 0.30f))
+        blob(w * 1.0f, h * 0.38f, w * 0.85f, Color(0xFF0EA5E9).copy(alpha = 0.18f))
+        blob(w * 0.2f, h * 0.85f, w * 0.9f, Color(0xFF14B8A6).copy(alpha = 0.16f))
+    } else {
+        blob(w * 0.05f, h * 0.05f, w * 0.95f, Color(0xFF5EEAD4).copy(alpha = 0.45f))
+        blob(w * 1.0f, h * 0.4f, w * 0.85f, Color(0xFF7DD3FC).copy(alpha = 0.35f))
+        blob(w * 0.15f, h * 0.88f, w * 0.9f, Color(0xFF99F6E4).copy(alpha = 0.40f))
     }
 }
 
@@ -130,17 +170,42 @@ fun StatTile(icon: ImageVector, label: String, value: String, hint: String?, mod
     }
 }
 
-/** Rounded-square brand tile with the app's initial, like a mini app icon. */
+/** The app's real launcher icon when it's installed, otherwise a brand-colored letter tile. */
 @Composable
 fun AppIcon(app: TrackedApp?, size: Int = 40) {
+    val context = LocalContext.current
+    val icon = remember(app?.key) { app?.let { AppIconCache.get(context, it) } }
+    val shape = RoundedCornerShape((size * 0.28f).dp)
+    if (icon != null) {
+        Image(
+            bitmap = icon,
+            contentDescription = app?.name,
+            modifier = Modifier.size(size.dp).clip(shape)
+        )
+        return
+    }
     val bg = Color(app?.color ?: 0xFF888888)
     val fg = Color(app?.onColor ?: 0xFFFFFFFF)
     Box(
-        Modifier.size(size.dp).clip(RoundedCornerShape((size * 0.3f).dp)).background(bg)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape((size * 0.3f).dp)),
+        Modifier.size(size.dp).clip(shape).background(bg)
+            .border(1.dp, Color.White.copy(alpha = 0.12f), shape),
         contentAlignment = Alignment.Center
     ) {
         Text((app?.name ?: "?").take(1), color = fg, fontWeight = FontWeight.Bold, fontSize = (size * 0.42f).sp)
+    }
+}
+
+/** Loads each installed app's icon once from the phone and keeps it in memory. */
+object AppIconCache {
+    private val cache = HashMap<String, ImageBitmap?>()
+
+    fun get(context: android.content.Context, app: TrackedApp): ImageBitmap? = synchronized(cache) {
+        cache.getOrPut(app.key) {
+            val pm = context.packageManager
+            app.packages.firstNotNullOfOrNull { pkg ->
+                runCatching { pm.getApplicationIcon(pkg).toBitmap(144, 144).asImageBitmap() }.getOrNull()
+            }
+        }
     }
 }
 

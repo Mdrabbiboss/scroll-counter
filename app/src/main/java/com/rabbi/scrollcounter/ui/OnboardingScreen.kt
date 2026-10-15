@@ -70,7 +70,7 @@ fun OnboardingScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp)
+        Modifier.fillMaxSize().glassBackdrop(isDarkTheme()).safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             repeat(4) { i ->

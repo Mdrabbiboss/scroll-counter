@@ -232,7 +232,7 @@ private fun HeroCard(count: Int, limit: Int, onEditLimit: () -> Unit) {
 @Composable
 private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
     val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
-    PremiumCard(container = MaterialTheme.colorScheme.primaryContainer, onClick = onAdd) {
+    PremiumCard(container = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f), onClick = onAdd) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Mini preview of the widget
             Box(
@@ -258,7 +258,7 @@ private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
 
 @Composable
 private fun SetupBanner(onEnable: () -> Unit) {
-    PremiumCard(container = MaterialTheme.colorScheme.primaryContainer) {
+    PremiumCard(container = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f)) {
         Text("Turn on scroll tracking", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
         Spacer(Modifier.height(4.dp))
         Text(
