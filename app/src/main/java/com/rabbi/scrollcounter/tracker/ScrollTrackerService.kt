@@ -12,6 +12,7 @@ import com.rabbi.scrollcounter.block.BlockActivity
 import com.rabbi.scrollcounter.data.ScrollStore
 import com.rabbi.scrollcounter.data.TrackedApp
 import com.rabbi.scrollcounter.data.TrackedApps
+import com.rabbi.scrollcounter.guard.UninstallGuard
 import java.time.LocalDate
 
 /**
