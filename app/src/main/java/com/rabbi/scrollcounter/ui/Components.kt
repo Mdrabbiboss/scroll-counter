@@ -131,7 +131,7 @@ fun Modifier.glassBackdrop(dark: Boolean): Modifier = this.drawBehind {
         blob(w * 0.0f, h * 0.62f, w * 0.75f, Color(0xFFFBBF24).copy(alpha = 0.16f))
         blob(w * 1.0f, h * 0.9f, w * 0.9f, Color(0xFF34D399).copy(alpha = 0.26f))
     }
-}}
+}
 
 @Composable
 fun ScreenHeader(title: String, eyebrow: String, trailing: @Composable (() -> Unit)? = null) {

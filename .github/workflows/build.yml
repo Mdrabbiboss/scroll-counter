@@ -40,7 +40,7 @@ jobs:
       - name: Report build errors
         if: failure()
         run: |
-          MSG=$(grep -E "^e: |What went wrong|error:|ERROR:|Missing class|> " build.log | head -25 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          MSG=$(grep -E -A4 "^e: |What went wrong|error:|ERROR:|Missing class" build.log | grep -v "^> Task" | head -30 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
           echo "::error title=Build failed::${MSG}"
 
       - name: Upload debug APK (install on your phone to test)
