@@ -30,6 +30,22 @@ class ScrollStore private constructor(context: Context) {
 
     private val stats = context.getSharedPreferences("scroll_stats", Context.MODE_PRIVATE)
     private val settings = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    /** Device-only state that must NOT come back from a backup (setup done, device admin on…). */
+    private val local = context.getSharedPreferences("local", Context.MODE_PRIVATE)
+    private val backup = android.app.backup.BackupManager(context.applicationContext)
+
+    init {
+        // One-time move of device-only flags out of the backed-up settings file.
+        if (!local.getBoolean("migrated", false)) {
+            local.edit()
+                .putBoolean("onboarded", settings.getBoolean("onboarded", false))
+                .putBoolean("widget_prompted_v2", settings.getBoolean("widget_prompted_v2", false))
+                .putBoolean("uninstall_guard", settings.getBoolean("uninstall_guard", false))
+                .putBoolean("migrated", true)
+                .apply()
+            settings.edit().remove("onboarded").remove("widget_prompted_v2").remove("uninstall_guard").apply()
+        }
+    }
 
     private val _changes = MutableStateFlow(0L)
     /** Ticks whenever stats or settings change, so Compose can re-read. */
@@ -48,6 +64,8 @@ class ScrollStore private constructor(context: Context) {
 
     private fun bump() {
         _changes.value = _changes.value + 1
+        // Ask Android to back the counts up soon, so reinstalling the app keeps today's reels.
+        runCatching { backup.dataChanged() }
         // Coalesce widget updates so fast scrolling doesn't redraw the widget every frame.
         main.removeCallbacks(widgetRefresh)
         main.postDelayed(widgetRefresh, 700)
@@ -198,8 +216,8 @@ class ScrollStore private constructor(context: Context) {
 
     /** "Prevent app uninstall" is on (device admin + guard in the tracking service). */
     var uninstallGuard: Boolean
-        get() = settings.getBoolean("uninstall_guard", false)
-        set(value) { settings.edit().putBoolean("uninstall_guard", value).apply(); bump() }
+        get() = local.getBoolean("uninstall_guard", false)
+        set(value) { local.edit().putBoolean("uninstall_guard", value).apply(); bump() }
 
     var limitAlertsOn: Boolean
         get() = settings.getBoolean("limit_alerts", true)
@@ -210,8 +228,8 @@ class ScrollStore private constructor(context: Context) {
         set(value) { settings.edit().putBoolean("warn_alerts", value).apply(); bump() }
 
     var onboarded: Boolean
-        get() = settings.getBoolean("onboarded", false)
-        set(value) { settings.edit().putBoolean("onboarded", value).apply(); bump() }
+        get() = local.getBoolean("onboarded", false)
+        set(value) { local.edit().putBoolean("onboarded", value).apply(); bump() }
 
     var themeMode: ThemeMode
         get() = runCatching { ThemeMode.valueOf(settings.getString("theme", null) ?: "SYSTEM") }
@@ -220,8 +238,8 @@ class ScrollStore private constructor(context: Context) {
 
     /** We asked once to add the widget automatically. */
     var widgetPrompted: Boolean
-        get() = settings.getBoolean("widget_prompted_v2", false)
-        set(value) { settings.edit().putBoolean("widget_prompted_v2", value).apply() }
+        get() = local.getBoolean("widget_prompted_v2", false)
+        set(value) { local.edit().putBoolean("widget_prompted_v2", value).apply() }
 
     /** Floating check-in card every few scrolls. */
     var bubbleOn: Boolean

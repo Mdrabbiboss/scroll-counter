@@ -15,8 +15,8 @@ object Notifier {
     private const val CHANNEL_ID = "scroll_limit"
     private const val LIMIT_ID = 1001
     private const val WARN_ID = 1002
-    private const val LIVE_CHANNEL_ID = "live_counter"
-    private const val LIVE_ID = 1003
+    private const val LIVE_CHANNEL_ID = "live_counter_v2"
+    private const val LIVE_ID = 1004
     private const val VISIBLE_MS = 6000L
 
     fun ensureChannel(context: Context) {
@@ -35,6 +35,7 @@ object Notifier {
             setSound(null, null)
         }
         nm.createNotificationChannel(live)
+        runCatching { nm.deleteNotificationChannel("live_counter") } // old channel
     }
 
     /** The small buddy icon in the status bar, with today's count in the shade. Silent; updates in place. */
