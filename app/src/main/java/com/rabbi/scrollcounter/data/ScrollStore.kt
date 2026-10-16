@@ -54,6 +54,8 @@ class ScrollStore private constructor(context: Context) {
     private val appContext = context.applicationContext
 
     init {
+        // Bring back counts from the durable copy (after a reinstall or "clear data").
+        DurableStore.restore(appContext) { text -> if (text != null) runCatching { mergeDurable(text) } }
         TrackedApps.attach(appContext)
         com.rabbi.scrollcounter.ui.theme.AppFonts.load(appContext)
     }
@@ -64,11 +66,66 @@ class ScrollStore private constructor(context: Context) {
 
     private fun bump() {
         _changes.value = _changes.value + 1
-        // Ask Android to back the counts up soon, so reinstalling the app keeps today's reels.
+        // Ask Android to back the counts up soon, so reinstalling the app keeps today's reels,
+        // and keep a copy in Block Store, which survives uninstalling or clearing the app.
         runCatching { backup.dataChanged() }
+        DurableStore.scheduleSave(appContext) { durableSnapshot() }
         // Coalesce widget updates so fast scrolling doesn't redraw the widget every frame.
         main.removeCallbacks(widgetRefresh)
         main.postDelayed(widgetRefresh, 700)
+    }
+
+    // ---------------- Durable copy (survives uninstall / clear data) ----------------
+
+    /** Counts of the last 30 days as compact lines, oldest first. Header: v1|firstDay|limit. */
+    @Synchronized
+    fun durableSnapshot(): String {
+        val cutoff = LocalDate.now().minusDays(30)
+        val rows = stats.all.mapNotNull { (k, v) ->
+            val parts = k.split('|')
+            if (parts.size != 3) return@mapNotNull null
+            val date = runCatching { LocalDate.parse(parts[1]) }.getOrNull() ?: return@mapNotNull null
+            if (date.isBefore(cutoff)) return@mapNotNull null
+            val value = when (v) { is Int -> v.toString(); is Float -> String.format(Locale.US, "%.1f", v); else -> return@mapNotNull null }
+            Triple(date, k, value)
+        }.sortedBy { it.first }
+        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}")
+        rows.forEach { sb.append('\n').append(it.second).append('|').append(it.third) }
+        return sb.toString()
+    }
+
+    /** Merge a durable copy back in, never lowering anything that's already here. */
+    @Synchronized
+    fun mergeDurable(text: String) {
+        val lines = text.lines()
+        val head = lines.firstOrNull()?.split('|') ?: return
+        if (head.firstOrNull() != "v1") return
+        val editor = stats.edit()
+        var changed = false
+        for (line in lines.drop(1)) {
+            val p = line.split('|')
+            if (p.size != 4) continue
+            val key = "${p[0]}|${p[1]}|${p[2]}"
+            when (p[0]) {
+                "c", "h" -> {
+                    val v = p[3].toIntOrNull() ?: continue
+                    if (v > stats.getInt(key, 0)) { editor.putInt(key, v); changed = true }
+                }
+                "d" -> {
+                    val v = p[3].toFloatOrNull() ?: continue
+                    if (v > stats.getFloat(key, 0f)) { editor.putFloat(key, v); changed = true }
+                }
+            }
+        }
+        editor.apply()
+        // Keep the earliest first day (streaks and history), and the limit if none is set here.
+        head.getOrNull(1)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { saved ->
+            if (saved.isBefore(firstDay)) { settings.edit().putString(KEY_FIRST_DAY, saved.toString()).apply(); changed = true }
+        }
+        if (!settings.contains("daily_limit")) head.getOrNull(2)?.toIntOrNull()?.let {
+            settings.edit().putInt("daily_limit", it).apply(); changed = true
+        }
+        if (changed) bump()
     }
 
     // ---------------- Stats ----------------
@@ -163,11 +220,13 @@ class ScrollStore private constructor(context: Context) {
         bump()
     }
 
+    /** Deletes past days. Today's count is kept, so deleting history can't reset today's limit. */
     fun clearAll() {
-        stats.edit().clear().apply()
-        lastLimitAlert = null
-        lastWarnAlert = null
-        settings.edit().putString(KEY_FIRST_DAY, LocalDate.now().toString()).apply()
+        val today = LocalDate.now().toString()
+        val editor = stats.edit()
+        stats.all.keys.filter { it.split('|').getOrNull(1) != today }.forEach { editor.remove(it) }
+        editor.apply()
+        settings.edit().putString(KEY_FIRST_DAY, today).apply()
         bump()
     }
 

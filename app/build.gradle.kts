@@ -12,8 +12,8 @@ android {
         applicationId = "com.rabbi.scrollcounter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 46
-        versionName = "5.0"
+        versionCode = 47
+        versionName = "5.1"
     }
 
     // Release signing comes from environment variables (set by GitHub Actions secrets or your PC).
@@ -88,5 +88,7 @@ dependencies {
 
     // AdMob + Google consent (GDPR / UMP)
     implementation("com.google.android.gms:play-services-ads:23.3.0")
+    // Block Store: keeps the reel history on the phone even if the app is uninstalled
+    implementation("com.google.android.gms:play-services-auth-blockstore:16.4.0")
     implementation("com.google.android.ump:user-messaging-platform:3.0.0")
 }

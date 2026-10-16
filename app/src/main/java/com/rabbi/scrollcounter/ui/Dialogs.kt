@@ -289,7 +289,7 @@ fun DeleteHistoryDialog(
     onDismiss: () -> Unit,
     title: String = "Delete all history?",
     body: String = "This permanently removes from this phone:\n" +
-        "• Every day's scroll count and distance\n" +
+        "• Every past day's reel count and distance (today's count stays)\n" +
         "• Your hourly activity and app breakdown\n" +
         "• Your streak (it starts again from zero)\n\n" +
         "This can't be undone.",
