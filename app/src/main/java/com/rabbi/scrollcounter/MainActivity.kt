@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -207,9 +208,10 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                         tab = t
                                     },
                                     icon = {
-                                        if (t == Tab.Today) Icon(
-                                            androidx.compose.ui.res.painterResource(com.rabbi.scrollcounter.R.drawable.ic_buddy),
-                                            contentDescription = t.label, modifier = Modifier.size(26.dp)
+                                        // "You": the living 3D buddy in today's mood — its eyes look around and blink.
+                                        if (t == Tab.Today) com.rabbi.scrollcounter.ui.AnimatedFace(
+                                            com.rabbi.scrollcounter.face.Mood.of(todayTotal, limitNow), 30.dp, bounceKey = todayTotal,
+                                            modifier = Modifier.graphicsLayer { alpha = if (tab == t) 1f else 0.7f }
                                         ) else Icon(t.icon, contentDescription = t.label)
                                     },
                                     label = { Text(t.label) },
