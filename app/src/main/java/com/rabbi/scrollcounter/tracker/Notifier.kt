@@ -54,16 +54,9 @@ object Notifier {
         val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
         val sizePx = (context.resources.displayMetrics.density * 48).toInt()
         val face = runCatching { buddyTile(sizePx, mood) }.getOrNull()
-        // Small icon = the real colour buddy (a bitmap), so the shade and status bar show the
-        // app's own face instead of a flat one-colour symbol. Falls back to the vector icon.
-        val small = runCatching {
-            val px = (context.resources.displayMetrics.density * 24).toInt().coerceAtLeast(24)
-            androidx.core.graphics.drawable.IconCompat.createWithBitmap(
-                com.rabbi.scrollcounter.face.FaceRenderer.bitmap(px, mood)
-            )
-        }.getOrNull()
-        val b = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
-        if (small != null) b.setSmallIcon(small) else b.setSmallIcon(R.drawable.ic_buddy)
+        // Small icon: a one-colour buddy resource (like other apps use). Phones such as
+        // ColorOS show the app's own icon next to it in the shade.
+        val b = NotificationCompat.Builder(context, LIVE_CHANNEL_ID).setSmallIcon(R.drawable.ic_buddy)
         val n = b
             .setLargeIcon(face)
             .setContentTitle("Scroll Counter")
