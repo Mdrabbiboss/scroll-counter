@@ -382,12 +382,59 @@ class ScrollTrackerService : AccessibilityService() {
         if (now - lastBlockAt < 1500) return
         lastBlockAt = now
         pill?.hide()
+        Notifier.clearLive(this)
         detector?.forgetPager()
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        val blockedPkg = currentPkg
+        // Open the limit screen straight over the app instead of pressing Home first: pressing Home
+        // makes video apps (YouTube…) shrink into a floating picture-in-picture window and keep
+        // playing. Covered by our screen, the app just stops.
         val i = Intent(this, BlockActivity::class.java)
             .putExtra(BlockActivity.EXTRA_APP, appName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        handler.postDelayed({ runCatching { startActivity(i) } }, 250)
+        if (runCatching { startActivity(i) }.isFailure) {
+            performGlobalAction(GLOBAL_ACTION_HOME)
+            handler.postDelayed({ runCatching { startActivity(i) } }, 250)
+        }
+        // If a floating video window still appears, close it; then end the app in the background.
+        handler.postDelayed({ closeFloatingVideo(4) }, 450)
+        if (blockedPkg != null && !TrackedApps.isBrowser(blockedPkg)) handler.postDelayed({ endApp(blockedPkg) }, 2500)
+    }
+
+    /** Closes any picture-in-picture window by dragging it onto the system's dismiss target. */
+    private fun closeFloatingVideo(tries: Int) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
+        val pip = runCatching { windows.firstOrNull { it.isInPictureInPictureMode } }.getOrNull()
+        if (pip == null) {
+            if (tries > 0) handler.postDelayed({ closeFloatingVideo(tries - 1) }, 500)
+            return
+        }
+        val r = android.graphics.Rect()
+        pip.getBoundsInScreen(r)
+        val dm = resources.displayMetrics
+        val tx = dm.widthPixels / 2f
+        val ty = dm.heightPixels * 0.9f
+        val drag = android.graphics.Path().apply { moveTo(r.exactCenterX(), r.exactCenterY()); lineTo(tx, ty) }
+        val hold = android.graphics.Path().apply { moveTo(tx, ty); lineTo(tx + 1f, ty + 1f) }
+        val s1 = android.accessibilityservice.GestureDescription.StrokeDescription(drag, 0, 600, true)
+        val s2 = s1.continueStroke(hold, 0, 450, false)
+        val again = { handler.postDelayed({ closeFloatingVideo(tries - 1) }, 700); Unit }
+        val ok = runCatching {
+            dispatchGesture(android.accessibilityservice.GestureDescription.Builder().addStroke(s1).build(), object : GestureResultCallback() {
+                override fun onCompleted(g: android.accessibilityservice.GestureDescription?) {
+                    runCatching { dispatchGesture(android.accessibilityservice.GestureDescription.Builder().addStroke(s2).build(), null, null) }
+                    if (tries > 0) again()
+                }
+                override fun onCancelled(g: android.accessibilityservice.GestureDescription?) { if (tries > 0) again() }
+            }, null)
+        }.getOrDefault(false)
+        if (!ok && tries > 0) again()
+    }
+
+    /** Ends the blocked app's background process, so it's really closed (not just hidden). */
+    private fun endApp(pkg: String) {
+        runCatching {
+            getSystemService(android.app.ActivityManager::class.java)?.killBackgroundProcesses(pkg)
+        }
     }
 
     private fun checkAlerts(store: ScrollStore, total: Int, limit: Int) {
