@@ -185,33 +185,37 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (idxMoved) st.indexReliable = true
         if (index != null) st.lastIdx = index
         val pages = accum / h
-        val moved = idxMoved || (hadDelta && abs(pages) >= 0.35f) || (!hadDelta && !hadIndex)
-        if (!moved) return 0   // a small shift (comment box, layout change, half swipe) — same reel
+        // Some apps (TikTok) report neither a distance nor a usable item number. There the page
+        // itself changing (checked below) is the evidence; elsewhere a tiny shift is ignored.
+        val tinyShift = hadDelta && abs(pages) < 0.35f && !idxMoved
+        if (tinyShift) return 0   // a small shift (comment box, layout change, half swipe) — same reel
 
         // ---- Which video is on screen now? ----
-        // A fingerprint of the video page's labels (kept only in memory, never stored) tells a
-        // new reel from the same one or one you already saw.
+        // Two independent checks: the page view that fills the feed (a new reel brings a different
+        // page onto the screen; opening comments or a bounce keeps the same one), and a one-way
+        // code of the page's labels (kept only in memory). Either changing = a new reel.
+        val ck = snappedChildKey()
         val fp = pageFingerprint()
+        val ckChanged = ck != null && st.currentChild != null && ck != st.currentChild
+        val fpChanged = fp != null && st.currentFp != null && fp != st.currentFp
+        val known = (ck != null && st.currentChild != null) || (fp != null && st.currentFp != null)
+        if (ck != null) st.currentChild = ck
+        if (fp != null) st.currentFp = fp
+        val wentBack = (hadDelta && pages < -0.35f) || (idxMoved && index != null && prevIdx != Int.MIN_VALUE && index < prevIdx) ||
+            (fpChanged && fp in st.seenFps)
         if (fp != null) {
-            if (fp == st.currentFp) return 0                 // still the same reel
-            st.currentFp = fp
-            if (fp in st.seenFps) return 0                   // went back to an earlier reel
             st.seenFps.add(fp)
             if (st.seenFps.size > 80) st.seenFps.remove(st.seenFps.first())
+        }
+        if (ckChanged || fpChanged) {
+            if (wentBack) return 0
             var n = 1
             if (index != null && st.indexReliable && st.maxIndex != Int.MIN_VALUE && index - st.maxIndex > 1) n = index - st.maxIndex
             else if (hadDelta && pages >= 1.5f) n = pages.roundToInt()
             if (index != null && index > st.maxIndex) st.maxIndex = index
             return mark(st, n.coerceIn(1, 3))
         }
-
-        // ---- No fingerprint: the page view itself. Moving to another reel brings a different
-        // page onto the screen; a resize or bounce (e.g. opening comments) keeps the same one.
-        val ck = snappedChildKey()
-        if (ck != null) {
-            if (ck == st.currentChild) return 0
-            st.currentChild = ck
-        }
+        if (known) return 0   // same page, same labels → still the same reel
 
         // ---- Then item numbers, then distance. Never count without evidence. ----
         if (index != null) {
