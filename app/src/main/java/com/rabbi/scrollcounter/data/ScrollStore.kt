@@ -357,6 +357,11 @@ class ScrollStore private constructor(context: Context) {
 
     fun isAppEnabled(key: String): Boolean = settings.getBoolean("app_$key", true)
 
+    /** The buddy's little pet sounds on the You screen. */
+    var buddySounds: Boolean
+        get() = settings.getBoolean("buddy_sounds", true)
+        set(value) { settings.edit().putBoolean("buddy_sounds", value).apply(); bump() }
+
     /** Count reels watched on TikTok / YouTube / Facebook… websites in browsers. */
     var browsersOn: Boolean
         get() = settings.getBoolean("browsers_on", true)

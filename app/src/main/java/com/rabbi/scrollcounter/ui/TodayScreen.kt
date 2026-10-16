@@ -42,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +80,7 @@ fun TodayScreen(
     val limit = remember(tick) { store.dailyLimit }
     val todayDate = rememberToday()
     val limitLocked = remember(tick, todayDate) { store.limitLockedToday }
+    val buddySounds = remember(tick) { store.buddySounds }
     val paused = remember(tick) { store.paused }
     val streak = remember(tick) { store.streak() }
     val peak = hours.indices.maxByOrNull { hours[it] }?.takeIf { hours[it] > 0 }
@@ -101,7 +103,7 @@ fun TodayScreen(
         if (!status.trackerOn) item { SetupBanner(onEnableTracking) }
         else if (paused) item { PausedBanner { store.paused = false } }
 
-        item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit, limitLocked) }
+        item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit, limitLocked, buddySounds) }
         if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
 
         item {
@@ -158,7 +160,7 @@ fun TodayScreen(
 }
 
 @Composable
-private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.scrollcounter.data.AppStat>, onEditLimit: () -> Unit, limitLocked: Boolean = false) {
+private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.scrollcounter.data.AppStat>, onEditLimit: () -> Unit, limitLocked: Boolean = false, soundsEnabled: Boolean = true) {
     val ratio = if (limit > 0) count.toFloat() / limit else 0f
     val progress by animateFloatAsState(ratio.coerceIn(0f, 1f), tween(900), label = "ring")
     val shown by animateIntAsState(count, tween(700), label = "count")
@@ -231,7 +233,7 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                 val sweep = (progress * 360f).coerceAtLeast(if (progress > 0f) 6f else 0f)
                 val ang = Math.toRadians((-90f + sweep).toDouble())
                 AnimatedFace(
-                    mood, 32.dp, bounceKey = count,
+                    mood, 28.dp, bounceKey = count, still = true,
                     modifier = Modifier.offset(
                         x = (kotlin.math.cos(ang) * radius).toFloat().dp,
                         y = (kotlin.math.sin(ang) * radius).toFloat().dp
@@ -263,7 +265,28 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
 
             // Buddy + message
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                AnimatedFace(mood, 84.dp, bounceKey = count)
+                // The buddy is a little pet: it makes a mood sound now and then, and when tapped.
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+                val soundsOn = soundsEnabled
+                androidx.compose.runtime.LaunchedEffect(mood, soundsOn) {
+                    if (!soundsOn) return@LaunchedEffect
+                    kotlinx.coroutines.delay(3_500)
+                    while (true) {
+                        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
+                            com.rabbi.scrollcounter.face.BuddyVoice.speak(ctx, mood)
+                        kotlinx.coroutines.delay(com.rabbi.scrollcounter.face.BuddyVoice.idleDelayMs(mood))
+                    }
+                }
+                val petSrc = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                var pets by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+                AnimatedFace(
+                    mood, 84.dp, bounceKey = count + pets * 100_000,
+                    modifier = Modifier.clickable(interactionSource = petSrc, indication = null) {
+                        pets++
+                        if (soundsOn) com.rabbi.scrollcounter.face.BuddyVoice.speak(ctx, mood)
+                    }
+                )
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(mood.label, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)

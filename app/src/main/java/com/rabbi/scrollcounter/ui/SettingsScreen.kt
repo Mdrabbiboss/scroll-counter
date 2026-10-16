@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Public
@@ -276,6 +277,13 @@ fun SettingsScreen(
                     theme.ordinal,
                     { store.themeMode = ThemeMode.entries[it] }
                 )
+                Spacer(Modifier.height(8.dp))
+                val sounds = remember(tick) { store.buddySounds }
+                SettingRow(
+                    Icons.Rounded.MusicNote, "Buddy sounds",
+                    if (sounds) "Your buddy makes little sounds by mood (quiet on silent)" else "Off",
+                    iconTint = Brand.Gold
+                ) { PremiumSwitch(checked = sounds, onCheckedChange = { store.buddySounds = it }) }
             }
         }
 

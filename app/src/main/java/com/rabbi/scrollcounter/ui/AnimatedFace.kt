@@ -29,9 +29,10 @@ import kotlin.random.Random
 /**
  * The living scroll buddy: blinks every few seconds, floats gently, bounces when [bounceKey]
  * changes (e.g. on every new scroll) and wobbles dizzily when exhausted.
+ * [still] keeps the head fixed in place (no float, bounce or wobble): only the face is alive.
  */
 @Composable
-fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey: Any? = null) {
+fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey: Any? = null, still: Boolean = false) {
     // Human-like eyes: glances, resting drift and natural blinks, every frame.
     val eyes = remember { com.rabbi.scrollcounter.face.EyeLife() }
     var blink by remember { mutableFloatStateOf(0f) }
@@ -52,6 +53,7 @@ fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey:
     LaunchedEffect(bounceKey) {
         if (bounceKey != null) {
             eyes.glanceAtCounter(android.os.SystemClock.uptimeMillis())
+            if (still) return@LaunchedEffect
             bounce.snapTo(1.16f)
             bounce.animateTo(1f, spring(dampingRatio = 0.38f, stiffness = 650f))
         }
@@ -72,6 +74,7 @@ fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey:
 
     Canvas(
         modifier.size(size).graphicsLayer {
+            if (still) return@graphicsLayer
             val sc = bounce.value
             scaleX = sc; scaleY = sc
             translationY = float * this.size.height * 0.03f
