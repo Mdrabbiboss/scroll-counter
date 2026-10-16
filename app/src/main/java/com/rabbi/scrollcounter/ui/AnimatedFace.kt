@@ -37,11 +37,13 @@ fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey:
     var blink by remember { mutableFloatStateOf(0f) }
     var gazeX by remember { mutableFloatStateOf(0f) }
     var gazeY by remember { mutableFloatStateOf(0f) }
+    var time by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) {
         while (true) {
             androidx.compose.runtime.withFrameMillis { t ->
                 eyes.update(t)
                 blink = eyes.blink; gazeX = eyes.gazeX; gazeY = eyes.gazeY
+                time = (t % 1_000_000L) / 1000f
             }
         }
     }
@@ -77,7 +79,7 @@ fun AnimatedFace(mood: Mood, size: Dp, modifier: Modifier = Modifier, bounceKey:
         }
     ) {
         drawIntoCanvas {
-            FaceRenderer.draw(it.nativeCanvas, this.size.width / 2, this.size.height / 2, this.size.minDimension / 2 * 0.94f, mood, blink, gazeX, gazeY)
+            FaceRenderer.draw(it.nativeCanvas, this.size.width / 2, this.size.height / 2, this.size.minDimension / 2 * 0.94f, mood, blink, gazeX, gazeY, time)
         }
     }
 }

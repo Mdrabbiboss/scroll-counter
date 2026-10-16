@@ -27,6 +27,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -97,12 +99,29 @@ private fun BlockScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        com.rabbi.scrollcounter.ui.AnimatedFace(Mood.EXHAUSTED, 160.dp)
-        Spacer(Modifier.height(28.dp))
+        // The exhausted buddy, with a slow red "alarm" glow pulsing behind it.
+        val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "halo")
+        val glow by pulse.animateFloat(
+            0.35f, 0.75f,
+            androidx.compose.animation.core.infiniteRepeatable(
+                androidx.compose.animation.core.tween(1400), androidx.compose.animation.core.RepeatMode.Reverse
+            ), label = "glow"
+        )
+        androidx.compose.foundation.layout.Box(
+            Modifier.size(240.dp).drawBehind {
+                drawCircle(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        listOf(Color(0xFFFF5A5A).copy(alpha = glow * 0.55f), Color.Transparent)
+                    ), radius = size.minDimension / 2
+                )
+            },
+            contentAlignment = Alignment.Center
+        ) { com.rabbi.scrollcounter.ui.AnimatedFace(Mood.EXHAUSTED, 180.dp) }
+        Spacer(Modifier.height(20.dp))
         Text("Daily limit reached", style = MaterialTheme.typography.headlineMedium, color = Color.White, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp))
         Text(
-            "You've scrolled $total times today (limit $limit).\n$appName is closed for today — your eyes and mind need a break.",
+            "You've watched $total reels today (limit $limit).\n$appName is closed for today — your eyes and mind need a break.",
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White.copy(alpha = 0.8f),
             textAlign = TextAlign.Center

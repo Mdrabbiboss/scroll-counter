@@ -187,6 +187,13 @@ class ScrollStore private constructor(context: Context) {
         get() = false
         set(@Suppress("UNUSED_PARAMETER") value) { }
 
+    /** On-screen counter size: 0 = small, 1 = normal, 2 = large, 3 = extra large. */
+    var pillSize: Int
+        get() = settings.getInt("pill_size", 1).coerceIn(0, 3)
+        set(value) { settings.edit().putInt("pill_size", value.coerceIn(0, 3)).apply(); bump() }
+
+    val pillScale: Float get() = PILL_SCALES[pillSize]
+
     /** "Prevent app uninstall" is on (device admin + guard in the tracking service). */
     var uninstallGuard: Boolean
         get() = settings.getBoolean("uninstall_guard", false)
@@ -270,6 +277,7 @@ class ScrollStore private constructor(context: Context) {
 
     companion object {
         const val HISTORY_DAYS = 60
+        val PILL_SCALES = floatArrayOf(0.8f, 1f, 1.3f, 1.65f)
         private const val KEY_FIRST_DAY = "first_day"
 
         @Volatile

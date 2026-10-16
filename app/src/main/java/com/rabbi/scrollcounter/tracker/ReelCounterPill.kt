@@ -40,8 +40,13 @@ class ReelCounterPill(private val service: AccessibilityService) {
      * The overlay window is created once and kept, so showing it again is instant — no window
      * is added or removed each time, which is what made it appear late or with a jerk.
      */
-    fun show(count: Int, limit: Int, bump: Boolean) {
+    /** Size chosen in Settings (1 = normal). Changing it rebuilds the pill at the new size. */
+    private var scale = 1f
+
+    fun show(count: Int, limit: Int, bump: Boolean, size: Float = 1f) {
         val mood = Mood.of(count, limit)
+        if (root != null && size != scale) { detach() }
+        scale = size
         if (root == null) attach()
         val p = pill ?: return
         val firstAppearance = !visible
@@ -103,7 +108,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
         val ctx = service
         face = FaceView(ctx)
         countText = TextView(ctx).apply {
-            textSize = 23f
+            textSize = 23f * scale
             typeface = com.rabbi.scrollcounter.ui.theme.AppFonts.numbers
             letterSpacing = 0.01f
             setShadowLayer(dp(3f), 0f, dp(1f), 0x66000000)
@@ -113,14 +118,14 @@ class ReelCounterPill(private val service: AccessibilityService) {
         val pillView = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(5f).toInt(), dp(4f).toInt(), dp(16f).toInt(), dp(4f).toInt())
+            setPadding(dp(5f * scale).toInt(), dp(4f * scale).toInt(), dp(16f * scale).toInt(), dp(4f * scale).toInt())
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xF2052A26.toInt(), 0xF20D5F55.toInt())).apply {
-                cornerRadius = dp(30f)
+                cornerRadius = dp(30f * scale)
             }
             elevation = dp(4f)
             visibility = android.view.View.INVISIBLE
-            addView(face, LinearLayout.LayoutParams(dp(34f).toInt(), dp(34f).toInt()))
-            addView(countText, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7f).toInt() })
+            addView(face, LinearLayout.LayoutParams(dp(34f * scale).toInt(), dp(34f * scale).toInt()))
+            addView(countText, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7f * scale).toInt() })
         }
         val frame = FrameLayout(ctx).apply {
             val m = dp(10f).toInt()

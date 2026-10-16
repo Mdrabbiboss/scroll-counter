@@ -59,7 +59,8 @@ class FaceView(context: Context) : View(context) {
         val r = minOf(width, height) / 2f
         FaceRenderer.draw(
             canvas, width / 2f, height / 2f, r * 0.94f, mood,
-            maxOf(blink, eyes.blink), eyes.gazeX, eyes.gazeY
+            maxOf(blink, eyes.blink), eyes.gazeX, eyes.gazeY,
+            (SystemClock.uptimeMillis() % 1_000_000L) / 1000f
         )
     }
 

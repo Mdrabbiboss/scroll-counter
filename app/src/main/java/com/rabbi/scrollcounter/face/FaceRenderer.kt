@@ -58,7 +58,8 @@ object FaceRenderer {
      * [blink] 0 = eyes open, 1 = closed (for blink animations).
      */
     @Synchronized
-    fun draw(canvas: Canvas, cx: Float, cy: Float, r: Float, mood: Mood, blink: Float = 0f, gazeX: Float = 0f, gazeY: Float = 0f) {
+    fun draw(canvas: Canvas, cx: Float, cy: Float, r: Float, mood: Mood, blink: Float = 0f, gazeX: Float = 0f, gazeY: Float = 0f, time: Float = 0f) {
+        t = time
         gx = gazeX.coerceIn(-1f, 1f); gy = gazeY.coerceIn(-1f, 1f)
         p.shader = null; p.style = Paint.Style.FILL
         s.shader = null
@@ -103,8 +104,9 @@ object FaceRenderer {
         // --- Eyes
         when (mood) {
             Mood.EXHAUSTED -> {
-                spiralEye(canvas, cx - ex, ey, ew * 1.15f, r)
-                spiralEye(canvas, cx + ex, ey, ew * 1.15f, r)
+                // Dizzy: the spirals keep spinning, each its own way.
+                spiralEye(canvas, cx - ex, ey, ew * 1.15f, r, t * 5f)
+                spiralEye(canvas, cx + ex, ey, ew * 1.15f, r, -t * 5f + 1.3f)
             }
             else -> {
                 val lid = when (mood) { Mood.TIRED -> 0.45f; Mood.DRAINED -> 0.62f; else -> 0f }
@@ -165,13 +167,26 @@ object FaceRenderer {
                 sweat(canvas, cx + r * 0.66f, cy - r * 0.42f, r * 0.15f)
             }
             Mood.EXHAUSTED -> {
-                // Open, wobbly "ugh" mouth
+                // Panting "ugh" mouth: opens and closes, with a big gasp every few seconds.
+                val pant = 0.5f + 0.5f * kotlin.math.sin(t * 6.2f)
+                val gasp = kotlin.math.max(0f, kotlin.math.sin(t * 0.9f) - 0.75f) * 4f
+                val open = (0.10f + 0.10f * pant + 0.10f * gasp).coerceAtMost(0.34f)
+                val mw = r * (0.13f + 0.03f * gasp)
                 p.color = INK_DEEP
-                canvas.drawOval(RectF(cx - r * 0.14f, my - r * 0.02f, cx + r * 0.14f, my + r * 0.24f), p)
+                canvas.drawOval(RectF(cx - mw, my + r * 0.10f - r * open * 0.6f, cx + mw, my + r * 0.10f + r * open * 0.6f), p)
                 p.color = 0xFFFF7A90.toInt()
-                canvas.drawOval(RectF(cx - r * 0.08f, my + r * 0.11f, cx + r * 0.08f, my + r * 0.22f), p)
-                sweat(canvas, cx + r * 0.68f, cy - r * 0.46f, r * 0.16f)
-                sweat(canvas, cx - r * 0.74f, cy - r * 0.2f, r * 0.12f)
+                val tongue = r * open * 0.32f
+                canvas.drawOval(RectF(cx - mw * 0.6f, my + r * 0.10f + r * open * 0.6f - tongue * 1.6f, cx + mw * 0.6f, my + r * 0.10f + r * open * 0.6f - tongue * 0.2f), p)
+                // Sweat drops run down the face and start again.
+                for ((i, spot) in listOf(0.68f to -0.50f, -0.74f to -0.28f).withIndex()) {
+                    val k = ((t * 0.45f + i * 0.5f) % 1f)
+                    val sx = cx + spot.first * r
+                    val sy = cy + spot.second * r + k * r * 0.45f
+                    val sz = r * (if (i == 0) 0.16f else 0.12f) * (1f - k * 0.35f)
+                    val a = if (k > 0.8f) (1f - k) / 0.2f else kotlin.math.min(1f, k * 6f)
+                    sweat(canvas, sx, sy, sz, a)
+                }
+                dizzyStars(canvas, cx, cy, r)
             }
         }
     }
@@ -213,22 +228,44 @@ object FaceRenderer {
         }
     }
 
-    private fun spiralEye(c: Canvas, x: Float, y: Float, rad: Float, r: Float) {
+    private var t = 0f
+
+    /** Three little stars circling the head, like in cartoons when someone is dizzy. */
+    private fun dizzyStars(c: Canvas, cx: Float, cy: Float, r: Float) {
+        for (i in 0 until 3) {
+            val a = t * 2.4f + i * 2.094f
+            val depth = (kotlin.math.sin(a) + 1f) / 2f          // 0 = behind, 1 = in front
+            val x = cx + kotlin.math.cos(a) * r * 0.62f
+            val y = cy - r * 0.80f + kotlin.math.sin(a) * r * 0.12f
+            val sz = r * (0.07f + 0.06f * depth)
+            val path = Path()
+            val k = sz * 0.3f
+            path.moveTo(x, y - sz); path.quadTo(x + k, y - k, x + sz, y); path.quadTo(x + k, y + k, x, y + sz)
+            path.quadTo(x - k, y + k, x - sz, y); path.quadTo(x - k, y - k, x, y - sz); path.close()
+            p.shader = null
+            p.color = alpha(0xFFE066, 0.55f + 0.45f * depth)
+            c.drawPath(path, p)
+        }
+    }
+
+    private fun spiralEye(c: Canvas, x: Float, y: Float, rad: Float, r: Float, spin: Float = 0f) {
         s.color = INK; s.strokeWidth = r * 0.045f
         val path = Path()
         var a = 0.0
         var first = true
         while (a < Math.PI * 5) {
             val rr = rad * (a / (Math.PI * 5)).toFloat()
-            val px = x + rr * Math.cos(a).toFloat()
-            val py = y + rr * Math.sin(a).toFloat()
+            val px = x + rr * Math.cos(a + spin).toFloat()
+            val py = y + rr * Math.sin(a + spin).toFloat()
             if (first) { path.moveTo(px, py); first = false } else path.lineTo(px, py)
             a += 0.25
         }
         c.drawPath(path, s)
     }
 
-    private fun sweat(c: Canvas, x: Float, y: Float, sz: Float) {
+    private fun sweat(c: Canvas, x: Float, y: Float, sz: Float, a: Float = 1f) {
+        if (a <= 0.01f) return
+        val layer = if (a < 0.99f) c.saveLayerAlpha(x - sz * 2, y - sz * 2, x + sz * 2, y + sz * 2, (a * 255).toInt()) else -1
         val path = Path().apply {
             moveTo(x, y - sz * 1.5f)
             quadTo(x + sz * 1.05f, y + sz * 0.1f, x, y + sz)
@@ -240,6 +277,7 @@ object FaceRenderer {
         p.shader = null
         p.color = 0xCCFFFFFF.toInt()
         c.drawCircle(x - sz * 0.3f, y - sz * 0.1f, sz * 0.22f, p)
+        if (layer >= 0) c.restoreToCount(layer)
     }
 
     fun bitmap(sizePx: Int, mood: Mood): Bitmap {

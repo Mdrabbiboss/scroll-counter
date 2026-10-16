@@ -46,6 +46,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.rabbi.scrollcounter.BuildConfig
@@ -141,6 +146,20 @@ fun SettingsScreen(
                 SettingRow(Icons.Rounded.Flag, "Daily reel limit", "$limit reels per day", iconTint = Brand.Gold, onClick = onEditLimit) {
                     PillButton("Edit", Icons.Rounded.Edit, gold = true, onClick = onEditLimit)
                 }
+            }
+        }
+
+        // ---- On-screen counter ----
+        item { SectionLabel("On-screen counter") }
+        item {
+            PremiumCard {
+                Text("Counter size", style = MaterialTheme.typography.titleMedium)
+                Text("The little counter at the top while you watch reels", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(14.dp))
+                val size = remember(tick) { store.pillSize }
+                PillPreview(ScrollStore.PILL_SCALES[size])
+                Spacer(Modifier.height(14.dp))
+                SegmentedToggle(listOf("Small", "Normal", "Large", "XL"), size, { store.pillSize = it })
             }
         }
 
@@ -386,4 +405,31 @@ private fun DetectionLogDialog(onDismiss: () -> Unit) {
             }
         }
     )
+}
+
+/** A live copy of the on-screen counter at the chosen size. */
+@Composable
+private fun PillPreview(scale: Float) {
+    val sc by androidx.compose.animation.core.animateFloatAsState(scale, androidx.compose.animation.core.spring(dampingRatio = 0.7f), label = "pill")
+    Box(
+        Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(18.dp))
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF2A2F3A), androidx.compose.ui.graphics.Color(0xFF14171D)))),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            Modifier.clip(RoundedCornerShape((30 * sc).dp))
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xB0061F1C), androidx.compose.ui.graphics.Color(0xB00D5F55))))
+                .padding(start = (5 * sc).dp, end = (16 * sc).dp, top = (4 * sc).dp, bottom = (4 * sc).dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AnimatedFace(com.rabbi.scrollcounter.face.Mood.FRESH, (34 * sc).dp)
+            Spacer(Modifier.width((7 * sc).dp))
+            Text(
+                "12",
+                color = androidx.compose.ui.graphics.Color(0xFFFFD873),
+                fontFamily = com.rabbi.scrollcounter.ui.theme.AppFonts.Numbers,
+                fontSize = (23 * sc).sp
+            )
+        }
+    }
 }
