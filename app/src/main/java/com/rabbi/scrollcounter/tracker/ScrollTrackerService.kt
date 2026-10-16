@@ -46,7 +46,7 @@ class ScrollTrackerService : AccessibilityService() {
     private val settleRunnableRef: Runnable get() = settleRunnable
     private val settleRunnable: Runnable = Runnable {
         val app = settleApp ?: return@Runnable
-        val n = detector?.settle(app.key) ?: 0
+        val n = detector?.settle(app.key, runCatching { rootInActiveWindow }.getOrNull()) ?: 0
         if (n == ReelDetector.RETRY) {
             // Still snapping into place — look again in a moment.
             handler.postDelayed(settleRunnableRef, 250)

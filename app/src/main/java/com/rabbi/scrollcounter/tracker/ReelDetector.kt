@@ -148,9 +148,17 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     /**
      * The feed has been still for a moment. Returns how many NEW reels the user moved to (0..3).
      */
-    fun settle(appKey: String): Int {
+    fun settle(appKey: String, root: AccessibilityNodeInfo? = null): Int {
         val st = states[appKey] ?: return 0
         if (!st.pending) return 0
+        // A comment / share sheet open over the reel: scrolling it is never a new reel, even when
+        // the app (Facebook Lite…) reports that scroll from the same view as the video feed.
+        if (root != null && sheetOpen(root)) {
+            st.pending = false; st.retries = 0
+            st.hadIndex = false; st.hadDelta = false; st.accum = 0f
+            DetectLog.add(appKey, "comment/share sheet open → not counted")
+            return 0
+        }
         // Give the feed a moment to finish snapping onto the next video before reading it.
         if (!st.opaque && !st.allReels) {
             // At rest, the screen must still look like a reels feed. Apps that draw everything in
@@ -536,6 +544,36 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     }
 
     private val lastEntry = HashMap<String, Pair<String, Long>>()
+
+    private val sheetRect = Rect()
+
+    /**
+     * True when a panel slides up over the reel — a scrolling list that starts part-way down the
+     * screen and reaches the bottom (comments, share, likes). The reel page itself starts at the top.
+     */
+    fun sheetOpen(root: AccessibilityNodeInfo): Boolean {
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var visited = 0
+        while (queue.isNotEmpty() && visited < 180) {
+            val n = queue.removeFirst()
+            visited++
+            n.getBoundsInScreen(sheetRect)
+            if (n.isVisibleToUser &&
+                sheetRect.top in (screenH * 0.12f).toInt()..(screenH * 0.78f).toInt() &&
+                sheetRect.bottom >= screenH * 0.85f &&
+                sheetRect.width() >= screenW * 0.9f &&
+                sheetRect.height() >= screenH * 0.3f
+            ) {
+                val cls = n.className?.toString() ?: ""
+                val listy = n.isScrollable || (n.collectionInfo?.rowCount ?: 0) > 1 ||
+                    cls.endsWith("RecyclerView") || cls.endsWith("ListView") || cls.endsWith("ScrollView")
+                if (listy) return true
+            }
+            for (i in 0 until minOf(n.childCount, 16)) runCatching { n.getChild(i) }.getOrNull()?.let { queue.add(it) }
+        }
+        return false
+    }
 
     /** After a counted swipe: remember this reel so re-opening the app on it won't count it again. */
     fun noteCurrent(appKey: String) {
