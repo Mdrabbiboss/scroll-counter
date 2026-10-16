@@ -219,7 +219,11 @@ private fun StepBody(icon: ImageVector, tint: Color, title: String, text: String
     Text(title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(12.dp))
     if (done) {
-        Text("Done ✓", style = MaterialTheme.typography.titleMedium, color = Brand.Good, fontWeight = FontWeight.SemiBold)
+        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+            AppGlyph(com.rabbi.scrollcounter.face.GlyphArt.Glyph.CHECK, 20.dp)
+            Spacer(Modifier.width(8.dp))
+            Text("Done", style = MaterialTheme.typography.titleMedium, color = Brand.Good)
+        }
         Spacer(Modifier.height(12.dp))
     }
     Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

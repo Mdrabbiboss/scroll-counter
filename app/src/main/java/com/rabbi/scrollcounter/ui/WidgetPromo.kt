@@ -248,9 +248,9 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
 
             // ---- feature chips ----
             Row(Modifier.alpha(enter.value), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FeatureChip("⚡", "Live count")
-                FeatureChip("🙂", "Mood buddy")
-                FeatureChip("🔥", "Streaks")
+                FeatureChip(com.rabbi.scrollcounter.face.GlyphArt.Glyph.BOLT, "Live count")
+                FeatureChip(null, "Mood buddy")
+                FeatureChip(com.rabbi.scrollcounter.face.GlyphArt.Glyph.FLAME, "Streaks")
             }
             Spacer(Modifier.height(16.dp))
 
@@ -361,14 +361,14 @@ private fun MockIcon(size: Dp, tint: Color) {
 }
 
 @Composable
-private fun FeatureChip(emoji: String, label: String) {
+private fun FeatureChip(glyph: com.rabbi.scrollcounter.face.GlyphArt.Glyph?, label: String) {
     Row(
         Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.07f))
             .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(50))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(emoji, fontSize = 13.sp)
+        AppGlyph(glyph, 16.dp)
         Spacer(Modifier.width(6.dp))
         Text(label, color = Color.White.copy(alpha = 0.85f), fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
     }

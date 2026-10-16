@@ -162,7 +162,7 @@ fun SettingsScreen(
                 }
                 SettingRow(
                     Icons.Rounded.Widgets, "Home screen widget",
-                    if (status.widgetPlaced) "On your home screen ✓" else "Tap to add it to your home screen",
+                    if (status.widgetPlaced) "On your home screen" else "Tap to add it to your home screen",
                     iconTint = Brand.Good,
                     onClick = onAddWidget
                 )

@@ -171,13 +171,26 @@ object WidgetArt {
         val sub = when {
             state.paused -> "Tap to resume"
             state.mood == Mood.EXHAUSTED -> "Rest time"
-            state.streak > 0 -> "\uD83D\uDD25 ${state.streak} day${if (state.streak == 1) "" else "s"}"
-            else -> "✨ Day 1"
+            state.streak > 0 -> "${state.streak} day${if (state.streak == 1) "" else "s"}"
+            else -> "Day 1"
         }
         tp.typeface = bold
         tp.textSize = subSize
         tp.color = 0xD9FFFFFF.toInt()
-        c.drawText(ellipsize(sub, maxW), textX, y + subSize * 0.5f, tp)
+        // Our own drawn fire / sparkle instead of a system emoji.
+        val glyph = when {
+            state.paused || state.mood == Mood.EXHAUSTED -> null
+            state.streak > 0 -> com.rabbi.scrollcounter.face.GlyphArt.Glyph.FLAME
+            else -> com.rabbi.scrollcounter.face.GlyphArt.Glyph.SPARKLE
+        }
+        var tx = textX
+        val baseY = y + subSize * 0.5f
+        if (glyph != null) {
+            val gs = subSize * 1.25f
+            com.rabbi.scrollcounter.face.GlyphArt.draw(c, glyph, tx, baseY - gs * 0.86f, gs)
+            tx += gs + subSize * 0.3f
+        }
+        c.drawText(ellipsize(sub, maxW - (tx - textX)), tx, baseY, tp)
 
         // ---- glass sheen + hairline border ----
         p.reset(); p.isAntiAlias = true

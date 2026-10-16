@@ -195,8 +195,8 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, onEditLimit: () -> Uni
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("\uD83D\uDD25", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(5.dp))
+                    AppGlyph(com.rabbi.scrollcounter.face.GlyphArt.Glyph.FLAME, 18.dp, dim = streak == 0)
+                    Spacer(Modifier.width(6.dp))
                     Text(if (streak == 1) "1 day" else "$streak days", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }

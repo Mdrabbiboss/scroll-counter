@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -473,4 +474,17 @@ fun formatHour(h: Int): String = when {
     h < 12 -> "$h AM"
     h == 12 -> "12 PM"
     else -> "${h - 12} PM"
+}
+
+/** Scroll Counter's own drawn icons (no system emoji): fire, sparkle, bolt, check, or the buddy. */
+@Composable
+fun AppGlyph(glyph: com.rabbi.scrollcounter.face.GlyphArt.Glyph?, size: androidx.compose.ui.unit.Dp, dim: Boolean = false, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier.size(size)) {
+        androidx.compose.ui.graphics.drawscope.drawIntoCanvas {
+            if (glyph == null) com.rabbi.scrollcounter.face.FaceRenderer.draw(
+                it.nativeCanvas, this.size.width / 2, this.size.height / 2, this.size.minDimension / 2 * 0.92f,
+                com.rabbi.scrollcounter.face.Mood.FRESH
+            ) else com.rabbi.scrollcounter.face.GlyphArt.draw(it.nativeCanvas, glyph, 0f, 0f, this.size.minDimension, dim)
+        }
+    }
 }
