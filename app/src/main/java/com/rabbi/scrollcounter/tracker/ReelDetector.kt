@@ -47,6 +47,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var currentChild: Int? = null    // identity of the page view that filled the pager last
         var currentFp: String? = null
         val seenFps = LinkedHashSet<String>()
+        // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
+        var sigKey: String? = null
+        var sigMax = Int.MIN_VALUE
+        var sigPager = 0
     }
 
     private val states = HashMap<String, AppState>()
@@ -482,6 +486,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     fun findReelPager(root: AccessibilityNodeInfo?): Boolean {
         root ?: return false
         val pkg = root.packageName?.toString() ?: ""
+        if (hasSignature(pkg)) return findSignature(root)
 
         // Fast path: the reels pager's view id we saw before in this app — found in one lookup.
         knownPagerIds[pkg]?.let { id ->
@@ -526,6 +531,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     fun prime(appKey: String): Boolean {
         val pager = lastPager ?: return false
         val st = states.getOrPut(appKey) { AppState() }
+        if (hasSignature(pager.packageName?.toString() ?: "")) primeSignature(st)
         st.primedKey = "${pager.viewIdResourceName}|${pager.className}"
         val idx = currentItemIndex()
         st.primedIndex = idx
@@ -586,6 +592,145 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         lastPager = null
     }
 
+    // ------------------------------------------------------------------ signature apps
+    //
+    // Some apps (YouTube) build their Shorts player in a way the general layout rules can't read
+    // reliably. For them we recognise the Shorts player itself by its view id, and count a reel
+    // whenever the short that fills the player changes to a new one — read from the player's own
+    // item number, or the page view's identity. Only layout is read, never text.
+
+    /** True for apps whose Shorts / Reels player is recognised by its signature. */
+    fun hasSignature(pkg: String): Boolean = SIGNATURES.keys.any { pkg == it || pkg.startsWith("$it.") } || pkg in YOUTUBE_PKGS
+
+    private fun sigIdsFor(pkg: String): List<String> = SIGNATURES[pkg] ?: if (pkg in YOUTUBE_PKGS) YOUTUBE_IDS else emptyList()
+
+    private fun isSignaturePager(n: AccessibilityNodeInfo): Boolean {
+        val pkg = n.packageName?.toString() ?: return false
+        val id = n.viewIdResourceName?.substringAfter(":id/")?.lowercase() ?: return false
+        val ids = sigIdsFor(pkg)
+        val named = ids.any { id == it } || (id.contains("reel") || id.contains("shorts")) && EXCLUDE_HINTS.none { id.contains(it) }
+        if (!named) return false
+        if (!n.isVisibleToUser) return false
+        n.getBoundsInScreen(rect)
+        if (rect.width() < screenW * 0.85f || rect.height() < screenH * 0.55f || rect.top > screenH * 0.25f) return false
+        return !scrollsOnlySideways(n)
+    }
+
+    /** Finds the Shorts player on screen: by its exact id first, then a short search. */
+    private fun findSignaturePager(root: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        root ?: return null
+        val pkg = root.packageName?.toString() ?: return null
+        for (id in sigIdsFor(pkg)) {
+            val hits = runCatching { root.findAccessibilityNodeInfosByViewId("$pkg:id/$id") }.getOrNull().orEmpty()
+            hits.firstOrNull { runCatching { isSignaturePager(it) }.getOrDefault(false) }?.let { return it }
+        }
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var visited = 0
+        var fallback: AccessibilityNodeInfo? = null
+        while (queue.isNotEmpty() && visited < 200) {
+            val n = queue.removeFirst()
+            visited++
+            if (runCatching { isSignaturePager(n) }.getOrDefault(false)) {
+                // Prefer the scrolling player itself over a container that merely wraps it.
+                if (n.isScrollable) return n
+                if (fallback == null && n.childCount > 0) fallback = n
+            }
+            n.getBoundsInScreen(tmp)
+            if (tmp.height() >= screenH * 0.4f) for (i in 0 until minOf(n.childCount, 14)) runCatching { n.getChild(i) }.getOrNull()?.let { queue.add(it) }
+        }
+        return fallback
+    }
+
+    /** A scroll event in a signature app. Returns true when it came from the Shorts player. */
+    fun signatureScroll(appKey: String, event: AccessibilityEvent): Boolean {
+        val src = event.source ?: return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
+        if (!runCatching { isSignaturePager(src) }.getOrDefault(false)) return false
+        val st = states.getOrPut(appKey) { AppState() }
+        lastPager = src
+        lastPagerHeight = rect.height().coerceAtLeast(1)
+        if (event.fromIndex >= 0 && event.fromIndex == event.toIndex) { st.eventIndex = event.fromIndex; st.hadIndex = true }
+        var dy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) event.scrollDeltaY else 0
+        val y = event.scrollY
+        if (dy == 0 && y >= 0 && st.lastScrollY >= 0) dy = y - st.lastScrollY
+        if (y >= 0) st.lastScrollY = y
+        if (dy != 0 && abs(dy) < screenH * 3) { st.accum += dy; st.hadDelta = true }
+        st.pending = true
+        DetectLog.add(src.packageName?.toString() ?: appKey,
+            "shorts player #${src.viewIdResourceName?.substringAfter(":id/")} dy$dy i${event.fromIndex}-${event.toIndex} kids${src.childCount}")
+        return true
+    }
+
+    /**
+     * Signature apps: is a new short on screen? Called after a swipe settles, and now and then
+     * while the player is open (some apps send no scroll events). Returns new reels (0/1), or
+     * [RETRY] while the player is still moving between two shorts.
+     */
+    fun signatureSettle(appKey: String, root: AccessibilityNodeInfo?): Int {
+        val st = states.getOrPut(appKey) { AppState() }
+        val pager = lastPager?.takeIf { runCatching { it.refresh() && isSignaturePager(it) }.getOrDefault(false) }
+            ?: findSignaturePager(root)
+        if (pager == null) { st.pending = false; return 0 }
+        lastPager = pager
+        pager.getBoundsInScreen(rect)
+        lastPagerHeight = rect.height().coerceAtLeast(1)
+        val pagerId = pager.hashCode()
+        if (st.sigPager != pagerId) {
+            // A different Shorts player (opened from a channel, search…): new baseline.
+            st.sigPager = pagerId; st.sigKey = null; st.sigMax = Int.MIN_VALUE
+        }
+        if (!isSnapped()) {
+            if (st.retries < MAX_RETRIES) { st.retries++; return RETRY }
+            st.retries = 0; return 0
+        }
+        st.retries = 0
+        val idx = currentItemIndex() ?: st.eventIndex.takeIf { st.hadIndex && it != Int.MIN_VALUE }
+        val childKey = snappedChildKey()
+        val key = idx?.let { "i$it" } ?: childKey?.let { "v$it" }
+        val hadDelta = st.hadDelta
+        val pages = st.accum / lastPagerHeight.toFloat()
+        val wasPending = st.pending
+        st.pending = false; st.hadDelta = false; st.hadIndex = false; st.accum = 0f
+
+        if (key == null) {
+            // The player shows no pages at all: fall back to how far the swipe went.
+            if (wasPending && hadDelta && pages >= 0.35f) { DetectLog.add(appKey, "shorts: swipe ${"%.2f".format(pages)} screens → +1"); return mark(st, 1) }
+            return 0
+        }
+        val prevKey = st.sigKey
+        if (prevKey == null) { st.sigKey = key; if (idx != null) st.sigMax = idx; return 0 }
+        if (key == prevKey) return 0
+        st.sigKey = key
+        if (idx != null) {
+            if (st.sigMax != Int.MIN_VALUE && idx <= st.sigMax) { DetectLog.add(appKey, "shorts: back to #$idx → not counted"); return 0 }
+            st.sigMax = idx
+        } else if (hadDelta && pages < 0f) {
+            DetectLog.add(appKey, "shorts: swiped back → not counted"); return 0
+        }
+        DetectLog.add(appKey, "shorts: new short ${key} → +1")
+        return mark(st, 1)
+    }
+
+    /** Signature apps: the Shorts player is on screen (for the counter and the first reel). */
+    fun findSignature(root: AccessibilityNodeInfo?): Boolean {
+        val n = findSignaturePager(root) ?: return false
+        lastPager = n
+        n.getBoundsInScreen(rect)
+        lastPagerHeight = rect.height().coerceAtLeast(1)
+        return true
+    }
+
+    /** Signature apps: remember the short on screen as the starting point. */
+    private fun primeSignature(st: AppState) {
+        val pager = lastPager ?: return
+        st.sigPager = pager.hashCode()
+        val idx = currentItemIndex()
+        st.sigKey = idx?.let { "i$it" } ?: snappedChildKey()?.let { "v$it" }
+        st.sigMax = idx ?: Int.MIN_VALUE
+    }
+
     companion object {
         /** How long the feed must be still before a swipe is judged. */
         const val SETTLE_MS = 350L
@@ -600,6 +745,15 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private val NATIVE_LISTS = listOf("RecyclerView", "ListView", "ScrollView", "ViewPager", "ViewPager2", "GridView")
         private const val MAX_RETRIES = 3
         private const val MIN_COUNT_GAP_MS = 200L
+        /** YouTube (and its common variants). */
+        private val YOUTUBE_PKGS = setOf(
+            "com.google.android.youtube", "com.google.android.apps.youtube.mango",
+            "app.revanced.android.youtube", "app.rvx.android.youtube", "com.vanced.android.youtube",
+        )
+        /** View ids of YouTube's Shorts player (newest first). */
+        private val YOUTUBE_IDS = listOf("reel_recycler", "reel_watch_pager", "shorts_recycler", "reel_player_recycler")
+        /** Other apps whose reels player is recognised by id. */
+        private val SIGNATURES = mapOf<String, List<String>>()
         private val ID_HINTS = listOf("clips", "reel", "shorts", "spotlight", "short_video", "video_pager", "viewpager_vertical", "feed_pager")
         private val EXCLUDE_HINTS = listOf(
             "comment", "reply", "replies", "chat", "message", "thread_list", "inbox", "sheet",

@@ -58,6 +58,28 @@ class ScrollTrackerService : AccessibilityService() {
             onNewReels(app, n, detector?.lastPagerHeight ?: 0)
         }
     }
+    /** Signature apps (YouTube Shorts): is a new short on screen? (see [ReelDetector.signatureSettle]) */
+    private var sigApp: TrackedApp? = null
+    private var sigQueued = false
+    private val sigRunnableRef: Runnable get() = sigRunnable
+    private val sigRunnable: Runnable = Runnable {
+        sigQueued = false
+        val app = sigApp ?: return@Runnable
+        val det = detector ?: return@Runnable
+        val n = det.signatureSettle(app.key, runCatching { rootInActiveWindow }.getOrNull())
+        if (n == ReelDetector.RETRY) { sigQueued = true; handler.postDelayed(sigRunnableRef, 250); return@Runnable }
+        if (n > 0) { det.noteCurrent(app.key); onNewReels(app, n, det.lastPagerHeight) }
+    }
+
+    /** Check for a new short soon. [restart] = after a swipe (wait for it to finish moving). */
+    private fun queueSignatureCheck(app: TrackedApp, delay: Long, restart: Boolean) {
+        sigApp = app
+        if (restart) { handler.removeCallbacks(sigRunnable); sigQueued = false }
+        if (sigQueued) return
+        sigQueued = true
+        handler.postDelayed(sigRunnable, delay)
+    }
+
     /** Movement-based reels detection for apps whose layout we can't read (see [onAppScroll]). */
     private var snap: BrowserReelDetector? = null
     private var snapApp: TrackedApp? = null
@@ -218,6 +240,12 @@ class ScrollTrackerService : AccessibilityService() {
 
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 if (isBrowser) return
+                // Shorts player open: the short on screen may have changed (some apps send no
+                // scroll events when you swipe) — check now and then.
+                if (pill?.isShowing == true && detector?.hasSignature(pkg) == true) {
+                    val app = TrackedApps.forPackage(pkg)
+                    if (store.isAppEnabled(app.key)) queueSignatureCheck(app, SIG_CHECK_MS, restart = false)
+                }
                 // Cheap, throttled check: did the user just open a Reels / Shorts feed?
                 val now = SystemClock.uptimeMillis()
                 if (!store.bubbleOn || pill?.isShowing == true || now - lastScanAt < SCAN_GAP_MS) return
@@ -241,6 +269,14 @@ class ScrollTrackerService : AccessibilityService() {
 
     private fun onAppScroll(store: ScrollStore, app: TrackedApp, event: AccessibilityEvent) {
         val det = detector ?: return
+        // YouTube Shorts & co.: recognised by their player and counted by which short is on screen.
+        if (det.hasSignature(event.packageName?.toString() ?: "")) {
+            if (!det.signatureScroll(app.key, event)) return
+            if (shouldBlock(store)) { block(app.name); return }
+            queueSignatureCheck(app, ReelDetector.SETTLE_MS, restart = true)
+            if (pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+            return
+        }
         if (!det.onScroll(app.key, event)) {
             // Not a recognisable pager (web-based, Flutter, React Native or custom apps):
             // fall back to how the feed moves — exact one-screen snaps, twice in a row = reels.
@@ -378,6 +414,7 @@ class ScrollTrackerService : AccessibilityService() {
         private const val PRESENCE_MS = 450L
         private const val PRESENCE_MAX_TRIES = 24
         private const val WEB_SETTLE_MS = 420L
+        private const val SIG_CHECK_MS = 500L
         private const val URL_GAP_MS = 350L
         private const val GUARD_GAP_MS = 400L
         const val BUBBLE_EVERY = 1
