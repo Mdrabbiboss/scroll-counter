@@ -70,7 +70,7 @@ fun OnboardingScreen(
     LaunchedEffect(status, step) {
         if (step == 1 && status.trackerOn) { kotlinx.coroutines.delay(500); step = 2; return@LaunchedEffect }
         if (step == 2 && status.notificationsOn) { kotlinx.coroutines.delay(500); step = 3; return@LaunchedEffect }
-        if (step == 3 && status.batteryUnrestricted) { kotlinx.coroutines.delay(700); onFinish(); return@LaunchedEffect }
+        if (step == 3 && status.batteryUnrestricted) return@LaunchedEffect // wait for the user to tap Finish
         if (autoAsked != step) {
             when (step) {
                 2 -> if (!status.notificationsOn) { autoAsked = step; kotlinx.coroutines.delay(700); onRequestNotifications() }

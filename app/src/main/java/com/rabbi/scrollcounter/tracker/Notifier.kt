@@ -17,6 +17,7 @@ object Notifier {
     private const val WARN_ID = 1002
     private const val LIVE_CHANNEL_ID = "live_counter"
     private const val LIVE_ID = 1003
+    private const val VISIBLE_MS = 6000L
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
@@ -55,12 +56,13 @@ object Notifier {
             .setContentText(if (left > 0) "$left left of your $limit-reel limit" else "Daily limit reached — take a break")
             .setProgress(limit.coerceAtLeast(1), count.coerceAtMost(limit), false)
             .setContentIntent(pi)
-            .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            // Only while counting: it disappears by itself a few seconds after the last reel.
+            .setTimeoutAfter(VISIBLE_MS)
             .build()
         runCatching { nmc.notify(LIVE_ID, n) }
     }

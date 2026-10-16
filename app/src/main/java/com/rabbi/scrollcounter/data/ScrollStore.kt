@@ -44,9 +44,6 @@ class ScrollStore private constructor(context: Context) {
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val widgetRefresh = Runnable {
         com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(appContext)
-        // Keep the status-bar counter in step (e.g. after changing the limit or resetting).
-        if (com.rabbi.scrollcounter.tracker.TrackerStatus.isEnabled(appContext))
-            com.rabbi.scrollcounter.tracker.Notifier.live(appContext, todayTotal(), dailyLimit)
     }
 
     private fun bump() {

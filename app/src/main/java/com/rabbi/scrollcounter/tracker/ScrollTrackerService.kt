@@ -96,6 +96,7 @@ class ScrollTrackerService : AccessibilityService() {
             if (misses >= 2 || s?.bubbleOn != true || s.paused) {
                 misses = 0
                 p.hide()
+                Notifier.clearLive(this@ScrollTrackerService)
                 detector?.forgetPager()
                 startPresenceScan()
             } else {
@@ -155,7 +156,6 @@ class ScrollTrackerService : AccessibilityService() {
         buildIgnoreList()
         countedKeys.addAll(runCatching { s.keysWithData() }.getOrDefault(emptySet()))
         Notifier.ensureChannel(this)
-        Notifier.live(this, s.todayTotal(), s.dailyLimit)
     }
 
     private fun buildIgnoreList() {
