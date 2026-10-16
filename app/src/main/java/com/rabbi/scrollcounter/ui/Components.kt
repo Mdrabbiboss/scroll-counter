@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -480,7 +481,7 @@ fun formatHour(h: Int): String = when {
 @Composable
 fun AppGlyph(glyph: com.rabbi.scrollcounter.face.GlyphArt.Glyph?, size: androidx.compose.ui.unit.Dp, dim: Boolean = false, modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier.size(size)) {
-        androidx.compose.ui.graphics.drawscope.drawIntoCanvas {
+        drawIntoCanvas {
             if (glyph == null) com.rabbi.scrollcounter.face.FaceRenderer.draw(
                 it.nativeCanvas, this.size.width / 2, this.size.height / 2, this.size.minDimension / 2 * 0.92f,
                 com.rabbi.scrollcounter.face.Mood.FRESH
