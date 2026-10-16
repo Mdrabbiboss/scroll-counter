@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -86,7 +87,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
-    Today("Today", Icons.Rounded.Home),
+    Today("You", Icons.Rounded.Home),
     History("History", Icons.Rounded.BarChart),
     Settings("Settings", Icons.Rounded.Settings),
 }
@@ -205,12 +206,17 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                         if (tab != t) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         tab = t
                                     },
-                                    icon = { Icon(t.icon, contentDescription = t.label) },
+                                    icon = {
+                                        if (t == Tab.Today) Icon(
+                                            androidx.compose.ui.res.painterResource(com.rabbi.scrollcounter.R.drawable.ic_buddy),
+                                            contentDescription = t.label, modifier = Modifier.size(26.dp)
+                                        ) else Icon(t.icon, contentDescription = t.label)
+                                    },
                                     label = { Text(t.label) },
                                     colors = NavigationBarItemDefaults.colors(
                                         indicatorColor = accent.copy(alpha = if (dark) 0.26f else 0.22f),
-                                        selectedIconColor = if (dark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface,
-                                        selectedTextColor = if (dark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface,
+                                        selectedIconColor = if (dark) androidx.compose.ui.graphics.Color(0xFFFFD98A) else MaterialTheme.colorScheme.onSurface,
+                                        selectedTextColor = if (dark) androidx.compose.ui.graphics.Color(0xFFFFD98A) else MaterialTheme.colorScheme.onSurface,
                                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

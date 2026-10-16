@@ -285,15 +285,12 @@ fun SettingsScreen(
         item {
             PremiumCard {
                 SettingRow(Icons.Rounded.PrivacyTip, "Privacy policy", "What's stored and what isn't", onClick = { showPolicy = true })
-                SettingRow(Icons.Rounded.Info, "Detection check", "See live what the counter detects in each app — screenshot it if an app isn't counted",
-                    iconTint = MaterialTheme.colorScheme.secondary, onClick = { showLog = true })
                 if (AdsConsent.privacyOptionsRequired) {
                     SettingRow(Icons.Rounded.Shield, "Ad privacy choices", "Change your ad consent",
                         onClick = { (context as? Activity)?.let { AdsConsent.showPrivacyOptions(it) } })
                 }
                 SettingRow(Icons.Rounded.Star, "Rate Scroll Counter", "Opens Google Play", iconTint = Brand.Warn, onClick = { rateApp(context) })
                 SettingRow(Icons.Rounded.Share, "Share with friends", null, onClick = { shareApp(context) })
-                SettingRow(Icons.Rounded.Info, "Version", BuildConfig.VERSION_NAME, iconTint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

@@ -97,7 +97,7 @@ fun TodayScreen(
         if (!status.trackerOn) item { SetupBanner(onEnableTracking) }
         else if (paused) item { PausedBanner { store.paused = false } }
 
-        item { HeroCard(today.totalScrolls, limit, streak, onEditLimit) }
+        item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit) }
         if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
 
         item {
@@ -154,7 +154,7 @@ fun TodayScreen(
 }
 
 @Composable
-private fun HeroCard(count: Int, limit: Int, streak: Int, onEditLimit: () -> Unit) {
+private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.scrollcounter.data.AppStat>, onEditLimit: () -> Unit) {
     val ratio = if (limit > 0) count.toFloat() / limit else 0f
     val progress by animateFloatAsState(ratio.coerceIn(0f, 1f), tween(900), label = "ring")
     val shown by animateIntAsState(count, tween(700), label = "count")
@@ -218,6 +218,27 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, onEditLimit: () -> Uni
                         color = Color.White, fontWeight = FontWeight.Black
                     )
                     Text("of $limit reels today", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.75f))
+                }
+            }
+            // Where today's reels came from: app icons with their counts, in one glass pill.
+            if (apps.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.25f))
+                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    apps.sortedByDescending { it.scrolls }.take(3).forEachIndexed { i, a ->
+                        if (i > 0) {
+                            Spacer(Modifier.width(12.dp))
+                            Box(Modifier.width(1.dp).height(20.dp).background(Color.White.copy(alpha = 0.18f)))
+                            Spacer(Modifier.width(12.dp))
+                        }
+                        AppIcon(TrackedApps.forKey(a.key), size = 26)
+                        Spacer(Modifier.width(8.dp))
+                        Text("${a.scrolls}", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
             Spacer(Modifier.height(10.dp))

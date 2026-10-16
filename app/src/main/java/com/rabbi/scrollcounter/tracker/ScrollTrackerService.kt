@@ -155,6 +155,7 @@ class ScrollTrackerService : AccessibilityService() {
         buildIgnoreList()
         countedKeys.addAll(runCatching { s.keysWithData() }.getOrDefault(emptySet()))
         Notifier.ensureChannel(this)
+        Notifier.live(this, s.todayTotal(), s.dailyLimit)
     }
 
     private fun buildIgnoreList() {
@@ -305,6 +306,7 @@ class ScrollTrackerService : AccessibilityService() {
         countedKeys += app.key
         val total = store.todayTotal()
         val limit = store.dailyLimit
+        Notifier.live(this, total, limit)
         checkAlerts(store, total, limit)
         if (store.blockOn && !store.inGrace && total >= limit) {
             block(app.name)
@@ -365,6 +367,7 @@ class ScrollTrackerService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        Notifier.clearLive(this)
         pill?.destroy()
         super.onDestroy()
     }
