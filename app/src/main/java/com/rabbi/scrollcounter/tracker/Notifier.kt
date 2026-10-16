@@ -15,7 +15,7 @@ object Notifier {
     private const val CHANNEL_ID = "scroll_limit"
     private const val LIMIT_ID = 1001
     private const val WARN_ID = 1002
-    private const val LIVE_CHANNEL_ID = "live_counter_v2"
+    private const val LIVE_CHANNEL_ID = "live_counter_v3"
     private const val LIVE_ID = 1004
     private const val VISIBLE_MS = 6000L
 
@@ -28,14 +28,17 @@ object Notifier {
         ).apply { description = "Warns you near your daily scroll limit and when you pass it" }
         nm.createNotificationChannel(channel)
         // Quiet, always-on entry that puts the buddy icon in the status bar while counting.
-        val live = NotificationChannel(LIVE_CHANNEL_ID, "Live reel counter", NotificationManager.IMPORTANCE_LOW).apply {
+        // DEFAULT importance (but no sound / vibration): phones hide the status-bar icon of
+        // "silent" (low) notifications, and the buddy icon up there is the whole point.
+        val live = NotificationChannel(LIVE_CHANNEL_ID, "Live reel counter", NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = "Shows the buddy in the status bar and today's reel count while Scroll Counter is on"
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
         }
         nm.createNotificationChannel(live)
-        runCatching { nm.deleteNotificationChannel("live_counter") } // old channel
+        runCatching { nm.deleteNotificationChannel("live_counter") }    // old channels
+        runCatching { nm.deleteNotificationChannel("live_counter_v2") }
     }
 
     /** The small buddy icon in the status bar, with today's count in the shade. Silent; updates in place. */
@@ -66,10 +69,11 @@ object Notifier {
             )
             .setContentIntent(pi)
             .setOnlyAlertOnce(true)
-            .setSilent(true)
             .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSound(null)
+            .setVibrate(null)
             // Only while counting: it disappears by itself a few seconds after the last reel.
             .setTimeoutAfter(VISIBLE_MS)
             .build()
