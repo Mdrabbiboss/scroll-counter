@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scroll Counter's buddy as a one-colour icon (nav bar "You" tab and status bar). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,2.2 C17.41,2.2 21.8,6.59 21.8,12 C21.8,17.41 17.41,21.8 12,21.8 C6.59,21.8 2.2,17.41 2.2,12 C2.2,6.59 6.59,2.2 12,2.2 Z
+            M8.7,8.1 C7.8,8.1 7.15,9 7.15,10.15 C7.15,11.3 7.8,12.2 8.7,12.2 C9.6,12.2 10.25,11.3 10.25,10.15 C10.25,9 9.6,8.1 8.7,8.1 Z
+            M15.3,8.1 C14.4,8.1 13.75,9 13.75,10.15 C13.75,11.3 14.4,12.2 15.3,12.2 C16.2,12.2 16.85,11.3 16.85,10.15 C16.85,9 16.2,8.1 15.3,8.1 Z
+            M7.6,13.7 C8.6,16.6 10.2,17.7 12,17.7 C13.8,17.7 15.4,16.6 16.4,13.7 C15.1,14.9 13.6,15.4 12,15.4 C10.4,15.4 8.9,14.9 7.6,13.7 Z" />
+</vector>

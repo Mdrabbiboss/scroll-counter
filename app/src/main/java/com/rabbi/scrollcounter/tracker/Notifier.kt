@@ -59,8 +59,9 @@ object Notifier {
         val face = runCatching { buddyTile(sizePx, mood) }.getOrNull()
         // Small icon: a one-colour buddy resource (like other apps use). Phones such as
         // ColorOS show the app's own icon next to it in the shade.
-        val b = NotificationCompat.Builder(context, LIVE_CHANNEL_ID).setSmallIcon(R.drawable.ic_buddy)
+        val b = NotificationCompat.Builder(context, LIVE_CHANNEL_ID).setSmallIcon(R.drawable.zz_notify_buddy_face)
         val n = b
+            .setColor(0xFF0F5C52.toInt())   // the app icon's deep teal behind the buddy
             .setLargeIcon(face)
             .setContentTitle("Scroll Counter")
             .setContentText(
@@ -128,7 +129,7 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_buddy)
+            .setSmallIcon(R.drawable.zz_notify_buddy_face)
             .setColor(0xFF0E8C7F.toInt())
             .setContentTitle(title)
             .setContentText(text)
