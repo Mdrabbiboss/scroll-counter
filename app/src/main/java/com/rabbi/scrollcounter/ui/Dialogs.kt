@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.background
@@ -65,9 +66,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
-private val QuickLimits = listOf(10, 50, 100, 200, 300, 500, 1000)
+private val QuickLimits = listOf(50, 100, 200, 300, 400, 500)
 private const val MIN_LIMIT = 10
-private const val MAX_LIMIT = 2000
+private const val MAX_LIMIT = com.rabbi.scrollcounter.data.ScrollStore.MAX_LIMIT
 
 /**
  * Premium limit editor: a frosted dark sheet with a big number you can type into,
@@ -75,7 +76,8 @@ private const val MAX_LIMIT = 2000
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
+fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
+    if (locked) { LockedLimitSheet(current, onDismiss); return }
     var text by remember { mutableStateOf(current.toString()) }
     val value = text.toIntOrNull()
     val valid = value != null && value in MIN_LIMIT..MAX_LIMIT
@@ -221,22 +223,84 @@ fun LimitDialog(current: Int, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
                             if (valid) Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43)))
                             else SolidColor(Color.White.copy(alpha = 0.12f))
                         )
-                        .clickable(enabled = valid) { onSave(value!!) },
+                        .clickable(enabled = valid) { if (value == current) onDismiss() else onSave(value!!) },
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Check, null, tint = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (valid && value != current) "Save new limit" else "Save limit",
+                            if (valid && value != current) "Save & lock for today" else "Save limit",
                             color = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black
                         )
                     }
                 }
+                Text(
+                    "You can change your limit only once a day. After saving, it stays until tomorrow.",
+                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                )
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                     Text("Cancel", color = Color.White.copy(alpha = 0.75f))
                 }
+            }
+        }
+    }
+}
+
+/** Shown when the limit was already changed today: read-only, unlocks tomorrow. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFF071012),
+        contentColor = Color.White,
+        dragHandle = {
+            Box(Modifier.padding(top = 12.dp, bottom = 4.dp).size(width = 40.dp, height = 4.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.3f)))
+        }
+    ) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color(0xFF0B2A2B), Color(0xFF071012), Color(0xFF05080A))))
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp).padding(top = 8.dp, bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                Modifier.size(64.dp).clip(CircleShape).background(Brand.Gold.copy(alpha = 0.16f))
+                    .border(1.dp, Brand.Gold.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Rounded.Lock, null, tint = Brand.Gold, modifier = Modifier.size(30.dp)) }
+            Spacer(Modifier.height(14.dp))
+            Text("Today's limit is locked", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(14.dp))
+            Box(
+                Modifier.width(170.dp).clip(RoundedCornerShape(24.dp))
+                    .background(Color.White.copy(alpha = 0.06f))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(24.dp))
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("$current", style = MaterialTheme.typography.displayMedium, color = Color.White.copy(alpha = 0.85f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("reels per day", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "You already set your limit today. Stick with it! You can change it again tomorrow.",
+                style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(20.dp))
+            Box(
+                Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(18.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43))))
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Got it", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
             }
         }
     }

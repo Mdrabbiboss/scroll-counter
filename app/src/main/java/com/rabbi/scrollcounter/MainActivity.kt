@@ -321,6 +321,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
         if (showLimit) {
             LimitDialog(
                 current = store.dailyLimit,
+                locked = store.limitLockedToday,
                 onDismiss = { showLimit = false },
                 onSave = {
                     store.dailyLimit = it

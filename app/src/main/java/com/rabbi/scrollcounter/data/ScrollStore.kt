@@ -99,7 +99,7 @@ class ScrollStore private constructor(context: Context) {
             val value = when (v) { is Int -> v.toString(); is Float -> String.format(Locale.US, "%.1f", v); else -> return@mapNotNull null }
             Triple(date, k, value)
         }.sortedBy { it.first }
-        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}")
+        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}")
         rows.forEach { sb.append('\n').append(it.second).append('|').append(it.third) }
         return sb.toString()
     }
@@ -132,8 +132,19 @@ class ScrollStore private constructor(context: Context) {
         head.getOrNull(1)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { saved ->
             if (saved.isBefore(firstDay)) { settings.edit().putString(KEY_FIRST_DAY, saved.toString()).apply(); changed = true }
         }
-        if (!settings.contains("daily_limit")) head.getOrNull(2)?.toIntOrNull()?.let {
-            settings.edit().putInt("daily_limit", it).apply(); changed = true
+        // The limit (and the day it was last changed) follow the newest copy, so clearing data
+        // can't unlock a limit that was already changed today.
+        val savedLimit = head.getOrNull(2)?.toIntOrNull()
+        val savedDay = head.getOrNull(3)?.takeIf { it != "-" }
+        val localDay = settings.getString(KEY_LIMIT_DAY, null)
+        if (savedLimit != null) {
+            val takeIt = if (savedDay != null) localDay == null || savedDay >= localDay
+                         else !settings.contains("daily_limit")
+            if (takeIt && (savedLimit != settings.getInt("daily_limit", -1) || savedDay != localDay)) {
+                settings.edit().putInt("daily_limit", savedLimit.coerceIn(10, MAX_LIMIT))
+                    .apply { if (savedDay != null) putString(KEY_LIMIT_DAY, savedDay) }.apply()
+                changed = true
+            }
         }
         if (changed) bump()
     }
@@ -267,9 +278,20 @@ class ScrollStore private constructor(context: Context) {
 
     // ---------------- Settings ----------------
 
+    /** The daily limit (10–[MAX_LIMIT]). Setting it locks it for the rest of the day. */
     var dailyLimit: Int
-        get() = settings.getInt("daily_limit", 500).coerceIn(10, 2000)
-        set(value) { settings.edit().putInt("daily_limit", value).apply(); bump() }
+        get() = settings.getInt("daily_limit", MAX_LIMIT).coerceIn(10, MAX_LIMIT)
+        set(value) {
+            settings.edit()
+                .putInt("daily_limit", value.coerceIn(10, MAX_LIMIT))
+                .putString(KEY_LIMIT_DAY, LocalDate.now().toString())
+                .apply()
+            bump()
+        }
+
+    /** True once the limit was changed today: it can only be changed again tomorrow. */
+    val limitLockedToday: Boolean
+        get() = settings.getString(KEY_LIMIT_DAY, null) == LocalDate.now().toString()
 
     /** Pausing was removed: tracking is always on while the Accessibility service is enabled. */
     var paused: Boolean
@@ -368,6 +390,8 @@ class ScrollStore private constructor(context: Context) {
         const val HISTORY_DAYS = 60
         val PILL_SCALES = floatArrayOf(0.8f, 1f, 1.3f, 1.65f)
         private const val KEY_FIRST_DAY = "first_day"
+        private const val KEY_LIMIT_DAY = "limit_set_day"
+        const val MAX_LIMIT = 500
 
         @Volatile
         private var instance: ScrollStore? = null

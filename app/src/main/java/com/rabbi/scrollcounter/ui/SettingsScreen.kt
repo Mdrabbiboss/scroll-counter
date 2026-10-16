@@ -146,8 +146,12 @@ fun SettingsScreen(
         item { SectionLabel("Daily goal") }
         item {
             PremiumCard {
-                SettingRow(Icons.Rounded.Flag, "Daily reel limit", "$limit reels per day", iconTint = Brand.Gold, onClick = onEditLimit) {
-                    PillButton("Edit", Icons.Rounded.Edit, gold = true, onClick = onEditLimit)
+                val locked = remember(tick) { store.limitLockedToday }
+                SettingRow(Icons.Rounded.Flag, "Daily reel limit",
+                    if (locked) "$limit reels per day · locked until tomorrow" else "$limit reels per day · max ${ScrollStore.MAX_LIMIT}, once a day",
+                    iconTint = Brand.Gold, onClick = onEditLimit) {
+                    if (locked) PillButton("Locked", Icons.Rounded.Lock, onClick = onEditLimit)
+                    else PillButton("Edit", Icons.Rounded.Edit, gold = true, onClick = onEditLimit)
                 }
             }
         }

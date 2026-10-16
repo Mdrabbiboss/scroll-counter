@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.PauseCircle
@@ -75,6 +76,7 @@ fun TodayScreen(
     val today = remember(tick) { store.dayStats(now) }
     val hours = remember(tick) { store.hourly(now) }
     val limit = remember(tick) { store.dailyLimit }
+    val limitLocked = remember(tick) { store.limitLockedToday }
     val paused = remember(tick) { store.paused }
     val streak = remember(tick) { store.streak() }
     val peak = hours.indices.maxByOrNull { hours[it] }?.takeIf { hours[it] > 0 }
@@ -97,7 +99,7 @@ fun TodayScreen(
         if (!status.trackerOn) item { SetupBanner(onEnableTracking) }
         else if (paused) item { PausedBanner { store.paused = false } }
 
-        item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit) }
+        item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit, limitLocked) }
         if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
 
         item {
@@ -154,7 +156,7 @@ fun TodayScreen(
 }
 
 @Composable
-private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.scrollcounter.data.AppStat>, onEditLimit: () -> Unit) {
+private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.scrollcounter.data.AppStat>, onEditLimit: () -> Unit, limitLocked: Boolean = false) {
     val ratio = if (limit > 0) count.toFloat() / limit else 0f
     val progress by animateFloatAsState(ratio.coerceIn(0f, 1f), tween(900), label = "ring")
     val shown by animateIntAsState(count, tween(700), label = "count")
@@ -275,9 +277,9 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Edit, null, tint = Color(0xFF4A2A00), modifier = Modifier.size(18.dp))
+                    Icon(if (limitLocked) Icons.Rounded.Lock else Icons.Rounded.Edit, null, tint = Color(0xFF4A2A00), modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Edit limit", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                    Text(if (limitLocked) "Locked today" else "Edit limit", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                 }
             }
         }
