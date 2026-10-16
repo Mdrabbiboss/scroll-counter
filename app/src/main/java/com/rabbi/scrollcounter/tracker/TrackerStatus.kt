@@ -48,7 +48,11 @@ object TrackerStatus {
     )
 
     /** Battery optimization list (no special permission needed), falling back to app info. */
+    /** One-tap "Allow" dialog for unrestricted battery; falls back to the settings list. */
+    @android.annotation.SuppressLint("BatteryLife")
     fun openBatterySettings(context: Context) {
+        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+        if (start(context, direct)) return
         if (!start(context, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))) {
             openAppDetails(context)
         }

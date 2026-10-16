@@ -63,10 +63,20 @@ fun OnboardingScreen(
 ) {
     var step by rememberSaveable { mutableIntStateOf(0) }
 
-    // Move on by itself when the user comes back from settings with the step done.
+    // Every permission is required. Each step moves on by itself once it's granted, and the
+    // notification / battery prompts open automatically when their step appears.
+    var batteryTries by rememberSaveable { mutableIntStateOf(0) }
+    var autoAsked by rememberSaveable { mutableIntStateOf(-1) }
     LaunchedEffect(status, step) {
-        if (step == 1 && status.trackerOn) step = 2
-        if (step == 2 && status.notificationsOn) step = 3
+        if (step == 1 && status.trackerOn) { kotlinx.coroutines.delay(500); step = 2; return@LaunchedEffect }
+        if (step == 2 && status.notificationsOn) { kotlinx.coroutines.delay(500); step = 3; return@LaunchedEffect }
+        if (step == 3 && status.batteryUnrestricted) { kotlinx.coroutines.delay(700); onFinish(); return@LaunchedEffect }
+        if (autoAsked != step) {
+            when (step) {
+                2 -> if (!status.notificationsOn) { autoAsked = step; kotlinx.coroutines.delay(700); onRequestNotifications() }
+                3 -> if (!status.batteryUnrestricted) { autoAsked = step; kotlinx.coroutines.delay(700); batteryTries++; onOpenBattery() }
+            }
+        }
     }
 
     Column(
@@ -100,7 +110,7 @@ fun OnboardingScreen(
                         "Get a heads-up",
                         "Scroll Counter can tell you when you've used 80% of your daily limit, and again when you pass it. Nothing else.",
                         done = status.notificationsOn,
-                        badge = "RECOMMENDED"
+                        badge = "REQUIRED"
                     )
                     else -> StepBody(
                         Icons.Rounded.BatteryChargingFull, Brand.Good,
@@ -108,17 +118,16 @@ fun OnboardingScreen(
                         "Some phones (Xiaomi, Oppo, Vivo, Samsung and others) stop background services to save battery. " +
                             "Set Scroll Counter to \"Unrestricted\" / \"Don't optimize\" so your count stays accurate. It uses almost no battery.",
                         done = status.batteryUnrestricted,
-                        badge = "RECOMMENDED"
+                        badge = "REQUIRED"
                     )
                 }
             }
         }
 
-        // Buttons
+        // Buttons — no skipping: every permission must be given to reach the end.
         when (step) {
             0 -> PrimaryButton("Get started") { step = 1 }
             1 -> {
-                // Required: the app can't count anything without it, so there is no skip.
                 if (status.trackerOn) PrimaryButton("Continue") { step = 2 }
                 else {
                     PrimaryButton("Agree & open settings", onOpenAccessibility)
@@ -127,13 +136,19 @@ fun OnboardingScreen(
             }
             2 -> {
                 if (status.notificationsOn) PrimaryButton("Continue") { step = 3 }
-                else PrimaryButton("Allow notifications", onRequestNotifications)
-                SecondaryButton("Not now") { step = 3 }
+                else {
+                    PrimaryButton("Allow notifications", onRequestNotifications)
+                    RequiredNote()
+                }
             }
             else -> {
                 if (status.batteryUnrestricted) PrimaryButton("Finish", onFinish)
-                else PrimaryButton("Open battery settings", onOpenBattery)
-                if (!status.batteryUnrestricted) SecondaryButton("Finish", onFinish)
+                else {
+                    PrimaryButton("Allow unrestricted battery") { batteryTries++; onOpenBattery() }
+                    RequiredNote()
+                    // A few phones hide this option entirely; don't trap their owners forever.
+                    if (batteryTries >= 3) SecondaryButton("My phone doesn't have this option", onFinish)
+                }
             }
         }
     }
@@ -235,7 +250,7 @@ private fun RequiredNote() {
         Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(6.dp))
         Text(
-            "Required — Scroll Counter can't count reels without it",
+            "Required — you can't continue without it",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
