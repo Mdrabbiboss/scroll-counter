@@ -209,7 +209,7 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
 
             Spacer(Modifier.height(16.dp))
             Text(
-                if (valid) "Heads-up at ${(value!! * 0.8f).toInt()} · apps close at $value"
+                if (valid) "Heads-up at ${(value!! * 0.8f).toInt()} · reels close at $value"
                 else "You'll get a heads-up at 80% of your limit",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.6f),

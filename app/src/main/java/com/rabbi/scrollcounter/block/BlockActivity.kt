@@ -122,7 +122,7 @@ private fun BlockScreen(
         Text("Daily limit reached", style = MaterialTheme.typography.headlineMedium, color = Color.White, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp))
         Text(
-            "You've watched $total reels today (limit $limit).\n$appName is closed for today — your eyes and mind need a break.",
+            "You've watched $total reels today (limit $limit).\nReels in $appName are closed for today — posts and chats still work. Your eyes and mind need a break.",
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White.copy(alpha = 0.8f),
             textAlign = TextAlign.Center

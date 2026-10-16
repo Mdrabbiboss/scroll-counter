@@ -146,6 +146,8 @@ class ScrollTrackerService : AccessibilityService() {
             if (!s.isAppEnabled(app.key) || !isSocial(pkg, app)) return
             val det = detector ?: return
             if (det.findReelPager(root)) {
+                // Limit reached: Reels may not be opened — close the app (the rest of it is fine).
+                if (shouldBlock(s)) { DetectLog.add(pkg, "limit reached + reels opened → closed"); block(app.name); return }
                 // The reel you open on counts too.
                 if (det.prime(app.key)) { DetectLog.add(pkg, "reels opened → +1 (first reel)"); onNewReels(app, 1, det.lastPagerHeight) }
                 else showPill(s, s.todayTotal(), s.dailyLimit, bump = false)
@@ -231,8 +233,8 @@ class ScrollTrackerService : AccessibilityService() {
                     web?.reset(app.key)
                     snap?.reset(app.key)
                 }
-                // Limit reached → don't let the user stay in a social app.
-                if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app) && shouldBlock(store)) { block(app.name); return }
+                // Limit reached: the app itself stays usable (posts, chats…) — only opening Reels /
+                // Shorts closes it, which the reels checks below take care of.
                 // Back in a social app: look for the reels feed straight away.
                 if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app)) startPresenceScan(80L)
                 else if (!isBrowser && pill?.isShowing == true) { pill?.hide(); detector?.forgetPager() }
@@ -254,6 +256,7 @@ class ScrollTrackerService : AccessibilityService() {
                 lastScanAt = now
                 val det = detector ?: return
                 if (det.findReelPager(runCatching { rootInActiveWindow }.getOrNull())) {
+                    if (shouldBlock(store)) { DetectLog.add(pkg, "limit reached + reels opened → closed"); block(app.name); return }
                     if (det.prime(app.key)) { DetectLog.add(pkg, "reels opened → +1 (first reel)"); onNewReels(app, 1, det.lastPagerHeight) }
                     else showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
                 }
@@ -293,7 +296,9 @@ class ScrollTrackerService : AccessibilityService() {
             handler.postDelayed(snapSettleRunnable, WEB_SETTLE_MS)
             return
         }
-        if (shouldBlock(store)) { block(app.name); return }
+        // Readable reels pager → close right away. Self-drawn apps (Facebook Lite) report feed and
+        // reels from the same view, so for them we wait until the swipe is confirmed as reels.
+        if (!det.lastAcceptedOpaque && shouldBlock(store)) { block(app.name); return }
         // Judge the swipe once the feed is still.
         settleApp = app
         handler.removeCallbacks(settleRunnable)
@@ -337,6 +342,7 @@ class ScrollTrackerService : AccessibilityService() {
     private fun onNewReels(app: TrackedApp, n: Int, pageHeightPx: Int) {
         val store = store ?: return
         if (store.paused) return
+        if (shouldBlock(store)) { block(app.name); return }   // limit already reached: no more reels
         repeat(n) { store.addScroll(app.key) }
         store.addDistance(app.key, n * pageHeightPx * metersPerPx)
         countedKeys += app.key

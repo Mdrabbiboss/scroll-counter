@@ -302,6 +302,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     /** Set by [isReelPager] when the accepted container has no children (self-drawn apps). */
     private var lastWasOpaque = false
 
+    /** The last accepted scroll came from a self-drawn app (feed and reels look the same there). */
+    val lastAcceptedOpaque: Boolean get() = lastWasOpaque
+
     /** The last rejected scroller was a standard Android list, whose layout we can read reliably. */
     var lastSourceNativeList = false
         private set
