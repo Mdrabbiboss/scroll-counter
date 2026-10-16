@@ -49,12 +49,19 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val left = (limit - count).coerceAtLeast(0)
+        // The full-colour 3D buddy (in today's mood) as the picture, like a proper app card.
+        val mood = com.rabbi.scrollcounter.face.Mood.of(count, limit)
+        val sizePx = (context.resources.displayMetrics.density * 48).toInt()
+        val face = runCatching { buddyTile(sizePx, mood) }.getOrNull()
         val n = NotificationCompat.Builder(context, LIVE_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_buddy)
+            .setLargeIcon(face)
             .setColor(0xFF2DD4BF.toInt())
-            .setContentTitle("$count reels today")
-            .setContentText(if (left > 0) "$left left of your $limit-reel limit" else "Daily limit reached — take a break")
-            .setProgress(limit.coerceAtLeast(1), count.coerceAtMost(limit), false)
+            .setContentTitle("Scroll Counter")
+            .setContentText(
+                if (left > 0) "Counting your reels · $count today, $left left"
+                else "Daily limit reached · $count reels today"
+            )
             .setContentIntent(pi)
             .setOnlyAlertOnce(true)
             .setSilent(true)
@@ -65,6 +72,17 @@ object Notifier {
             .setTimeoutAfter(VISIBLE_MS)
             .build()
         runCatching { nmc.notify(LIVE_ID, n) }
+    }
+
+    /** The buddy on a soft rounded tile, for the notification picture. */
+    private fun buddyTile(size: Int, mood: com.rabbi.scrollcounter.face.Mood): android.graphics.Bitmap {
+        val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        p.shader = android.graphics.LinearGradient(0f, 0f, 0f, size.toFloat(), 0xFFFFF4DC.toInt(), 0xFFF3DDB0.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        c.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), size * 0.26f, size * 0.26f, p)
+        com.rabbi.scrollcounter.face.FaceRenderer.draw(c, size / 2f, size / 2f, size * 0.38f, mood)
+        return bmp
     }
 
     fun clearLive(context: Context) {
