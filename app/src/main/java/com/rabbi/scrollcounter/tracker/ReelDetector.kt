@@ -502,7 +502,6 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         st.primedKey = "${pager.viewIdResourceName}|${pager.className}"
         st.primedIndex = currentItemIndex()
         // Remember the reel you opened on, so the first swipe away from it counts once.
-        if (isSnapped()) pageFingerprint()?.let { st.currentFp = it; st.seenFps.add(it) }
         st.currentChild = snappedChildKey()
     }
 
