@@ -76,7 +76,8 @@ fun TodayScreen(
     val today = remember(tick) { store.dayStats(now) }
     val hours = remember(tick) { store.hourly(now) }
     val limit = remember(tick) { store.dailyLimit }
-    val limitLocked = remember(tick) { store.limitLockedToday }
+    val todayDate = rememberToday()
+    val limitLocked = remember(tick, todayDate) { store.limitLockedToday }
     val paused = remember(tick) { store.paused }
     val streak = remember(tick) { store.streak() }
     val peak = hours.indices.maxByOrNull { hours[it] }?.takeIf { hours[it] > 0 }
@@ -274,12 +275,18 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                 Row(
                     Modifier.clip(RoundedCornerShape(16.dp))
                         .background(Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43))))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = if (limitLocked) 8.dp else 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(if (limitLocked) Icons.Rounded.Lock else Icons.Rounded.Edit, null, tint = Color(0xFF4A2A00), modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (limitLocked) "Locked today" else "Edit limit", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                    if (limitLocked) Column {
+                        Text("Locked today", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                        UnlockCountdown(
+                            MaterialTheme.typography.labelMedium, Color(0xFF4A2A00).copy(alpha = 0.8f),
+                            prefix = "Unlocks in ", weight = FontWeight.SemiBold
+                        )
+                    } else Text("Edit limit", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                 }
             }
         }

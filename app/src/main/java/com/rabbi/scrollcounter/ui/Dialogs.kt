@@ -5,6 +5,7 @@ import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.background
@@ -288,9 +289,23 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(6.dp))
             Text("reels per day", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
+            Spacer(Modifier.height(18.dp))
+            // Live countdown until the limit can be changed again (midnight).
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                    .background(Brand.Gold.copy(alpha = 0.10f))
+                    .border(1.dp, Brand.Gold.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                    .padding(vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("YOU CAN EDIT AGAIN IN", style = MaterialTheme.typography.labelSmall, color = Brand.Gold.copy(alpha = 0.85f), letterSpacing = 1.4.sp)
+                Spacer(Modifier.height(2.dp))
+                UnlockCountdown(MaterialTheme.typography.headlineMedium, Color.White, weight = FontWeight.Black)
+                Text("hours : minutes : seconds", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
+            }
             Spacer(Modifier.height(16.dp))
             Text(
-                "You already set your limit today. Stick with it! You can change it again tomorrow.",
+                "You already set your limit today. Stick with it! It unlocks at midnight.",
                 style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))
