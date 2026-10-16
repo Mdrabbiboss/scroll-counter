@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Scroll Counter</string>
-    <string name="accessibility_description">Scroll Counter counts the Reels, Shorts and short videos you watch — in any social or video app (Facebook, Instagram, TikTok, YouTube, Snapchat and others) and on short-video websites in your browser. To recognise a reels feed it looks only at the layout of the screen (the size of the video player, its view names and how it scrolls). In browsers it checks the address bar and page title only to recognise short-video pages; they are never stored. To tell one reel from the next it turns the labels on the video page into a one-way code, in memory only. It never stores or sends messages, captions, comments or anything you type, and all data stays on your device. If you turn on uninstall protection, it also sends you back from Scroll Counter\'s own uninstall screens. It also shows a small counter at the top while you watch, and takes you to the home screen once your daily limit is reached.</string>
+    <string name="accessibility_label">Scroll Counter 🙂</string>
+    <string name="accessibility_summary">Keep this ON to count your reels</string>
+    <string name="accessibility_description">🙂 Keep this ON to count your reels 🙂
+Scroll Counter uses this only to notice when you swipe to the next reel on TikTok, Instagram, Facebook, YouTube, Snapchat and other apps, so it can count them, show your live counter and stop you at your limit. It never reads your bank apps, passwords or messages. Nothing leaves your phone.</string>
     <string name="widget_description">Today\'s scrolls and how tired your thumb is</string>
     <string name="admin_description">Keeps Scroll Counter from being uninstalled on impulse. No admin powers are used.</string>
 </resources>
