@@ -15,16 +15,14 @@ import com.rabbi.scrollcounter.R
  *                  counter, the widget, the block screen). Pops like a scoreboard.
  *  • Matcha Style — playful hand-drawn capitals. Headlines and moods ("GOOD EVENING",
  *                  "FEELING FRESH!", page and dialog titles).
- *  • Blank Place — friendly rounded sans with lowercase. Buttons, labels, card titles, short text.
- *  • Inter       — plain and very readable. Only for small print and long explanations
- *                  (privacy, permission notes), where a decorative face would tire the eyes.
+ *  • Inter       — clean and very readable. Everything that isn't a big number or headline:
+ *                  buttons, labels, cards, settings, explanations — easy for everyone to read.
  *
  * Each decorative font has one weight, so faux-bold is switched off in the type styles.
  */
 object AppFonts {
     val Numbers = FontFamily(Font(R.font.anak_manja, FontWeight.Normal))
     val Headline = FontFamily(Font(R.font.matcha_style, FontWeight.Normal))
-    val Ui = FontFamily(Font(R.font.blank_place, FontWeight.Normal))
     val Reading = FontFamily(
         Font(R.font.inter_regular, FontWeight.Normal),
         Font(R.font.inter_semibold, FontWeight.SemiBold),
@@ -48,6 +46,6 @@ object AppFonts {
         loaded = true
         runCatching { ResourcesCompat.getFont(context, R.font.anak_manja) }.getOrNull()?.let { numbers = it }
         runCatching { ResourcesCompat.getFont(context, R.font.matcha_style) }.getOrNull()?.let { headline = it }
-        runCatching { ResourcesCompat.getFont(context, R.font.blank_place) }.getOrNull()?.let { ui = it }
+        runCatching { ResourcesCompat.getFont(context, R.font.inter_semibold) }.getOrNull()?.let { ui = it }
     }
 }

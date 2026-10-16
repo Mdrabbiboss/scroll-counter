@@ -96,7 +96,6 @@ object Brand {
 private val AppTypography = Typography().run {
     val num = AppFonts.Numbers
     val head = AppFonts.Headline
-    val ui = AppFonts.Ui
     val read = AppFonts.Reading
     val noFake = androidx.compose.ui.text.font.FontSynthesis.None
     copy(
@@ -104,21 +103,20 @@ private val AppTypography = Typography().run {
         displayLarge = displayLarge.copy(fontFamily = num, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 0.sp),
         displayMedium = displayMedium.copy(fontFamily = num, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 0.sp),
         displaySmall = displaySmall.copy(fontFamily = num, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
-        // Headlines & titles — Matcha Style
+        // Big headlines only — Matcha Style
         headlineLarge = headlineLarge.copy(fontFamily = head, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
         headlineMedium = headlineMedium.copy(fontFamily = head, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 0.5.sp),
         headlineSmall = headlineSmall.copy(fontFamily = head, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 0.5.sp),
-        titleLarge = titleLarge.copy(fontFamily = head, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 0.5.sp),
-        // UI text — Blank Place
-        titleMedium = titleMedium.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
-        titleSmall = titleSmall.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
-        bodyLarge = bodyLarge.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
-        bodyMedium = bodyMedium.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
-        labelLarge = labelLarge.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake),
-        labelMedium = labelMedium.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 1.sp),
-        labelSmall = labelSmall.copy(fontFamily = ui, fontWeight = FontWeight.Normal, fontSynthesis = noFake, letterSpacing = 0.8.sp),
-        // Small print & long explanations — Inter
+        // Everything else — Inter, clean and easy for everyone to read
+        titleLarge = titleLarge.copy(fontFamily = read, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
+        titleMedium = titleMedium.copy(fontFamily = read, fontWeight = FontWeight.SemiBold),
+        titleSmall = titleSmall.copy(fontFamily = read, fontWeight = FontWeight.SemiBold),
+        bodyLarge = bodyLarge.copy(fontFamily = read),
+        bodyMedium = bodyMedium.copy(fontFamily = read),
         bodySmall = bodySmall.copy(fontFamily = read),
+        labelLarge = labelLarge.copy(fontFamily = read, fontWeight = FontWeight.SemiBold),
+        labelMedium = labelMedium.copy(fontFamily = read, fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp),
+        labelSmall = labelSmall.copy(fontFamily = read, fontWeight = FontWeight.Normal, letterSpacing = 0.6.sp),
     )
 }
 

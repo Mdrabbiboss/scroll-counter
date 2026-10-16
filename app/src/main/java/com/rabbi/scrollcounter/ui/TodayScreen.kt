@@ -186,8 +186,8 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, onEditLimit: () -> Uni
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     com.rabbi.scrollcounter.widget.WidgetArt.headline(state),
-                    color = Color.White, style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f)
+                    color = Color.White, style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.weight(1f)
                 )
                 Row(
                     Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.14f))
