@@ -12,8 +12,8 @@ android {
         applicationId = "com.rabbi.scrollcounter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 50
-        versionName = "5.4"
+        versionCode = 51
+        versionName = "5.5"
     }
 
     // Release signing comes from environment variables (set by GitHub Actions secrets or your PC).

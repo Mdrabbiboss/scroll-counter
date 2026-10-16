@@ -206,7 +206,7 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
             Spacer(Modifier.height(10.dp))
 
             // The glowing ring with today's count
-            Box(Modifier.size(224.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(184.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     drawIntoCanvas {
                         com.rabbi.scrollcounter.widget.WidgetArt.drawRing(it.nativeCanvas, 0f, 0f, size.minDimension, ringState, density, phase)
@@ -216,11 +216,12 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                     Text(
                         "$shown",
                         style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 48.sp, lineHeight = 52.sp,
                             shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.35f), androidx.compose.ui.geometry.Offset(0f, 6f), 18f)
                         ),
                         color = Color.White, fontWeight = FontWeight.Black
                     )
-                    Text("of $limit reels today", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.75f))
+                    Text("of $limit reels today", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
                 }
             }
             // Where today's reels came from: app icons with their counts, in one glass pill.
@@ -248,8 +249,8 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
 
             // Buddy + message
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                AnimatedFace(mood, 58.dp, bounceKey = count)
-                Spacer(Modifier.width(12.dp))
+                AnimatedFace(mood, 84.dp, bounceKey = count)
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(mood.label, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
                     Text(message, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.82f))
