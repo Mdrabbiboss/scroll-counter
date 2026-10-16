@@ -152,9 +152,20 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val st = states[appKey] ?: return 0
         if (!st.pending) return 0
         // Give the feed a moment to finish snapping onto the next video before reading it.
-        if (!st.opaque && !st.allReels && !isSnapped() && st.retries < MAX_RETRIES) {
-            st.retries++
-            return RETRY
+        if (!st.opaque && !st.allReels) {
+            // At rest, the screen must still look like a reels feed. Apps that draw everything in
+            // one view (Facebook Lite) report every screen — feed, comments, reels — from the same
+            // scroller, so the swipe is only counted if, once settled, it's really a reel page.
+            val pg = lastPager
+            val ok = pg != null && isSnapped() && runCatching { pg.refresh() && isReelPager(pg) && !lastWasOpaque }.getOrDefault(false)
+            if (!ok) {
+                if (st.retries < MAX_RETRIES) { st.retries++; return RETRY }
+                st.retries = 0
+                st.pending = false
+                st.hadIndex = false; st.hadDelta = false; st.accum = 0f
+                DetectLog.add(appKey, "at rest: not a reel page ($lastReason)")
+                return 0
+            }
         }
         st.retries = 0
         st.pending = false
