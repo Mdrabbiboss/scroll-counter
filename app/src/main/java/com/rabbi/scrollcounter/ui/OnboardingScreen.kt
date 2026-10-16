@@ -50,7 +50,7 @@ import com.rabbi.scrollcounter.tracker.DeviceStatus
 import com.rabbi.scrollcounter.ui.theme.Brand
 
 /**
- * First-run setup: welcome → accessibility (with disclosure) → notifications → battery.
+ * First-run setup: welcome → accessibility (with disclosure) → notifications → history backup → battery.
  * Each step advances automatically once the user has granted it in system settings.
  */
 @Composable
@@ -58,6 +58,7 @@ fun OnboardingScreen(
     status: DeviceStatus,
     onOpenAccessibility: () -> Unit,
     onRequestNotifications: () -> Unit,
+    onOpenStorage: () -> Unit,
     onOpenBattery: () -> Unit,
     onFinish: () -> Unit,
 ) {
@@ -70,11 +71,13 @@ fun OnboardingScreen(
     LaunchedEffect(status, step) {
         if (step == 1 && status.trackerOn) { kotlinx.coroutines.delay(500); step = 2; return@LaunchedEffect }
         if (step == 2 && status.notificationsOn) { kotlinx.coroutines.delay(500); step = 3; return@LaunchedEffect }
-        if (step == 3 && status.batteryUnrestricted) return@LaunchedEffect // wait for the user to tap Finish
+        if (step == 3 && status.historySafe) { kotlinx.coroutines.delay(500); step = 4; return@LaunchedEffect }
+        if (step == 4 && status.batteryUnrestricted) return@LaunchedEffect // wait for the user to tap Finish
         if (autoAsked != step) {
             when (step) {
                 2 -> if (!status.notificationsOn) { autoAsked = step; kotlinx.coroutines.delay(700); onRequestNotifications() }
-                3 -> if (!status.batteryUnrestricted) { autoAsked = step; kotlinx.coroutines.delay(700); batteryTries++; onOpenBattery() }
+                3 -> if (!status.historySafe) { autoAsked = step; kotlinx.coroutines.delay(700); onOpenStorage() }
+                4 -> if (!status.batteryUnrestricted) { autoAsked = step; kotlinx.coroutines.delay(700); batteryTries++; onOpenBattery() }
             }
         }
     }
@@ -83,7 +86,7 @@ fun OnboardingScreen(
         Modifier.fillMaxSize().glassBackdrop(isDarkTheme()).safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(4) { i ->
+            repeat(5) { i ->
                 Box(
                     Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(50))
                         .background(if (i <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
@@ -112,6 +115,14 @@ fun OnboardingScreen(
                         done = status.notificationsOn,
                         badge = "REQUIRED"
                     )
+                    3 -> StepBody(
+                        Icons.Rounded.Lock, Brand.Gold,
+                        "Keep your history safe",
+                        "Turn on \"Allow access to manage all files\" for Scroll Counter. It saves a small backup of your reel counts on your phone, " +
+                            "so clearing the app's data or reinstalling it never wipes today's count or your last 60 days. Only numbers are saved.",
+                        done = status.historySafe,
+                        badge = "REQUIRED"
+                    )
                     else -> StepBody(
                         Icons.Rounded.BatteryChargingFull, Brand.Good,
                         "Keep counting reliably",
@@ -138,6 +149,13 @@ fun OnboardingScreen(
                 if (status.notificationsOn) PrimaryButton("Continue") { step = 3 }
                 else {
                     PrimaryButton("Allow notifications", onRequestNotifications)
+                    RequiredNote()
+                }
+            }
+            3 -> {
+                if (status.historySafe) PrimaryButton("Continue") { step = 4 }
+                else {
+                    PrimaryButton("Allow history backup", onOpenStorage)
                     RequiredNote()
                 }
             }

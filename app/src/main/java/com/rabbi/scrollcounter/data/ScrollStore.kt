@@ -52,14 +52,14 @@ class ScrollStore private constructor(context: Context) {
     val changes: StateFlow<Long> = _changes
 
     private val appContext = context.applicationContext
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     init {
         // Bring back counts from the durable copy (after a reinstall or "clear data").
-        DurableStore.restore(appContext) { text -> if (text != null) runCatching { mergeDurable(text) } }
+        restoreDurable()
         TrackedApps.attach(appContext)
         com.rabbi.scrollcounter.ui.theme.AppFonts.load(appContext)
     }
-    private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val widgetRefresh = Runnable {
         com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(appContext)
     }
@@ -77,10 +77,20 @@ class ScrollStore private constructor(context: Context) {
 
     // ---------------- Durable copy (survives uninstall / clear data) ----------------
 
-    /** Counts of the last 30 days as compact lines, oldest first. Header: v1|firstDay|limit. */
+    /**
+     * Pull counts back from every saved copy and merge them in (never lowering anything), then
+     * write the merged result back so all copies agree. Safe to call often (e.g. on resume,
+     * right after the user allows storage access).
+     */
+    fun restoreDurable() {
+        DurableStore.restore(appContext) { text -> if (text != null) runCatching { mergeDurable(text) } }
+        main.postDelayed({ DurableStore.scheduleSave(appContext) { durableSnapshot() } }, 1500)
+    }
+
+    /** Counts of the last [HISTORY_DAYS] days as compact lines, oldest first. Header: v1|firstDay|limit. */
     @Synchronized
     fun durableSnapshot(): String {
-        val cutoff = LocalDate.now().minusDays(30)
+        val cutoff = LocalDate.now().minusDays(HISTORY_DAYS.toLong())
         val rows = stats.all.mapNotNull { (k, v) ->
             val parts = k.split('|')
             if (parts.size != 3) return@mapNotNull null

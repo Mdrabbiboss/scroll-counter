@@ -425,8 +425,10 @@ const val PRIVACY_POLICY_TEXT =
         "Ads\n" +
         "The app shows Google AdMob banner ads. Google may use your device's advertising ID to show ads, " +
         "and asks for your consent where the law requires it. You can change ad choices in Settings.\n\n" +
-        "Export\n" +
-        "Export creates a CSV of your stats and hands it to the app you choose. Nothing is sent automatically."
+        "History backup\n" +
+        "So clearing the app's data or reinstalling can't erase your counts, a small backup file of the numbers only " +
+        "(date, app, reel count, distance, hour) is kept in a hidden \".ScrollCounter\" folder on your phone's storage, " +
+        "and a copy in Google Play services' Block Store. It never contains what you watched and is never uploaded by the app."
 
 @Composable
 fun PrivacyPolicyDialog(onDismiss: () -> Unit) {

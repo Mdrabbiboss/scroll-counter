@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Public
@@ -76,6 +77,7 @@ fun SettingsScreen(
     onEnableTracking: () -> Unit,
     onEditLimit: () -> Unit,
     onRequestNotifications: () -> Unit,
+    onRequestStorage: () -> Unit = {},
     onAddWidget: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -275,6 +277,15 @@ fun SettingsScreen(
         item { SectionLabel("Your data") }
         item {
             PremiumCard {
+                SettingRow(
+                    Icons.Rounded.Lock, "History backup",
+                    if (status.historySafe) "On — clear data or reinstall can't wipe your counts"
+                    else "Off — tap to allow, or clearing data will erase your history",
+                    iconTint = if (status.historySafe) Brand.Good else MaterialTheme.colorScheme.error,
+                    onClick = onRequestStorage
+                ) {
+                    if (!status.historySafe) PillButton("Allow", gold = true, onClick = onRequestStorage)
+                }
                 SettingRow(Icons.Rounded.DeleteForever, "Delete all history", "Removes every stored day", iconTint = MaterialTheme.colorScheme.error,
                     onClick = { confirm = Confirm.DELETE_ALL })
             }

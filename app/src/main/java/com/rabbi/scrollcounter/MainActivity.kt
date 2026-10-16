@@ -106,7 +106,19 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     var status by remember { mutableStateOf(TrackerStatus.read(context)) }
     LifecycleResumeEffect(Unit) {
         status = TrackerStatus.read(context)
+        // Coming back from "All files access" (or after a reinstall): bring the saved history back.
+        if (status.historySafe) store.restoreDurable()
         onPauseOrDispose { }
+    }
+
+    // Older phones (Android 10 and below) use the normal storage permission dialog.
+    val storageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        status = TrackerStatus.read(context)
+        if (status.historySafe) store.restoreDurable()
+    }
+    val requestStorage: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) TrackerStatus.openStorageAccessSettings(context)
+        else storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
     // Notifications: ask once with the system dialog (Android 13+); after that, open app settings.
@@ -180,6 +192,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                     status = status,
                     onOpenAccessibility = { TrackerStatus.openAccessibilitySettings(context) },
                     onRequestNotifications = requestNotifications,
+                    onOpenStorage = requestStorage,
                     onOpenBattery = { TrackerStatus.openBatterySettings(context) },
                     onFinish = { store.onboarded = true }
                 )
@@ -258,6 +271,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                 onEnableTracking = { showDisclosure = true },
                                 onEditLimit = { showLimit = true },
                                 onRequestNotifications = requestNotifications,
+                                onRequestStorage = requestStorage,
                                 onAddWidget = addWidget
                             )
                         }

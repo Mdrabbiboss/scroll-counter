@@ -1,6 +1,10 @@
 package com.rabbi.scrollcounter.data
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import com.google.android.gms.auth.blockstore.Blockstore
@@ -8,6 +12,8 @@ import com.google.android.gms.auth.blockstore.RetrieveBytesRequest
 import com.google.android.gms.auth.blockstore.StoreBytesData
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.concurrent.Executors
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -38,6 +44,7 @@ object DurableStore {
     }
 
     private fun save(context: Context, text: String) {
+        io.execute { Vault.write(context, text) }
         var bytes = gzip(text)
         // Too big? Drop the oldest days (lines are oldest first) until it fits.
         val all = text.lines()
@@ -55,8 +62,15 @@ object DurableStore {
         }
     }
 
-    /** Read the saved history back (async). [onResult] gets null when there's nothing saved. */
+    private val io = Executors.newSingleThreadExecutor()
+
+    /**
+     * Read every saved copy back (async): the storage vault (survives clear data AND uninstall)
+     * and Block Store. [onResult] is called once per copy found.
+     */
     fun restore(context: Context, onResult: (String?) -> Unit) {
+        val app = context.applicationContext
+        io.execute { Vault.readAll(app).forEach { onResult(it) } }
         runCatching {
             Blockstore.getClient(context.applicationContext)
                 .retrieveBytes(RetrieveBytesRequest.Builder().setKeys(listOf(KEY)).build())
@@ -76,4 +90,57 @@ object DurableStore {
 
     private fun gunzip(b: ByteArray): String =
         GZIPInputStream(ByteArrayInputStream(b)).use { it.readBytes().toString(Charsets.UTF_8) }
+
+    /**
+     * A hidden backup file in the phone's shared storage (outside the app's own folder), so
+     * Android's "Clear data" and uninstalling can't touch it. Needs "All files access"
+     * (Android 11+) or the storage permission (older phones), asked for during setup.
+     */
+    object Vault {
+        private const val NAME = "history.dat"
+
+        /** Set once this process has read the vault, so a fresh empty app never overwrites it. */
+        @Volatile var loaded = false
+            private set
+
+        fun hasAccess(context: Context): Boolean =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager()
+            else context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+
+        @Suppress("DEPRECATION")
+        private fun dirs(): List<File> {
+            val root = Environment.getExternalStorageDirectory()
+            return listOf(
+                File(root, ".ScrollCounter"),
+                File(File(root, Environment.DIRECTORY_DOCUMENTS), ".ScrollCounter"),
+            )
+        }
+
+        @Synchronized
+        fun readAll(context: Context): List<String> {
+            if (!hasAccess(context)) return emptyList()
+            val out = dirs().mapNotNull { d ->
+                val f = File(d, NAME)
+                if (!f.isFile) null else runCatching { gunzip(f.readBytes()) }.getOrNull()
+            }
+            loaded = true
+            return out
+        }
+
+        @Synchronized
+        fun write(context: Context, text: String) {
+            if (!hasAccess(context) || !loaded) return
+            val bytes = runCatching { gzip(text) }.getOrNull() ?: return
+            dirs().forEach { d ->
+                runCatching {
+                    d.mkdirs()
+                    runCatching { File(d, ".nomedia").createNewFile() }
+                    val tmp = File(d, "$NAME.tmp")
+                    tmp.writeBytes(bytes)
+                    val f = File(d, NAME)
+                    if (!tmp.renameTo(f)) { f.writeBytes(bytes); tmp.delete() }
+                }
+            }
+        }
+    }
 }
