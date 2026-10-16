@@ -374,6 +374,16 @@ private fun DetectionLogDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") } },
-        dismissButton = { androidx.compose.material3.TextButton(onClick = { com.rabbi.scrollcounter.tracker.DetectLog.clear(); lines = emptyList() }) { Text("Clear") } }
+        dismissButton = {
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            Row {
+                androidx.compose.material3.TextButton(onClick = { com.rabbi.scrollcounter.tracker.DetectLog.clear(); lines = emptyList() }) { Text("Clear") }
+                androidx.compose.material3.TextButton(onClick = {
+                    val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
+                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("Scroll Counter detection", lines.joinToString("\n")))
+                    Toast.makeText(ctx, "Copied — paste it in the chat", Toast.LENGTH_SHORT).show()
+                }) { Text("Copy") }
+            }
+        }
     )
 }

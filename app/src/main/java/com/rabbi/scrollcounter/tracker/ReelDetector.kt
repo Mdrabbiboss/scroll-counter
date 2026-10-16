@@ -91,7 +91,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         )
         if (!accepted) return false
         val opaque = lastWasOpaque
-        lastPager = src
+        // ViewPager2: the real pager of videos is the single inner list — track that one.
+        lastPager = innerPager(src) ?: src
         lastPagerHeight = rect.height().coerceAtLeast(1)
         src.viewIdResourceName?.let { id -> src.packageName?.toString()?.let { knownPagerIds[it] = id } }
 
@@ -394,11 +395,13 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             c.getBoundsInScreen(child)
             if (child.isEmpty) continue
             val touchesEdge = child.top <= rect.top + 3 || child.bottom >= rect.bottom - 3
-            if (child.height() >= hh * 0.5f && child.height() < hh * 0.96f && pageLooksLikeList(c)) { lastReason = "holds a list"; return false }
+            if (child.height() >= hh * 0.5f && child.height() < hh * 0.96f && pageLooksLikeList(c) && !isPagerOfPages(c)) { lastReason = "holds a list"; return false }
             if (abs(child.height() - hh) <= hh * 0.04f && child.width() >= rect.width() * 0.9f) {
                 // A wrapper whose single child is a whole scrolling list (inbox, feed, settings)
                 // looks like a "page" — but a reel page is never itself a list.
-                if (pageLooksLikeList(c)) { lastReason = "page is a list"; return false }
+                // ViewPager2 wraps an inner RecyclerView that is itself the pager of video pages —
+                // that's fine. Only a list of ordinary rows (inbox, feed, settings) is rejected.
+                if (pageLooksLikeList(c) && !isPagerOfPages(c)) { lastReason = "page is a list"; return false }
                 exactPages++
             }
             else if (!touchesEdge && child.height() > hh * 0.05f) otherItems++
@@ -422,6 +425,32 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     }
 
     private val tmp = Rect()
+    private val tmp2 = Rect()
+
+    private fun innerPager(src: AccessibilityNodeInfo): AccessibilityNodeInfo? = try {
+        if (src.childCount == 1) src.getChild(0)?.takeIf { it.childCount > 0 && isPagerOfPages(it) } else null
+    } catch (e: Exception) { null }
+
+    /** A list whose items are each (almost) as tall as the list itself — i.e. a pager of videos. */
+    private fun isPagerOfPages(list: AccessibilityNodeInfo): Boolean = try {
+        list.getBoundsInScreen(tmp2)
+        val lh = tmp2.height().coerceAtLeast(1)
+        val top = tmp2.top; val bottom = tmp2.bottom
+        val n = minOf(list.childCount, 6)
+        var pages = 0
+        var rows = 0
+        val r = Rect()
+        for (i in 0 until n) {
+            val c = list.getChild(i) ?: continue
+            c.getBoundsInScreen(r)
+            if (r.isEmpty) continue
+            val edge = r.top <= top + 3 || r.bottom >= bottom - 3
+            if (abs(r.height() - lh) <= lh * 0.04f) pages++
+            else if (!edge) rows++
+            else if (r.height() < lh * 0.3f && n > 2) rows++
+        }
+        n in 1..3 && rows == 0 && (pages >= 1 || n == 2)
+    } catch (e: Exception) { false }
 
     /** True if this "page" is (or is mostly filled by) a scrolling list rather than a video page. */
     private fun pageLooksLikeList(page: AccessibilityNodeInfo): Boolean {
@@ -522,7 +551,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     private val knownPagerIds = HashMap<String, String>()
 
     private fun found(pkg: String, n: AccessibilityNodeInfo) {
-        lastPager = n
+        lastPager = innerPager(n) ?: n
         n.getBoundsInScreen(rect)
         lastPagerHeight = rect.height().coerceAtLeast(1)
         n.viewIdResourceName?.let { if (pkg.isNotEmpty()) knownPagerIds[pkg] = it }
