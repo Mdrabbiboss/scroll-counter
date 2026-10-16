@@ -53,7 +53,10 @@ class ScrollTrackerService : AccessibilityService() {
             return@Runnable
         }
         DetectLog.add(app.packages.first(), if (n > 0) "swipe settled → +$n reel" else "swipe settled → same reel")
-        if (n > 0) onNewReels(app, n, detector?.lastPagerHeight ?: 0)
+        if (n > 0) {
+            detector?.noteCurrent(app.key)
+            onNewReels(app, n, detector?.lastPagerHeight ?: 0)
+        }
     }
     /** Movement-based reels detection for apps whose layout we can't read (see [onAppScroll]). */
     private var snap: BrowserReelDetector? = null
@@ -120,8 +123,9 @@ class ScrollTrackerService : AccessibilityService() {
             if (!s.isAppEnabled(app.key) || !isSocial(pkg, app)) return
             val det = detector ?: return
             if (det.findReelPager(root)) {
-                det.prime(app.key)
-                showPill(s, s.todayTotal(), s.dailyLimit, bump = false)
+                // The reel you open on counts too.
+                if (det.prime(app.key)) { DetectLog.add(pkg, "reels opened → +1 (first reel)"); onNewReels(app, 1, det.lastPagerHeight) }
+                else showPill(s, s.todayTotal(), s.dailyLimit, bump = false)
             } else if (++presenceTries < PRESENCE_MAX_TRIES) {
                 // Keep looking for a little while; after that, screen-change events take over.
                 handler.postDelayed(this, PRESENCE_MS)
@@ -221,8 +225,8 @@ class ScrollTrackerService : AccessibilityService() {
                 lastScanAt = now
                 val det = detector ?: return
                 if (det.findReelPager(runCatching { rootInActiveWindow }.getOrNull())) {
-                    det.prime(app.key)
-                    showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+                    if (det.prime(app.key)) { DetectLog.add(pkg, "reels opened → +1 (first reel)"); onNewReels(app, 1, det.lastPagerHeight) }
+                    else showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
                 }
             }
 
@@ -241,6 +245,9 @@ class ScrollTrackerService : AccessibilityService() {
             // fall back to how the feed moves — exact one-screen snaps, twice in a row = reels.
             // Standard Android lists are read reliably by their layout, so a "no" there is final.
             if (det.lastSourceNativeList) return
+            // Known social apps are read by their layout (or the self-drawn check); the movement
+            // fallback is only for unknown apps, so it can never invent counts in Facebook Lite.
+            if (TrackedApps.isKnown(app.packages.first())) return
             val sn = snap ?: return
             sn.onScroll(app.key, event)
             if (sn.inReels(app.key) && shouldBlock(store)) { block(app.name); return }

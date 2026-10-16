@@ -272,9 +272,10 @@ class BrowserReelDetector(private val screenH: Int) {
         st.streak++
         if (moved < 0) return 0 // going back to a video already seen
         if (st.inReels) return merge(st, whole, now)
-        if (st.streak >= 2) {
+        if (st.streak >= 3) {
+            // Three perfect one-screen snaps in a row: that's a reels feed (count all three).
             st.inReels = true
-            return merge(st, whole + 1, now)
+            return merge(st, whole + 2, now)
         }
         return 0
     }

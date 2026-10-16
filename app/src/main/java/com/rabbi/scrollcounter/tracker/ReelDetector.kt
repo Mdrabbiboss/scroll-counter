@@ -184,12 +184,15 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (st.opaque) {
             if (!hadDelta) return 0
             val whole = pages.roundToInt()
-            val exact = accum > 0 && whole in 1..2 && abs(pages - whole) <= 0.08f * whole
-            if (!exact) { st.opaqueStreak = 0; return 0 }
+            val exact = accum > 0 && whole == 1 && abs(pages - whole) <= 0.05f
+            if (!exact) { st.opaqueStreak = 0; DetectLog.add(appKey, "self-drawn: swipe ${"%.2f".format(pages)} screens → not reels"); return 0 }
             st.opaqueStreak++
+            DetectLog.add(appKey, "self-drawn: exact snap #${st.opaqueStreak}")
+            // Three exact one-screen snaps in a row before believing it's a reels feed — comment
+            // lists and news feeds never move like that. Then the three are counted together.
             return when {
-                st.opaqueStreak >= 3 -> mark(st, whole)
-                st.opaqueStreak == 2 -> mark(st, whole + 1)
+                st.opaqueStreak >= 4 -> mark(st, 1)
+                st.opaqueStreak == 3 -> mark(st, 3)
                 else -> 0
             }
         }
@@ -476,7 +479,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         knownPagerIds[pkg]?.let { id ->
             val hits = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull().orEmpty()
             for (n in hits) {
-                if (n.isVisibleToUser && isReelPager(n)) { found(pkg, n); return true }
+                if (n.isVisibleToUser && isReelPager(n) && !lastWasOpaque) { found(pkg, n); return true }
             }
         }
 
@@ -486,7 +489,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         while (queue.isNotEmpty() && visited < 160) {
             val n = queue.removeFirst()
             visited++
-            if (n.isScrollable && isReelPager(n)) { found(pkg, n); return true }
+            if (n.isScrollable && isReelPager(n) && !lastWasOpaque) { found(pkg, n); return true }
             n.getBoundsInScreen(rect)
             if (rect.height() >= screenH * 0.4f) {
                 for (i in 0 until minOf(n.childCount, 14)) {
@@ -507,13 +510,38 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     }
 
     /** Remember which reel is on screen when a feed opens, so the very first swipe counts too. */
-    fun prime(appKey: String) {
-        val pager = lastPager ?: return
+    /**
+     * A reels feed just appeared on screen. Remembers where it is, and returns true when the reel
+     * you're looking at should be counted — the first reel you open counts too. Coming back to
+     * the very same reel (e.g. after a quick look at another app) doesn't count it twice.
+     */
+    fun prime(appKey: String): Boolean {
+        val pager = lastPager ?: return false
         val st = states.getOrPut(appKey) { AppState() }
         st.primedKey = "${pager.viewIdResourceName}|${pager.className}"
-        st.primedIndex = currentItemIndex()
-        // Remember the reel you opened on, so the first swipe away from it counts once.
-        st.currentChild = snappedChildKey()
+        val idx = currentItemIndex()
+        st.primedIndex = idx
+        if (idx != null) st.lastIdx = idx
+        val child = snappedChildKey()
+        st.currentChild = child
+        if (!isSnapped()) return false
+        val key = "${pager.hashCode()}|${child ?: 0}|${idx ?: -1}"
+        val now = SystemClock.uptimeMillis()
+        val last = lastEntry[appKey]
+        if (last != null && last.first == key) return false
+        if (last != null && now - last.second < 1500) return false
+        lastEntry[appKey] = key to now
+        st.lastCountAt = now
+        return true
+    }
+
+    private val lastEntry = HashMap<String, Pair<String, Long>>()
+
+    /** After a counted swipe: remember this reel so re-opening the app on it won't count it again. */
+    fun noteCurrent(appKey: String) {
+        val pager = lastPager ?: return
+        val key = "${pager.hashCode()}|${snappedChildKey() ?: 0}|${currentItemIndex() ?: -1}"
+        lastEntry[appKey] = key to SystemClock.uptimeMillis()
     }
 
     fun forgetPager() {
