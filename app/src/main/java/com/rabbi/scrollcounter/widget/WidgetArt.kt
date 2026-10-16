@@ -241,8 +241,8 @@ object WidgetArt {
 
     /** The glowing progress ring alone, in the mood's colours. */
     @Synchronized
-    fun drawRing(c: Canvas, x: Float, y: Float, size: Float, state: WidgetState, dp: Float, phase: Float) =
-        ring(c, x, y, size, state.progress, scene(state), dp, phase)
+    fun drawRing(c: Canvas, x: Float, y: Float, size: Float, state: WidgetState, dp: Float, phase: Float, headDot: Boolean = true) =
+        ring(c, x, y, size, state.progress, scene(state), dp, phase, headDot)
 
     /** The mood's glow colour (ARGB), used to tint the app's background. */
     fun glowColor(state: WidgetState): Int = scene(state).glow
@@ -252,7 +252,7 @@ object WidgetArt {
 
     // -------------------------------------------------------------------------- pieces
 
-    private fun ring(c: Canvas, x: Float, y: Float, size: Float, progress: Float, sc: Scene, dp: Float, phase: Float) {
+    private fun ring(c: Canvas, x: Float, y: Float, size: Float, progress: Float, sc: Scene, dp: Float, phase: Float, headDot: Boolean = true) {
         val stroke = size * 0.095f
         val inset = stroke / 2 + 2f * dp
         rf.set(x + inset, y + inset, x + size - inset, y + size - inset)
@@ -297,7 +297,8 @@ object WidgetArt {
             c.drawArc(rf, -90f, sweep, false, p)
             p.shader = null
 
-            // glowing head dot
+            // glowing head dot (the app draws its animated buddy there instead)
+            if (headDot) {
             val a = Math.toRadians((-90f + sweep).toDouble())
             val hx = cx + (cos(a) * r).toFloat()
             val hy = cy + (sin(a) * r).toFloat()
@@ -308,6 +309,7 @@ object WidgetArt {
             p.shader = null
             p.color = 0xFFFFFFFF.toInt()
             c.drawCircle(hx, hy, stroke * 0.30f, p)
+            }
         }
         p.style = Paint.Style.FILL
         p.strokeCap = Paint.Cap.BUTT

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -206,10 +207,11 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
             Spacer(Modifier.height(10.dp))
 
             // The glowing ring with today's count
-            Box(Modifier.size(184.dp), contentAlignment = Alignment.Center) {
+            val ringSize = 184.dp
+            Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     drawIntoCanvas {
-                        com.rabbi.scrollcounter.widget.WidgetArt.drawRing(it.nativeCanvas, 0f, 0f, size.minDimension, ringState, density, phase)
+                        com.rabbi.scrollcounter.widget.WidgetArt.drawRing(it.nativeCanvas, 0f, 0f, size.minDimension, ringState, density, phase, headDot = false)
                     }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -223,6 +225,18 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                     )
                     Text("of $limit reels today", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
                 }
+                // A tiny animated buddy rides the tip of the ring (same geometry as WidgetArt.ring).
+                val stroke = ringSize.value * 0.095f
+                val radius = ringSize.value / 2f - (stroke / 2f + 2f)
+                val sweep = (progress * 360f).coerceAtLeast(if (progress > 0f) 6f else 0f)
+                val ang = Math.toRadians((-90f + sweep).toDouble())
+                AnimatedFace(
+                    mood, 32.dp, bounceKey = count,
+                    modifier = Modifier.offset(
+                        x = (kotlin.math.cos(ang) * radius).toFloat().dp,
+                        y = (kotlin.math.sin(ang) * radius).toFloat().dp
+                    )
+                )
             }
             // Where today's reels came from: app icons with their counts, in one glass pill.
             if (apps.isNotEmpty()) {
