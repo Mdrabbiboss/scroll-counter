@@ -19,93 +19,94 @@ import kotlin.random.Random
  * when exhausted. Stays quiet when the phone is on silent / vibrate.
  */
 object BuddyVoice {
-    private const val RATE = 22050
+    private const val RATE = 44100
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private val cache = HashMap<String, ShortArray>()
     private val envCache = HashMap<String, FloatArray>()
     @Volatile private var playingUntil = 0L
 
-    /** One sound segment: [ms] long, pitch gliding [f0]→[f1] Hz, optional vibrato and breath. */
+    /** One sound segment: [ms] long, pitch gliding [f0]→[f1] Hz, with an optional gentle vibrato. */
     private class Seg(
         val ms: Int, val f0: Float, val f1: Float, val amp: Float = 1f,
-        val vibHz: Float = 0f, val vibDepth: Float = 0f, val breath: Float = 0f, val silent: Boolean = false
+        val vibHz: Float = 0f, val vibDepth: Float = 0f, val silent: Boolean = false
     )
 
     private fun gap(ms: Int) = Seg(ms, 0f, 0f, 0f, silent = true)
 
+    // Clean, cute "ocarina / bubble" tones only — no noise, no buzzy harmonics.
     private fun variants(mood: Mood): List<List<Seg>> = when (mood) {
         Mood.FRESH -> listOf(
-            // "pip-pip-piiip!"
-            listOf(Seg(70, 1150f, 1650f), gap(45), Seg(80, 1250f, 1800f), gap(40), Seg(150, 1700f, 1350f, vibHz = 14f, vibDepth = 0.03f)),
-            // happy trill "brrrip!"
-            listOf(Seg(260, 950f, 1550f, vibHz = 24f, vibDepth = 0.07f), gap(30), Seg(90, 1500f, 1900f, 0.8f)),
-            // cute "hee-hee"
-            listOf(Seg(110, 1300f, 1500f, 0.9f), gap(70), Seg(130, 1350f, 1600f, 0.9f)),
+            // "pip-pip-piu!"
+            listOf(Seg(75, 1050f, 1450f), gap(55), Seg(85, 1150f, 1600f), gap(55), Seg(170, 1500f, 1250f, vibHz = 7f, vibDepth = 0.015f)),
+            // bubbly "bloop-bloop!"
+            listOf(Seg(110, 700f, 1150f), gap(60), Seg(130, 820f, 1350f)),
+            // giggle "hi-hi-hi"
+            listOf(Seg(80, 1250f, 1400f, 0.9f), gap(60), Seg(80, 1300f, 1450f, 0.9f), gap(60), Seg(110, 1350f, 1550f, 0.9f)),
         )
         Mood.OKAY -> listOf(
-            // content "mm-hmm"
-            listOf(Seg(170, 520f, 610f, 0.9f), gap(60), Seg(260, 620f, 480f, 0.85f, vibHz = 6f, vibDepth = 0.015f)),
-            // soft "boop?"
-            listOf(Seg(150, 700f, 930f, 0.85f)),
-            // little hum
-            listOf(Seg(420, 560f, 640f, 0.75f, vibHz = 5f, vibDepth = 0.03f)),
+            // content "mm-hmm~"
+            listOf(Seg(170, 560f, 640f, 0.9f), gap(70), Seg(280, 650f, 540f, 0.9f, vibHz = 5f, vibDepth = 0.012f)),
+            // curious "boop?"
+            listOf(Seg(170, 650f, 900f, 0.9f)),
+            // little happy hum
+            listOf(Seg(380, 600f, 680f, 0.8f, vibHz = 5f, vibDepth = 0.015f)),
         )
         Mood.TIRED -> listOf(
-            // yawn "aaa-uhh"
-            listOf(Seg(240, 520f, 700f, 0.7f, breath = 0.25f), Seg(620, 700f, 300f, 0.85f, breath = 0.3f)),
-            // sigh
-            listOf(Seg(520, 430f, 300f, 0.55f, breath = 0.6f)),
+            // soft yawn "aah~ uhh"
+            listOf(Seg(260, 560f, 760f, 0.75f), Seg(650, 760f, 380f, 0.85f, vibHz = 4f, vibDepth = 0.012f)),
+            // sleepy "hmmm…"
+            listOf(Seg(560, 520f, 400f, 0.75f, vibHz = 4.5f, vibDepth = 0.015f)),
+            // drowsy "mm… mm"
+            listOf(Seg(200, 560f, 500f, 0.75f), gap(110), Seg(320, 520f, 420f, 0.7f)),
         )
         Mood.DRAINED -> listOf(
-            // whimper "hnn… hnnn"
-            listOf(Seg(200, 820f, 680f, 0.8f, vibHz = 8f, vibDepth = 0.035f), gap(90), Seg(360, 720f, 480f, 0.8f, vibHz = 7f, vibDepth = 0.04f)),
-            // tired "uh-oh"
-            listOf(Seg(150, 520f, 450f, 0.85f), gap(70), Seg(280, 450f, 330f, 0.85f, breath = 0.15f)),
+            // little whimper "nnn… nnn"
+            listOf(Seg(210, 860f, 720f, 0.8f, vibHz = 6f, vibDepth = 0.02f), gap(100), Seg(360, 760f, 540f, 0.8f, vibHz = 6f, vibDepth = 0.02f)),
+            // worried "uh-oh"
+            listOf(Seg(160, 620f, 560f, 0.85f), gap(80), Seg(300, 540f, 420f, 0.85f)),
         )
         Mood.EXHAUSTED -> listOf(
-            // dizzy groan "uuuuhh"
-            listOf(Seg(950, 330f, 210f, 0.9f, vibHz = 5f, vibDepth = 0.07f, breath = 0.2f)),
-            // woozy "whoa-oa-oa"
-            listOf(Seg(700, 600f, 330f, 0.85f, vibHz = 9f, vibDepth = 0.12f)),
+            // dizzy "ooo-ooo~"
+            listOf(Seg(850, 520f, 330f, 0.85f, vibHz = 5f, vibDepth = 0.03f)),
+            // woozy "wooo-ah"
+            listOf(Seg(420, 640f, 460f, 0.85f, vibHz = 6f, vibDepth = 0.025f), gap(60), Seg(300, 480f, 380f, 0.8f)),
         )
     }
 
     private fun synth(segs: List<Seg>): ShortArray {
-        val total = segs.sumOf { it.ms } * RATE / 1000 + RATE / 20
+        val tail = RATE / 10
+        val total = segs.sumOf { it.ms } * RATE / 1000 + tail
         val out = FloatArray(total)
         var pos = 0
-        var phase = 0.0
-        var noiseLp = 0f
-        val rnd = Random(7)
         for (s in segs) {
             val n = s.ms * RATE / 1000
             if (s.silent) { pos += n; continue }
-            val att = min(n / 4, RATE * 12 / 1000)
-            val rel = min(n / 2, RATE * 45 / 1000)
+            var phase = 0.0
+            val att = min(n / 3, RATE * 18 / 1000)
+            val rel = min(n / 2, RATE * 80 / 1000)
             for (i in 0 until n) {
                 if (pos + i >= total) break
                 val t = i.toFloat() / n
-                // smooth glide + vibrato
-                val glide = s.f0 + (s.f1 - s.f0) * (t * t * (3 - 2 * t))
+                val glide = s.f0 + (s.f1 - s.f0) * (t * t * (3 - 2 * t))          // smooth glide
                 val vib = 1f + s.vibDepth * sin(2 * PI * s.vibHz * i / RATE).toFloat()
                 phase += 2 * PI * glide * vib / RATE
-                // warm, rounded tone: fundamental + soft harmonics
-                var v = (sin(phase) + 0.28 * sin(2 * phase) + 0.10 * sin(3 * phase)).toFloat() / 1.38f
-                if (s.breath > 0f) {
-                    noiseLp += 0.18f * ((rnd.nextFloat() * 2 - 1) - noiseLp)
-                    v = v * (1 - s.breath) + noiseLp * 2.2f * s.breath
-                }
+                // Pure, round tone: sine + a whisper of the octave for a soft "ocarina" voice.
+                val v = (sin(phase) + 0.07 * sin(2 * phase)).toFloat() / 1.07f
+                // Raised-cosine fades: no clicks at the start or end of a note.
                 val env = when {
-                    i < att -> i.toFloat() / att
-                    i > n - rel -> (n - i).toFloat() / rel
+                    i < att -> (0.5f - 0.5f * kotlin.math.cos(PI * i / att).toFloat())
+                    i > n - rel -> (0.5f - 0.5f * kotlin.math.cos(PI * (n - i) / rel).toFloat())
                     else -> 1f
                 }
                 out[pos + i] += v * env * s.amp
             }
             pos += n
         }
-        val gain = 0.62f
+        // Gentle low-pass to keep it smooth and warm.
+        var lp = 0f
+        for (i in out.indices) { lp += 0.35f * (out[i] - lp); out[i] = lp }
+        val gain = 0.55f
         return ShortArray(total) { (out[it] * gain).coerceIn(-1f, 1f).times(Short.MAX_VALUE).toInt().toShort() }
     }
 
