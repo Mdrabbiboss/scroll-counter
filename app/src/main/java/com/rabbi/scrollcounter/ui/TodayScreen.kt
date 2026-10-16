@@ -269,23 +269,25 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                 val ctx = androidx.compose.ui.platform.LocalContext.current
                 val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
                 val soundsOn = soundsEnabled
+                var perf by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.rabbi.scrollcounter.face.BuddyVoice.Performance?>(null) }
                 androidx.compose.runtime.LaunchedEffect(mood, soundsOn) {
                     if (!soundsOn) return@LaunchedEffect
                     kotlinx.coroutines.delay(3_500)
                     while (true) {
                         if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
-                            com.rabbi.scrollcounter.face.BuddyVoice.speak(ctx, mood)
+                            com.rabbi.scrollcounter.face.BuddyVoice.speak(ctx, mood) { perf = it }
                         kotlinx.coroutines.delay(com.rabbi.scrollcounter.face.BuddyVoice.idleDelayMs(mood))
                     }
                 }
                 val petSrc = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                 var pets by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                 AnimatedFace(
-                    mood, 84.dp, bounceKey = count + pets * 100_000,
+                    mood, 84.dp, bounceKey = if (soundsOn) count else count + pets * 100_000,
                     modifier = Modifier.clickable(interactionSource = petSrc, indication = null) {
                         pets++
-                        if (soundsOn) com.rabbi.scrollcounter.face.BuddyVoice.speak(ctx, mood)
-                    }
+                        if (soundsOn) com.rabbi.scrollcounter.face.BuddyVoice.speak(ctx, mood) { perf = it }
+                    },
+                    performance = perf
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {

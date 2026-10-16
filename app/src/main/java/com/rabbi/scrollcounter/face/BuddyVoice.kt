@@ -23,6 +23,7 @@ object BuddyVoice {
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private val cache = HashMap<String, ShortArray>()
+    private val envCache = HashMap<String, FloatArray>()
     @Volatile private var playingUntil = 0L
 
     /** One sound segment: [ms] long, pitch gliding [f0]→[f1] Hz, optional vibrato and breath. */
@@ -104,19 +105,67 @@ object BuddyVoice {
             }
             pos += n
         }
-        val gain = 0.42f
+        val gain = 0.62f
         return ShortArray(total) { (out[it] * gain).coerceIn(-1f, 1f).times(Short.MAX_VALUE).toInt().toShort() }
     }
 
-    /** True when sound is allowed: phone ringer is on normal and media isn't muted. */
+    /** How the face acts while a sound plays. */
+    enum class Gesture { HOP, SWAY, YAWN, SHIVER, WOBBLE }
+
+    /**
+     * One "performance": the sound's loudness every 10 ms ([talk], 0..1, drives the mouth) and
+     * the body gesture that goes with it, starting at [startMs] (uptime).
+     */
+    class Performance(val talk: FloatArray, val gesture: Gesture, val startMs: Long) {
+        val durationMs get() = talk.size * 10L
+        /** Mouth opening 0..1 at [now], or -1 once the sound is over. */
+        fun talkAt(now: Long): Float {
+            val i = ((now - startMs) / 10L).toInt()
+            return if (i < 0) 0f else if (i >= talk.size) -1f else talk[i]
+        }
+        /** 0..1 progress through the sound. */
+        fun progress(now: Long) = ((now - startMs).toFloat() / durationMs).coerceIn(0f, 1f)
+    }
+
+    fun gestureFor(mood: Mood) = when (mood) {
+        Mood.FRESH -> Gesture.HOP
+        Mood.OKAY -> Gesture.SWAY
+        Mood.TIRED -> Gesture.YAWN
+        Mood.DRAINED -> Gesture.SHIVER
+        Mood.EXHAUSTED -> Gesture.WOBBLE
+    }
+
+    /** Loudness envelope every 10 ms, normalised and smoothed, so the mouth follows the sound. */
+    private fun envelope(pcm: ShortArray): FloatArray {
+        val win = RATE / 100
+        val n = pcm.size / win
+        val raw = FloatArray(n) { w ->
+            var sum = 0.0
+            for (i in w * win until (w + 1) * win) { val v = pcm[i] / 32768.0; sum += v * v }
+            kotlin.math.sqrt(sum / win).toFloat()
+        }
+        val max = raw.maxOrNull()?.takeIf { it > 0f } ?: 1f
+        val out = FloatArray(n)
+        var a = 0f
+        for (i in 0 until n) {
+            val target = (raw[i] / max).coerceIn(0f, 1f)
+            a += (if (target > a) 0.55f else 0.25f) * (target - a)   // quick open, softer close
+            out[i] = a
+        }
+        return out
+    }
+
+    /** Sound plays on the media volume (also in vibrate mode); silent only when media is muted. */
     private fun allowed(context: Context): Boolean {
         val am = context.getSystemService(AudioManager::class.java) ?: return false
-        if (am.ringerMode != AudioManager.RINGER_MODE_NORMAL) return false
         return am.getStreamVolume(AudioManager.STREAM_MUSIC) > 0
     }
 
-    /** Play one random sound for [mood]. Ignored while another sound is still playing. */
-    fun speak(context: Context, mood: Mood) {
+    /**
+     * Play one random sound for [mood]. Ignored while another sound is still playing.
+     * [onStart] (main thread) gets the [Performance] so the face can act it out in sync.
+     */
+    fun speak(context: Context, mood: Mood, onStart: (Performance) -> Unit = {}) {
         val app = context.applicationContext
         val now = android.os.SystemClock.uptimeMillis()
         if (now < playingUntil || !allowed(app)) return
@@ -127,10 +176,11 @@ object BuddyVoice {
             runCatching {
                 val key = "${mood.name}$idx"
                 val pcm = synchronized(cache) { cache.getOrPut(key) { synth(list[idx]) } }
+                val env = synchronized(envCache) { envCache.getOrPut(key) { envelope(pcm) } }
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_GAME)
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build()
                     )
@@ -146,6 +196,8 @@ object BuddyVoice {
                     .build()
                 track.write(pcm, 0, pcm.size)
                 track.play()
+                val perf = Performance(env, gestureFor(mood), android.os.SystemClock.uptimeMillis() + 40)
+                main.post { onStart(perf) }
                 val ms = pcm.size * 1000L / RATE
                 playingUntil = android.os.SystemClock.uptimeMillis() + ms + 150
                 main.postDelayed({ runCatching { track.stop(); track.release() } }, ms + 300)
@@ -155,10 +207,10 @@ object BuddyVoice {
 
     /** Pause between idle sounds — calmer moods speak less often. */
     fun idleDelayMs(mood: Mood): Long = when (mood) {
-        Mood.FRESH -> 22_000L + Random.nextLong(16_000L)
-        Mood.OKAY -> 28_000L + Random.nextLong(18_000L)
-        Mood.TIRED -> 26_000L + Random.nextLong(16_000L)
-        Mood.DRAINED -> 22_000L + Random.nextLong(14_000L)
-        Mood.EXHAUSTED -> 18_000L + Random.nextLong(12_000L)
+        Mood.FRESH -> 12_000L + Random.nextLong(10_000L)
+        Mood.OKAY -> 15_000L + Random.nextLong(10_000L)
+        Mood.TIRED -> 14_000L + Random.nextLong(10_000L)
+        Mood.DRAINED -> 12_000L + Random.nextLong(9_000L)
+        Mood.EXHAUSTED -> 10_000L + Random.nextLong(8_000L)
     }
 }

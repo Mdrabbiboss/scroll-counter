@@ -58,7 +58,10 @@ object FaceRenderer {
      * [blink] 0 = eyes open, 1 = closed (for blink animations).
      */
     @Synchronized
-    fun draw(canvas: Canvas, cx: Float, cy: Float, r: Float, mood: Mood, blink: Float = 0f, gazeX: Float = 0f, gazeY: Float = 0f, time: Float = 0f) {
+    fun draw(
+        canvas: Canvas, cx: Float, cy: Float, r: Float, mood: Mood, blink: Float = 0f, gazeX: Float = 0f, gazeY: Float = 0f, time: Float = 0f,
+        talk: Float = 0f, mouthWide: Float = 0f,
+    ) {
         t = time
         gx = gazeX.coerceIn(-1f, 1f); gy = gazeY.coerceIn(-1f, 1f)
         p.shader = null; p.style = Paint.Style.FILL
@@ -132,6 +135,22 @@ object FaceRenderer {
 
         // --- Mouth
         val my = cy + r * 0.36f
+        if (talk > 0.03f) {
+            // Talking / singing / yawning: an open mouth that follows the sound.
+            val w = r * (0.11f + 0.05f * talk + 0.12f * mouthWide)
+            val h = r * (0.06f + (0.26f + 0.16f * mouthWide) * talk)
+            val top = my + r * 0.08f - h * 0.5f
+            val rect = RectF(cx - w, top, cx + w, top + h * 1.15f)
+            p.color = INK_DEEP; canvas.drawOval(rect, p)
+            canvas.save()
+            canvas.clipPath(Path().apply { addOval(rect, Path.Direction.CW) })
+            p.color = 0xFFFF7A90.toInt()
+            canvas.drawOval(RectF(cx - w * 0.7f, rect.bottom - h * 0.45f, cx + w * 0.7f, rect.bottom + h * 0.25f), p)
+            canvas.restore()
+            if (mood == Mood.EXHAUSTED) dizzyStars(canvas, cx, cy, r)
+            if (mood == Mood.DRAINED) sweat(canvas, cx + r * 0.66f, cy - r * 0.42f, r * 0.15f)
+            return
+        }
         when (mood) {
             Mood.FRESH -> {
                 // Open happy smile with a little tongue

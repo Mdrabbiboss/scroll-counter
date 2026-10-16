@@ -281,7 +281,7 @@ fun SettingsScreen(
                 val sounds = remember(tick) { store.buddySounds }
                 SettingRow(
                     Icons.Rounded.MusicNote, "Buddy sounds",
-                    if (sounds) "Your buddy makes little sounds by mood (quiet on silent)" else "Off",
+                    if (sounds) "Your buddy talks by mood, like a pet (media volume)" else "Off",
                     iconTint = Brand.Gold
                 ) { PremiumSwitch(checked = sounds, onCheckedChange = { store.buddySounds = it }) }
             }
