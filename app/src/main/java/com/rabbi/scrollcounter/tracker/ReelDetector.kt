@@ -52,6 +52,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var pagerNode = 0                // identity of the pager view (changes when the app rebuilds it)
         var candStreak = 0               // exact one-screen swipes on a not-yet-proven pager
         var opaqueOdd = 0                // self-drawn apps: feed-like (not one-screen) moves in a row
+        var needsRebase = false          // a new screen / list was opened: start counting afresh
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
         var sigKey: String? = null
         var sigMax = Int.MIN_VALUE
@@ -93,8 +94,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val nodeId = src.hashCode()
         val trusted = nodeId in trustedPagers && run { src.getBoundsInScreen(rect); rect.height() >= screenH * 0.5f }
         if (trusted) lastWasOpaque = false
-        val accepted = trusted || (span < 2 && isReelPager(src))
-        if (!trusted && span >= 2) lastReason = "list shows ${span + 1} items"
+        // (Some video viewers report the page before and after as "visible" too, so up to 3 items
+        // are judged by their layout; 4 or more at once is always a list.)
+        val accepted = trusted || (span < 4 && isReelPager(src))
+        if (!accepted && span >= 2) lastReason = "list shows ${span + 1} items"
         // Only a container that is surely reels is trusted through messy mid-swipe layouts.
         val sure = accepted && !lastWasOpaque && (isConfident(src) || isConfident(runCatching { innerPager(src) }.getOrNull()))
         lastAcceptedConfident = sure || (trusted && nodeId in trustedPagers)
@@ -155,7 +158,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // The app rebuilt its feed (back from another screen or app, refreshed…): numbers and
         // distances from before don't apply any more, so start a fresh baseline from here.
         val node = lastPager?.hashCode() ?: 0
-        if (st.pagerNode != 0 && node != 0 && node != st.pagerNode) {
+        // Also when a new screen or list was opened in the app (Reposts, Saved, Liked, a profile's
+        // videos…): apps reuse one video viewer for all of them, numbered from the start each time.
+        if (st.needsRebase || (st.pagerNode != 0 && node != 0 && node != st.pagerNode)) {
+            st.needsRebase = false
             st.maxIndex = if (from >= 0) from else Int.MIN_VALUE
             st.lastIdx = Int.MIN_VALUE
             st.eventIndex = Int.MIN_VALUE
@@ -287,7 +293,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             // Same kind of container, filling the screen, and still laid out like a reels pager
             // (a profile grid or feed list of the same view type is not).
             if (idOk && n.className?.toString() == shapeCls && fillsScreen(n) && !scrollsOnlySideways(n) &&
-                runCatching { isReelPager(n) }.getOrDefault(false)) { lastPager = n; return true }
+                runCatching { isReelPager(n, atRest = true) }.getOrDefault(false)) { lastPager = n; return true }
             n.getBoundsInScreen(tmp)
             if (tmp.height() >= screenH * 0.4f) for (i in 0 until minOf(n.childCount, 14)) runCatching { n.getChild(i) }.getOrNull()?.let { queue.add(it) }
         }
@@ -329,12 +335,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             return 0
         }
         // Give the feed a moment to finish snapping onto the next video before reading it.
-        if (!st.opaque && !st.allReels) {
+        if (!st.opaque) {
             // At rest, the screen must still look like a reels feed. Apps that draw everything in
             // one view (Facebook Lite) report every screen — feed, comments, reels — from the same
             // scroller, so the swipe is only counted if, once settled, it's really a reel page.
             val pg = lastPager
-            val ok = pg != null && isSnapped() && runCatching { pg.refresh() && isReelPager(pg) && !lastWasOpaque }.getOrDefault(false)
+            val ok = pg != null && isSnapped() && runCatching { pg.refresh() && isReelPager(pg, atRest = true) && !lastWasOpaque }.getOrDefault(false)
             if (!ok) {
                 if (st.retries < MAX_RETRIES) { st.retries++; return RETRY }
                 st.retries = 0
@@ -535,7 +541,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private set
     private var lastReason = ""
 
-    private fun isReelPager(src: AccessibilityNodeInfo): Boolean {
+    /**
+     * [atRest] = the screen is still (not mid-swipe): then a reel page must fill the container
+     * exactly — in every app. Mid-swipe, two half pages are fine. (A profile, grid or feed screen
+     * in a short-video app never has one page exactly filling it.)
+     */
+    private fun isReelPager(src: AccessibilityNodeInfo, atRest: Boolean = false): Boolean {
         lastWasOpaque = false
         lastReason = ""
         src.getBoundsInScreen(rect)
@@ -609,7 +620,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // Apps that are short videos all the way through (TikTok, Likee, Kwai…): any full-screen
         // vertical pager is the video feed. Profile grids and comment sheets are still rejected.
         val allReels = pkgName in ALL_REELS_APPS
-        val ok = if (allReels) sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || midSwipe)
+        val ok = if (atRest) sideBySide == 0 && otherItems == 0 && exactPages >= 1
+            else if (allReels) sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || midSwipe)
             else sideBySide == 0 && otherItems == 0 && (exactPages >= 1 || (midSwipe && (named || lastPager?.let { samePager(it, src) } == true)))
         if (!ok) lastReason = "items exact$exactPages other$otherItems row$sideBySide"
         // Not cached: a feed and a reels viewer can share the same view class and size.
@@ -720,7 +732,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         knownPagerIds[pkg]?.let { id ->
             val hits = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull().orEmpty()
             for (n in hits) {
-                if (n.isVisibleToUser && isReelPager(n) && !lastWasOpaque && surelyReels(n)) { found(pkg, n); return true }
+                if (n.isVisibleToUser && isReelPager(n, atRest = true) && !lastWasOpaque && surelyReels(n)) { found(pkg, n); return true }
             }
         }
 
@@ -730,7 +742,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         while (queue.isNotEmpty() && visited < 160) {
             val n = queue.removeFirst()
             visited++
-            if (n.isScrollable && isReelPager(n) && !lastWasOpaque && surelyReels(n)) { found(pkg, n); return true }
+            if (n.isScrollable && isReelPager(n, atRest = true) && !lastWasOpaque && surelyReels(n)) { found(pkg, n); return true }
             n.getBoundsInScreen(rect)
             if (rect.height() >= screenH * 0.4f) {
                 for (i in 0 until minOf(n.childCount, 14)) {
@@ -830,6 +842,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     fun forgetPager() {
         lastPager = null
+        states.values.forEach { it.needsRebase = true }
+    }
+
+    /** A new screen opened inside the app: whatever list comes next is counted from its start. */
+    fun screenChanged(appKey: String) {
+        states[appKey]?.needsRebase = true
     }
 
     // ------------------------------------------------------------------ signature apps
