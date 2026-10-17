@@ -51,6 +51,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var eventFresh = false           // this swipe ended on an exact item number (from == to)
         var pagerNode = 0                // identity of the pager view (changes when the app rebuilds it)
         var candStreak = 0               // exact one-screen swipes on a not-yet-proven pager
+        // Page watch: which video page fills the screen, independent of scroll events.
+        var watchKey: Int? = null        // the page on screen now
+        var watchCandidate: Int? = null  // a new page seen once, waiting to hold still
+        val recentPages = ArrayDeque<Int>() // the 2 pages before it (going back to them isn't new)
+        var countedPage: Int? = null     // the last page that was counted (by either method)
+        var adoptAt = 0L                 // a swipe was counted before its page could be read
         var opaqueOdd = 0                // self-drawn apps: feed-like (not one-screen) moves in a row
         var needsRebase = false          // a new screen / list was opened: nothing counts as "seen"
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
@@ -210,7 +216,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         lastPages = 0f
         leftReels = false
         atRestNotReels = false
-        val n = settleInner(appKey, st, root)
+        val n0 = settleInner(appKey, st, root)
+        // The page watch may already have counted the page this swipe landed on.
+        val n = if (n0 > 0) settledOnPage(appKey, st, n0) else n0
         if (n > 0 && confident) rememberShape(lastPager)
         if (n <= 0 || confident) {
             // An unconfirmed page that, at rest, isn't a reel page at all: not in reels.
@@ -226,6 +234,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             rememberShape(pager)
             return n
         }
+        if (n0 > 0 && n == 0) return 0 // counted already by the page watch
         // A long fling over several screens is a feed being scrolled, not reels.
         if (abs(lastPages) >= 3.5f) leftReels = true
         DetectLog.add(appKey, "not a reel-like swipe on an unnamed page → not counted")
@@ -795,6 +804,99 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      * you're looking at should be counted — the first reel you open counts too. Coming back to
      * the very same reel (e.g. after a quick look at another app) doesn't count it twice.
      */
+    /**
+     * Page watch — works even when an app sends no (or odd) scroll events for its video viewer,
+     * as TikTok's profile / repost / liked viewers do: look at which video page fills the reels
+     * container right now. A different page that holds still = you moved to another reel.
+     * Going back to one of the 2 pages you just came from is not a new reel. Returns 1 (new reel),
+     * 0, or [RETRY] (mid-swipe or not settled yet — look again shortly).
+     */
+    fun pageCheck(appKey: String): Int {
+        val pager = lastPager ?: return 0
+        if (!runCatching { pager.refresh() }.getOrDefault(false)) return 0
+        if (!isConfident(pager) && pager.hashCode() !in provenNodes) return 0
+        val st = states.getOrPut(appKey) { AppState() }
+        if (st.opaque) return 0
+        val key = pageKey() ?: return RETRY
+        val base = st.watchKey
+        if (base == null) { st.watchKey = key; return 0 }
+        if (key == base) { st.watchCandidate = null; return 0 }
+        if (st.watchCandidate != key) { st.watchCandidate = key; return RETRY } // must hold still
+        st.watchCandidate = null
+        // That swipe was already counted from its scroll events: just take the page over.
+        if (st.adoptAt != 0L && SystemClock.uptimeMillis() - st.adoptAt < 3000) {
+            st.adoptAt = 0L
+            movePage(appKey, st, key, "page watch")
+            st.countedPage = key
+            return 0
+        }
+        return movePage(appKey, st, key, "page watch: new video page")
+    }
+
+    /**
+     * Identity of the video page filling the reels container now, looking through wrappers: if the
+     * child filling it is itself a scroller (or just a frame around one), the real page is inside.
+     */
+    private fun pageKey(): Int? {
+        var node = lastPager ?: return null
+        val r = Rect(); val c = Rect()
+        repeat(4) {
+            val filled = runCatching {
+                node.getBoundsInScreen(r)
+                val h = r.height(); if (h <= 0) return null
+                var hit: AccessibilityNodeInfo? = null
+                for (i in 0 until minOf(node.childCount, 8)) {
+                    val ch = node.getChild(i) ?: continue
+                    ch.getBoundsInScreen(c)
+                    if (abs(c.top - r.top) <= h * 0.03f && c.height() >= h * 0.9f && c.width() >= r.width() * 0.9f) { hit = ch; break }
+                }
+                hit
+            }.getOrNull() ?: return null
+            val wrapper = filled.isScrollable || (filled.childCount == 1 && runCatching {
+                filled.getChild(0)?.let { only -> only.getBoundsInScreen(c); filled.getBoundsInScreen(r); c.height() >= r.height() * 0.95f && only.childCount > 1 && only.isScrollable } ?: false
+            }.getOrDefault(false))
+            if (!wrapper) return filled.hashCode()
+            node = if (filled.isScrollable) filled else (filled.getChild(0) ?: return filled.hashCode())
+        }
+        return null
+    }
+
+    /** Record that [key] is now the page on screen; 1 if it's a reel not counted yet. */
+    private fun movePage(appKey: String, st: AppState, key: Int, why: String): Int {
+        val old = st.watchKey
+        val back = key in st.recentPages
+        st.watchKey = key
+        if (old != null && old != key) {
+            st.recentPages.remove(old); st.recentPages.addLast(old)
+            while (st.recentPages.size > 2) st.recentPages.removeFirst()
+        }
+        st.recentPages.remove(key)
+        if (back) { DetectLog.add(appKey, "$why: a page you just saw → not counted"); return 0 }
+        if (key == st.countedPage) return 0
+        st.countedPage = key
+        st.lastCountAt = SystemClock.uptimeMillis()
+        DetectLog.add(appKey, "$why → +1")
+        return 1
+    }
+
+    /** A swipe was counted by its scroll events: keep the page watch in step (never count twice). */
+    private fun settledOnPage(appKey: String, st: AppState, n: Int): Int {
+        if (st.opaque) return n
+        val key = pageKey() ?: run { st.adoptAt = SystemClock.uptimeMillis(); return n }
+        st.adoptAt = 0L
+        if (key == st.countedPage) { st.watchKey = key; DetectLog.add(appKey, "swipe: page already counted"); return 0 }
+        val old = st.watchKey
+        if (old != null && old != key) {
+            st.recentPages.remove(old); st.recentPages.addLast(old)
+            while (st.recentPages.size > 2) st.recentPages.removeFirst()
+        }
+        st.recentPages.remove(key)
+        st.watchKey = key
+        st.watchCandidate = null
+        st.countedPage = key
+        return n
+    }
+
     fun prime(appKey: String): Boolean {
         val pager = lastPager ?: return false
         val st = states.getOrPut(appKey) { AppState() }
@@ -805,6 +907,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (idx != null) st.lastIdx = idx
         val child = snappedChildKey()
         st.currentChild = child
+        pageKey()?.let { st.watchKey = it; st.watchCandidate = null }
         if (!isSnapped()) return false
         val key = "${pager.hashCode()}|${child ?: 0}|${idx ?: -1}"
         val now = SystemClock.uptimeMillis()
@@ -813,6 +916,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (last != null && now - last.second < 1500) return false
         lastEntry[appKey] = key to now
         st.lastCountAt = now
+        pageKey()?.let { st.countedPage = it }
         return true
     }
 

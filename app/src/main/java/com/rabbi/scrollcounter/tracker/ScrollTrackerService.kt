@@ -95,6 +95,42 @@ class ScrollTrackerService : AccessibilityService() {
             onNewReels(app, n, resources.displayMetrics.heightPixels)
         }
     }
+    // ---- page watch: counts a reel when a new video page fills the screen (no scroll events needed) ----
+    private var pageCheckPkg: String? = null
+    private var pageCheckTries = 0
+    private var pageCheckQueued = false
+    private val pageCheckRunnable: Runnable = Runnable { runPageCheck() }
+
+    /**
+     * Throttled (not debounced): a playing video redraws the screen all the time, so a check that
+     * waited for quiet would never run. At most one check is waiting at a time.
+     */
+    private fun queuePageCheck(pkg: String) {
+        if (pageCheckQueued && pageCheckPkg == pkg) return
+        pageCheckPkg = pkg
+        pageCheckTries = 0
+        pageCheckQueued = true
+        handler.removeCallbacks(pageCheckRunnable)
+        handler.postDelayed(pageCheckRunnable, PAGE_CHECK_MS)
+    }
+
+    private fun runPageCheck() {
+        val pkg = pageCheckPkg ?: run { pageCheckQueued = false; return }
+        val s = store ?: run { pageCheckQueued = false; return }
+        if (pill?.isShowing != true || pkg != pillPkg) { pageCheckQueued = false; return }
+        val app = TrackedApps.forPackage(pkg)
+        val n = detector?.pageCheck(app.key) ?: 0
+        if (n == ReelDetector.RETRY && ++pageCheckTries <= 6) {
+            handler.postDelayed(pageCheckRunnable, 250)
+            return
+        }
+        pageCheckQueued = false
+        if (n > 0 && !s.paused) {
+            detector?.noteCurrent(app.key)
+            onNewReels(app, n, detector?.lastPagerHeight ?: 0)
+        }
+    }
+
     private var webApp: TrackedApp? = null
     private val webSettleRunnable = Runnable {
         val app = webApp ?: return@Runnable
@@ -129,6 +165,9 @@ class ScrollTrackerService : AccessibilityService() {
                     snap?.inReels(TrackedApps.forPackage(activePkg).key) == true
             }
             if (stillThere) misses = 0 else misses++
+            // Some video viewers change pages without any event we'd react to: look anyway.
+            if (stillThere && !transient && activePkg != null && activePkg == pillPkg && detector?.hasSignature(activePkg) != true)
+                queuePageCheck(activePkg)
             // Watch time: while the reels feed is on screen (and the screen is on), the clock runs.
             val now = SystemClock.uptimeMillis()
             val interactive = runCatching { getSystemService(android.os.PowerManager::class.java)?.isInteractive }.getOrNull() != false
@@ -299,6 +338,8 @@ class ScrollTrackerService : AccessibilityService() {
 
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 if (isBrowser) return
+                // In reels: see whether a different video page now fills the screen.
+                if (pill?.isShowing == true && pkg == pillPkg && detector?.hasSignature(pkg) != true) queuePageCheck(pkg)
                 // Shorts player open: the short on screen may have changed (some apps send no
                 // scroll events when you swipe) — check now and then.
                 if (pill?.isShowing == true && detector?.hasSignature(pkg) == true) {
@@ -322,6 +363,7 @@ class ScrollTrackerService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 val app = TrackedApps.forPackage(pkg)
                 if (!store.isAppEnabled(app.key)) return
+                if (!isBrowser && pill?.isShowing == true && pkg == pillPkg && detector?.hasSignature(pkg) != true) queuePageCheck(pkg)
                 if (isBrowser) onBrowserScroll(store, app, event) else onAppScroll(store, app, event)
             }
         }
@@ -529,6 +571,8 @@ class ScrollTrackerService : AccessibilityService() {
 
     companion object {
         private const val WATCH_MS = 800L
+        /** Page watch: look this long after the screen last changed (the swipe has settled). */
+        private const val PAGE_CHECK_MS = 420L
         /** Reels feed missing from the screen this many checks in a row (~3 s) = you left. */
         private const val HIDE_AFTER_MISSES = 4
         private const val SCAN_GAP_MS = 300L
