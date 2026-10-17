@@ -207,6 +207,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // view for reels, profiles and feeds, so there EVERY swipe has to look like a reel swipe.
         val confident = st.opaque || isConfident(pager)
         lastMoveExact = false
+        lastPages = 0f
         leftReels = false
         atRestNotReels = false
         val n = settleInner(appKey, st, root)
@@ -216,34 +217,18 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (n == 0 && atRestNotReels && (!confident || st.opaque)) leftReels = true
             return n
         }
-        // Not proven to be reels yet (no reels view name, not a short-video-only app): a profile,
-        // photo viewer or post can look like a full-screen page too. Only a run of exact one-screen
-        // swipes onto new pages proves it — profiles and feeds never move like that. Until then
-        // nothing is counted, shown or closed.
-        val proven = pager != null && pager.hashCode() in provenNodes
-        if (proven) {
-            // Already seen working as reels: each swipe still has to move exactly one screen onto
-            // a new page to count — a profile or feed scrolled in the same view never does.
-            if (n == 1 && lastMoveExact) { rememberShape(pager); return 1 }
-            leftReels = true
-            DetectLog.add(appKey, "not an exact reel swipe → not counted")
-            return 0
+        // Not named as reels and not a short-video-only app (Facebook, Facebook Lite…). The swipe
+        // already passed the at-rest check (one video page exactly filling the screen, nothing
+        // else on it — profiles and feeds never look like that). On top of that it must have moved
+        // you onto a NEW page by about one screen per video. Then it counts right away.
+        if (lastMoveExact) {
+            pager?.let { provenNodes.add(it.hashCode()) }
+            rememberShape(pager)
+            return n
         }
-        if (n == 1 && lastMoveExact) {
-            st.candStreak++
-            if (st.candStreak >= 2) {
-                pager?.let { provenNodes.add(it.hashCode()) }
-                rememberShape(pager)
-                st.candStreak = 0
-                DetectLog.add(appKey, "2 exact reel swipes → reels confirmed")
-                return 2
-            }
-            DetectLog.add(appKey, "exact page swipe 1/2 → waiting to confirm reels")
-            return 0
-        }
-        st.candStreak = 0
-        leftReels = true
-        DetectLog.add(appKey, "not an exact reel swipe on an unconfirmed page → not counted")
+        // A long fling over several screens is a feed being scrolled, not reels.
+        if (abs(lastPages) >= 3.5f) leftReels = true
+        DetectLog.add(appKey, "not a reel-like swipe on an unnamed page → not counted")
         return 0
     }
 
@@ -307,8 +292,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         return false
     }
 
-    /** Set by [settleInner]: the swipe moved exactly one whole page onto a new one. */
+    /** Set by [settleInner]: the swipe moved onto a new page by about one screen per video. */
     private var lastMoveExact = false
+    private var lastPages = 0f
 
     /** Pager views proven to be reels by exact one-screen swipes (by view identity). */
     private val provenNodes = HashSet<Int>()
@@ -372,6 +358,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
         val h = lastPagerHeight.toFloat().coerceAtLeast(1f)
         val pages = accum / h
+        lastPages = pages
 
         // Apps that draw everything themselves (Facebook Lite…): only a run of exact one-screen
         // swipes is a reels feed — a normal feed fling never lands on exactly one screen twice.
@@ -426,7 +413,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 val again = minOf(n, st.behind)
                 st.behind -= again; n -= again
                 if (n == 0) { DetectLog.add(appKey, "forward to #$index, seen a moment ago → not counted"); return 0 }
-                lastMoveExact = step == 1
+                lastMoveExact = true                        // the app's own item number went up
                 return mark(st, n)
             }
             if (index < prev) {
@@ -454,7 +441,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += pages.roundToInt().coerceIn(1, 3)
             if (n == 0) { DetectLog.add(appKey, "forward to a reel already seen → not counted"); return 0 }
             advance(st, index)
-            lastMoveExact = abs(pages - 1f) <= 0.12f && childNow != null && childNow != childBefore
+            // About a whole screen per video (comment / "up next" bars make it a little off),
+            // and the page now filling the screen is a different one.
+            val perVideo = pages / pages.roundToInt().coerceAtLeast(1)
+            lastMoveExact = perVideo in 0.6f..1.4f && (childNow == null || childBefore == null || childNow != childBefore)
             return mark(st, n)
         }
         // The app reported neither a number nor a distance: go by whether a different page view
@@ -600,6 +590,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val hh = rect.height()
         var exactPages = 0
         var otherItems = 0
+        var smallBars = 0
         var sideBySide = 0
         var prevTop = Int.MIN_VALUE
         var prevLeft = Int.MIN_VALUE
@@ -617,7 +608,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 if (pageLooksLikeList(c) && !isPagerOfPages(c)) { lastReason = "page is a list"; return false }
                 exactPages++
             }
-            else if (!touchesEdge && child.height() > hh * 0.05f) otherItems++
+            // A small floating bar over the video ("Up next", a banner) is not a feed item; a post
+            // in a feed is much taller. One such bar is allowed.
+            else if (!touchesEdge && child.height() > hh * 0.15f) otherItems++
+            else if (!touchesEdge && child.height() > hh * 0.05f) { smallBars++; if (smallBars > 1) otherItems++ }
             else if (touchesEdge && child.height() < hh * 0.96f && child.width() >= rect.width() * 0.9f) {
                 // a page partly scrolled in/out at the edge — fine
             }
