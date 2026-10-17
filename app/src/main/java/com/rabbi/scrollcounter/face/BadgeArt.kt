@@ -41,8 +41,8 @@ object BadgeArt {
 
         // soft glow behind
         if (glow) {
-            p.shader = RadialGradient(cx, cy, r * 1.9f, intArrayOf(withAlpha(t.base, 0.55f), withAlpha(t.base, 0f)), null, Shader.TileMode.CLAMP)
-            c.drawCircle(cx, cy, r * 1.9f, p)
+            p.shader = RadialGradient(cx, cy, r * 1.45f, intArrayOf(withAlpha(t.base, 0.55f), withAlpha(t.base, 0f)), null, Shader.TileMode.CLAMP)
+            c.drawCircle(cx, cy, r * 1.45f, p)
         }
 
         // ribbon tails
