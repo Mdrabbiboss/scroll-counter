@@ -408,6 +408,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (childNow != null) st.currentChild = childNow
         val prev = st.lastIdx
         if (index != null) st.lastIdx = index
+        DetectLog.add(appKey,
+            "settle: idx=${index ?: "-"} prev=${if (prev == Int.MIN_VALUE) "-" else prev} max=${if (st.maxIndex == Int.MIN_VALUE) "-" else st.maxIndex} " +
+                "pages=${"%.2f".format(pages)} delta=$hadDelta evIdx=$hadIndex page=${if (childNow == null) "-" else if (childBefore == null) "new" else if (childNow == childBefore) "same" else "changed"} behind=${st.behind}")
 
         if (index != null && prev != Int.MIN_VALUE) {
             if (index > prev) {
