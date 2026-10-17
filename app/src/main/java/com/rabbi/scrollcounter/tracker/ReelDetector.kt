@@ -82,8 +82,14 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      */
     fun onScroll(appKey: String, event: AccessibilityEvent): Boolean {
         val src = event.source ?: return false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
-            event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
+        val srcPkg = src.packageName?.toString() ?: ""
+        val videoApp = srcPkg in ALL_REELS_APPS
+        // Reported as a sideways scroll. In short-video apps a video viewer is often a vertical
+        // pager built from a turned-around sideways one (profile / liked / saved videos in TikTok),
+        // so there it's still judged by its layout below; elsewhere sideways is never reels.
+        val sideways = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)
+        if (sideways && !videoApp) return false
         // A reels pager never shows more than two items at once (the one leaving and the one
         // arriving). A list reporting 3+ visible items is a feed, inbox, comments… — not reels.
         val span = if (event.fromIndex >= 0 && event.toIndex >= 0) event.toIndex - event.fromIndex else 0
@@ -93,7 +99,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val nodeId = src.hashCode()
         val trusted = nodeId in trustedPagers && run { src.getBoundsInScreen(rect); rect.height() >= screenH * 0.5f }
         if (trusted) lastWasOpaque = false
-        val accepted = trusted || (span < 2 && isReelPager(src))
+        // Video viewers in short-video apps may also report the next and previous videos (loaded
+        // in advance) as visible; up to 3 items there are judged by their layout.
+        val maxSpan = if (videoApp) 4 else 2
+        val accepted = trusted || (span < maxSpan && isReelPager(src))
         if (!trusted && span >= 2) lastReason = "list shows ${span + 1} items"
         // Only a container that is surely reels is trusted through messy mid-swipe layouts.
         val sure = accepted && !lastWasOpaque && (isConfident(src) || isConfident(runCatching { innerPager(src) }.getOrNull()))
@@ -171,6 +180,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (from == to) { st.eventIndex = from; st.eventFresh = true }
         }
         var dy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) event.scrollDeltaY else 0
+        // Turned-around pager: it moves one page WIDTH per video — convert that to page heights.
+        if (sideways && dy == 0) dy = (event.scrollDeltaX.toFloat() * lastPagerHeight / rect.width().coerceAtLeast(1)).toInt()
         // Older phones / custom views: work the distance out from the scroll position instead.
         val y = event.scrollY
         if (dy == 0 && y >= 0 && st.lastScrollY >= 0) dy = y - st.lastScrollY
@@ -322,7 +333,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (!st.pending) return 0
         // A comment / share sheet open over the reel: scrolling it is never a new reel, even when
         // the app (Facebook Lite…) reports that scroll from the same view as the video feed.
-        if (root != null && sheetOpen(root)) {
+        // Only self-drawn apps report the sheet's scrolling from the video view itself; elsewhere the
+        // video pager only moves when you really swipe the video (and a list left behind the
+        // viewer — like a profile's video grid — must not block counting).
+        if (st.opaque && root != null && sheetOpen(root)) {
             st.pending = false; st.retries = 0
             st.hadIndex = false; st.hadDelta = false; st.accum = 0f
             DetectLog.add(appKey, "comment/share sheet open → not counted")
