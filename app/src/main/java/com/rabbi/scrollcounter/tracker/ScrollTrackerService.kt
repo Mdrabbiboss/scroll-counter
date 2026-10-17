@@ -115,8 +115,23 @@ class ScrollTrackerService : AccessibilityService() {
             val stillThere = inReels || (activePkg != null && activePkg !in ignored && !TrackedApps.isBrowser(activePkg) &&
                 detector?.findReelPager(runCatching { rootInActiveWindow }.getOrNull()) == true)
             if (stillThere) misses = 0 else misses++
+            // Watch time: while the reels feed is on screen (and the screen is on), the clock runs.
+            val now = SystemClock.uptimeMillis()
+            val interactive = runCatching { getSystemService(android.os.PowerManager::class.java)?.isInteractive }.getOrNull() != false
+            if (stillThere && interactive && activePkg != null) {
+                val key = TrackedApps.forPackage(activePkg).key
+                if (watchKey != null && watchKey != key) flushWatchTime()
+                watchKey = key
+                if (lastWatchTick > 0L) watchMs += (now - lastWatchTick).coerceIn(0L, 2_000L)
+                lastWatchTick = now
+                if (watchMs >= 15_000L) flushWatchTime()
+            } else {
+                lastWatchTick = 0L
+            }
             if (misses >= 2 || s?.bubbleOn != true || s.paused) {
                 misses = 0
+                flushWatchTime()
+                lastWatchTick = 0L
                 p.hide()
                 Notifier.clearLive(this@ScrollTrackerService)
                 detector?.forgetPager()
@@ -128,6 +143,20 @@ class ScrollTrackerService : AccessibilityService() {
     }
 
     private var misses = 0
+
+    // ---- watch time (time spent in reels feeds), saved in small batches ----
+    private var watchKey: String? = null
+    private var watchMs = 0L
+    private var lastWatchTick = 0L
+
+    private fun flushWatchTime() {
+        val key = watchKey ?: return
+        val secs = (watchMs / 1000L).toInt()
+        if (secs > 0) {
+            store?.addWatchTime(key, secs)
+            watchMs -= secs * 1000L
+        }
+    }
 
     /**
      * While a social app is in front and the counter isn't up, keep looking for its reels feed a
@@ -382,6 +411,7 @@ class ScrollTrackerService : AccessibilityService() {
         if (now - lastBlockAt < 1500) return
         lastBlockAt = now
         pill?.hide()
+        flushWatchTime(); lastWatchTick = 0L
         Notifier.clearLive(this)
         detector?.forgetPager()
         val blockedPkg = currentPkg
@@ -455,6 +485,7 @@ class ScrollTrackerService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        flushWatchTime()
         handler.removeCallbacksAndMessages(null)
         Notifier.clearLive(this)
         pill?.destroy()

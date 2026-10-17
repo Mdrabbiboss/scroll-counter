@@ -458,6 +458,13 @@ fun Modifier.pressScale(source: MutableInteractionSource): Modifier {
 
 // ---------- Formatting ----------
 
+/** 45 sec · 12 min · 1h 05m */
+fun formatDuration(seconds: Int): String = when {
+    seconds < 60 -> "$seconds sec"
+    seconds < 3600 -> "${seconds / 60} min"
+    else -> "${seconds / 3600}h %02dm".format((seconds % 3600) / 60)
+}
+
 fun formatDistance(meters: Float): String =
     if (meters < 1000f) String.format(Locale.US, "%.0f m", meters)
     else String.format(Locale.US, "%.2f km", meters / 1000f)

@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.PauseCircle
@@ -128,6 +130,23 @@ fun TodayScreen(
                     Icons.Rounded.TouchApp, "Most scrolled",
                     top?.let { TrackedApps.forKey(it.key)?.name } ?: "—",
                     top?.let { "${it.scrolls} reels" } ?: "Nothing yet", Modifier.weight(1f), tint = Color(0xFFE1306C)
+                )
+            }
+        }
+
+        item {
+            // Time spent on reels today, and how long one reel holds you on average.
+            val secs = today.totalSeconds
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile(
+                    Icons.Rounded.Timer, "Watch time",
+                    if (secs == 0) "0 min" else formatDuration(secs),
+                    "on reels today", Modifier.weight(1f), tint = Color(0xFF38BDF8)
+                )
+                StatTile(
+                    Icons.Rounded.HourglassTop, "Per reel",
+                    if (today.totalScrolls == 0 || secs == 0) "—" else formatDuration((secs / today.totalScrolls).coerceAtLeast(1)),
+                    "average time", Modifier.weight(1f), tint = Brand.Gold
                 )
             }
         }

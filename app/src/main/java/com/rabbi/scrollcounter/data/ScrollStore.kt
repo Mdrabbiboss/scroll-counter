@@ -7,12 +7,14 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 
-data class AppStat(val key: String, val scrolls: Int, val meters: Float)
+data class AppStat(val key: String, val scrolls: Int, val meters: Float, val seconds: Int = 0)
 
 data class DayStats(val date: LocalDate, val apps: List<AppStat>) {
     val totalScrolls: Int get() = apps.sumOf { it.scrolls }
     val totalMeters: Float get() = apps.fold(0f) { acc, s -> acc + s.meters }
     val topApp: AppStat? get() = apps.maxByOrNull { it.scrolls }
+    /** Time spent watching reels (seconds). */
+    val totalSeconds: Int get() = apps.sumOf { it.seconds }
 }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -117,7 +119,7 @@ class ScrollStore private constructor(context: Context) {
             if (p.size != 4) continue
             val key = "${p[0]}|${p[1]}|${p[2]}"
             when (p[0]) {
-                "c", "h" -> {
+                "c", "h", "t" -> {
                     val v = p[3].toIntOrNull() ?: continue
                     if (v > stats.getInt(key, 0)) { editor.putInt(key, v); changed = true }
                 }
@@ -171,6 +173,15 @@ class ScrollStore private constructor(context: Context) {
         bump()
     }
 
+    /** Adds time spent watching reels in [appKey] today. */
+    @Synchronized
+    fun addWatchTime(appKey: String, seconds: Int) {
+        if (seconds <= 0) return
+        val k = "t|${LocalDate.now()}|$appKey"
+        stats.edit().putInt(k, stats.getInt(k, 0) + seconds).apply()
+        bump()
+    }
+
     fun dayStats(date: LocalDate): DayStats = dayStats(date, stats.all)
 
     /** Reads every app that has data on [date] — catalogue apps and any other app alike. */
@@ -181,7 +192,7 @@ class ScrollStore private constructor(context: Context) {
             val c = (v as? Int) ?: 0
             if (c == 0) return@mapNotNull null
             val key = k.substring(prefix.length)
-            AppStat(key, c, (all["d|$date|$key"] as? Float) ?: 0f)
+            AppStat(key, c, (all["d|$date|$key"] as? Float) ?: 0f, (all["t|$date|$key"] as? Int) ?: 0)
         }.sortedByDescending { it.scrolls }
         return DayStats(date, apps)
     }

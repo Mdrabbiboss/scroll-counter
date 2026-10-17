@@ -24,6 +24,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Straighten
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -94,7 +96,7 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("${sel.totalScrolls}", style = MaterialTheme.typography.headlineMedium)
                     Text(
-                        "  reels · ${formatDistance(sel.totalMeters)}",
+                        "  reels · ${formatDistance(sel.totalMeters)}" + if (sel.totalSeconds > 0) " · ${formatDuration(sel.totalSeconds)}" else "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -120,6 +122,14 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatTile(Icons.Rounded.TrendingUp, "Total", "$total", "reels in $n days", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary)
                 StatTile(Icons.Rounded.Straighten, "Distance", formatDistance(meters), distanceComparison(meters), Modifier.weight(1f), tint = Brand.Warn)
+            }
+        }
+        item {
+            val secs = days.sumOf { it.totalSeconds }
+            val daysWithTime = tracked.size.coerceAtLeast(1)
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile(Icons.Rounded.Timer, "Watch time", if (secs == 0) "0 min" else formatDuration(secs), "on reels in $n days", Modifier.weight(1f), tint = androidx.compose.ui.graphics.Color(0xFF38BDF8))
+                StatTile(Icons.Rounded.HourglassTop, "Daily time", if (secs == 0) "0 min" else formatDuration((secs / daysWithTime).coerceAtLeast(1)), "average per day", Modifier.weight(1f), tint = Brand.Gold)
             }
         }
         item {
@@ -202,7 +212,7 @@ private fun DayRow(day: DayStats, limit: Int, isToday: Boolean, onClick: () -> U
         Column(Modifier.weight(1f)) {
             Text(if (isToday) "Today" else day.date.format(DayFmt), style = MaterialTheme.typography.bodyLarge)
             Text(
-                if (day.totalScrolls == 0) "No reels" else formatDistance(day.totalMeters) + (day.topApp?.let { " · most on " + (com.rabbi.scrollcounter.data.TrackedApps.forKey(it.key)?.name ?: "") } ?: ""),
+                if (day.totalScrolls == 0) "No reels" else formatDistance(day.totalMeters) + (if (day.totalSeconds > 0) " · " + formatDuration(day.totalSeconds) else "") + (day.topApp?.let { " · most on " + (com.rabbi.scrollcounter.data.TrackedApps.forKey(it.key)?.name ?: "") } ?: ""),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

@@ -199,9 +199,13 @@ private fun AccessibilityStep() {
     Spacer(Modifier.height(10.dp))
     Text("Allow scroll tracking", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(4.dp))
-    Text("Here's exactly what to tap on the next screen:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text("Watch how — it takes 10 seconds:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(16.dp))
-    AccessibilityGuide(Modifier.fillMaxWidth())
+    // Real walkthrough of the phone's Accessibility screen (other apps hidden).
+    TutorialVideo(
+        com.rabbi.scrollcounter.R.raw.accessibility_tutorial, aspect = 480f / 1104f,
+        modifier = Modifier.fillMaxWidth(0.62f)
+    )
     Spacer(Modifier.height(18.dp))
     PremiumCard {
         Text("How tracking works", style = MaterialTheme.typography.titleMedium)

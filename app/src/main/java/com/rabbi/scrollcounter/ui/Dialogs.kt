@@ -472,9 +472,9 @@ fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
         ) {
             Text("Turn on scroll tracking", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
             Spacer(Modifier.height(4.dp))
-            Text("Here's exactly what to tap on the next screen:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Watch how — it takes 10 seconds:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
-            AccessibilityGuide(Modifier.fillMaxWidth())
+            TutorialVideo(com.rabbi.scrollcounter.R.raw.accessibility_tutorial, aspect = 480f / 1104f, modifier = Modifier.fillMaxWidth(0.55f))
             Spacer(Modifier.height(16.dp))
             Text("How tracking works", style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(4.dp))
