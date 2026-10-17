@@ -661,12 +661,24 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         n in 1..3 && rows == 0 && (pages >= 1 || n == 2)
     } catch (e: Exception) { false }
 
-    /** True if this "page" is (or is mostly filled by) a scrolling list rather than a video page. */
+    /**
+     * True if this "page" is (or is mostly filled by) a scrolling list rather than a video page.
+     * A sideways carousel inside a post (several photos, "1/3") is NOT a list — it's part of the
+     * post. In short-video-only apps a plain scroll wrapper around the video isn't one either.
+     */
     private fun pageLooksLikeList(page: AccessibilityNodeInfo): Boolean {
+        val videoApp = (page.packageName?.toString() ?: "") in ALL_REELS_APPS
+        fun sidewaysOnly(n: AccessibilityNodeInfo): Boolean {
+            val ci = n.collectionInfo
+            if (ci != null && ci.columnCount > 1 && ci.rowCount <= 1) return true
+            return scrollsOnlySideways(n)
+        }
         fun isList(n: AccessibilityNodeInfo): Boolean {
+            if (sidewaysOnly(n)) return false
             val cls = n.className?.toString() ?: ""
             val rows = n.collectionInfo?.rowCount ?: 0
-            return rows > 2 || (n.isScrollable && (cls.endsWith("RecyclerView") || cls.endsWith("ListView") || cls.endsWith("ScrollView")))
+            val scrollList = cls.endsWith("RecyclerView") || cls.endsWith("ListView") || (!videoApp && cls.endsWith("ScrollView"))
+            return rows > 2 || (n.isScrollable && scrollList)
         }
         return try {
             if (isList(page)) return true

@@ -12,8 +12,8 @@ android {
         applicationId = "com.rabbi.scrollcounter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 82
-        versionName = "8.5"
+        versionCode = 83
+        versionName = "8.6"
         // Phones only (ARM). Emulator-only x86 builds of the pose-detection library are left out.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
