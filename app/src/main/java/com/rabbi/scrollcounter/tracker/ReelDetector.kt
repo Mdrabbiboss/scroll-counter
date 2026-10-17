@@ -48,6 +48,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var currentFp: String? = null
         val seenFps = LinkedHashSet<String>()
         var behind = 0                   // reels you went back by (feeds that only report distance)
+        var eventFresh = false           // this swipe ended on an exact item number (from == to)
+        var pagerNode = 0                // identity of the pager view (changes when the app rebuilds it)
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
         var sigKey: String? = null
         var sigMax = Int.MIN_VALUE
@@ -134,9 +136,23 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             st.behind = 0
         }
 
+        // The app rebuilt its feed (back from another screen or app, refreshed…): numbers and
+        // distances from before don't apply any more, so start a fresh baseline from here.
+        val node = lastPager?.hashCode() ?: 0
+        if (st.pagerNode != 0 && node != 0 && node != st.pagerNode) {
+            st.maxIndex = if (from >= 0) from else Int.MIN_VALUE
+            st.lastIdx = Int.MIN_VALUE
+            st.eventIndex = Int.MIN_VALUE
+            st.indexReliable = false
+            st.behind = 0
+            st.lastScrollY = -1
+            st.currentChild = null
+            DetectLog.add(appKey, "feed rebuilt → fresh start")
+        }
+        if (node != 0) st.pagerNode = node
         if (from >= 0 && to >= 0) {
             st.hadIndex = true
-            if (from == to) st.eventIndex = from
+            if (from == to) { st.eventIndex = from; st.eventFresh = true }
         }
         var dy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) event.scrollDeltaY else 0
         // Older phones / custom views: work the distance out from the scroll position instead.
@@ -213,8 +229,16 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
         // One finished swipe on a confirmed reels feed. Decide forward / back / bounce from
         // whatever the app reports; when it reports nothing, the swipe itself is the new reel.
+        // Which reel is on screen now: the pager's own item number is best; the number from the
+        // scroll events is used only if this swipe actually ended on one (a stale number from an
+        // earlier swipe would make a real new reel look like "the same one").
         var index = currentItemIndex()
-        if (index == null && hadIndex && st.eventIndex != Int.MIN_VALUE) index = st.eventIndex
+        if (index == null && hadIndex && st.eventFresh && st.eventIndex != Int.MIN_VALUE) index = st.eventIndex
+        st.eventFresh = false
+        // Identity of the page view filling the screen: a different one = you moved to another reel.
+        val childNow = snappedChildKey()
+        val childBefore = st.currentChild
+        if (childNow != null) st.currentChild = childNow
         val prev = st.lastIdx
         if (index != null) st.lastIdx = index
 
@@ -228,20 +252,34 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 if (index <= frontier) { DetectLog.add(appKey, "forward to #$index, already seen → not counted"); return 0 }
                 return mark(st, (index - frontier).coerceAtMost(3))
             }
-            if (index < prev) { st.indexReliable = true; st.maxIndex = maxOf(st.maxIndex, prev); return 0 }   // went back
+            if (index < prev) {
+                st.indexReliable = true
+                // A jump back of many reels at once is the app refreshing its feed, not you swiping
+                // back: start counting from here again.
+                if (prev - index > 3) { st.maxIndex = index; DetectLog.add(appKey, "feed restarted at #$index"); return 0 }
+                st.maxIndex = maxOf(st.maxIndex, prev); return 0                 // went back
+            }
             // Same number: trust it if it has proven reliable, otherwise fall through to distance.
             if (st.indexReliable && !(hadDelta && pages >= 0.6f)) return 0
         }
         if (hadDelta) {
-            if (pages <= -0.35f) { st.behind += (-pages).roundToInt().coerceIn(1, 3); return 0 }   // went back
+            if (pages <= -0.35f) { st.behind = (st.behind + (-pages).roundToInt().coerceIn(1, 3)).coerceAtMost(30); return 0 }   // went back
             if (pages < 0.35f) return 0                                                         // bounce or nudge
             var n = pages.roundToInt().coerceIn(1, 3)
             // Coming forward again over reels you went back past: those were already counted.
             val again = minOf(n, st.behind)
             st.behind -= again; n -= again
             if (n == 0) { DetectLog.add(appKey, "forward to a reel already seen → not counted"); return 0 }
+            if (index != null) st.maxIndex = maxOf(st.maxIndex, index)
             return mark(st, n)
         }
+        // The app reported neither a number nor a distance: go by whether a different page view
+        // now fills the screen. Same page view = the swipe bounced back onto the same reel.
+        if (childNow != null && childBefore != null) {
+            if (childNow == childBefore) { DetectLog.add(appKey, "same page on screen → not counted"); return 0 }
+            return mark(st)
+        }
+        if (index != null) st.maxIndex = maxOf(st.maxIndex, index)
         return mark(st)
     }
 

@@ -473,7 +473,9 @@ class ScrollStore private constructor(context: Context) {
     val graceAvailableToday: Boolean get() = graceDate != LocalDate.now().toString()
     val inGrace: Boolean get() = System.currentTimeMillis() < graceUntil
 
-    fun isAppEnabled(key: String): Boolean = settings.getBoolean("app_$key", true)
+    /** Every supported app and browser is always counted (there are no per-app switches). */
+    @Suppress("UNUSED_PARAMETER")
+    fun isAppEnabled(key: String): Boolean = true
 
     /** The app's language (chosen on the first screen or in Settings; defaults to the phone's). */
     var language: com.rabbi.scrollcounter.ui.Lang
@@ -491,7 +493,7 @@ class ScrollStore private constructor(context: Context) {
 
     /** Count reels watched on TikTok / YouTube / Facebook… websites in browsers. */
     var browsersOn: Boolean
-        get() = settings.getBoolean("browsers_on", true)
+        get() = true
         set(value) { settings.edit().putBoolean("browsers_on", value).apply(); bump() }
 
     fun setAppEnabled(key: String, enabled: Boolean) {

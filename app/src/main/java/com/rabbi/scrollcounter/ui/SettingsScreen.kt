@@ -235,44 +235,6 @@ fun SettingsScreen(
             }
         }
 
-        // ---- Apps ----
-        item { SectionLabel(tr("Apps to track")) }
-        item {
-            PremiumCard {
-                Text(
-                    tr("Reels are counted in every app — these are the social & video apps on your phone. New apps appear here automatically."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
-                val list = apps
-                if (list == null) {
-                    Text(tr("Looking for your apps…"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
-                } else if (list.isEmpty()) {
-                    Text(tr("No social apps installed yet"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
-                }
-                list?.forEach { app ->
-                    val enabled = remember(tick, app.key) { store.isAppEnabled(app.key) }
-                    TrackedAppRow(app, if (enabled) tr("Counting reels") else tr("Not counted"), enabled) { store.setAppEnabled(app.key, it) }
-                }
-            }
-        }
-
-        item { SectionLabel(tr("Browsers")) }
-        item {
-            PremiumCard {
-                SettingRow(
-                    Icons.Rounded.Public, tr("Count reels on websites"),
-                    if (browsersOn) tr("TikTok, Shorts & Reels in Chrome or any browser") else tr("Off — browsers are ignored"),
-                    onClick = { store.browsersOn = !browsersOn }
-                ) { PremiumSwitch(checked = browsersOn, onCheckedChange = { store.browsersOn = it }) }
-                if (browsersOn) browsers.forEach { app ->
-                    val enabled = remember(tick, app.key) { store.isAppEnabled(app.key) }
-                    TrackedAppRow(app, tr("Browser"), enabled) { store.setAppEnabled(app.key, it) }
-                }
-            }
-        }
-
         // ---- Appearance ----
         item { SectionLabel(tr("Appearance")) }
         item {
