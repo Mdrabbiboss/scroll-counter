@@ -425,15 +425,14 @@ private fun DetectionLogDialog(onDismiss: () -> Unit) {
 /** A live copy of the on-screen counter at the chosen size. */
 @Composable
 private fun PillPreview(style: Int) {
-    val C = androidx.compose.ui.graphics.Color
-    val glass = androidx.compose.ui.graphics.Brush.linearGradient(listOf(C(0xC0061F1C), C(0xC00D5F55)))
-    val rim = androidx.compose.foundation.BorderStroke(1.dp, C(0x40FFFFFF))
-    val gold = C(0xFFFFD873)
+    val glass = androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xC0061F1C), androidx.compose.ui.graphics.Color(0xC00D5F55)))
+    val rim = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0x40FFFFFF))
+    val gold = androidx.compose.ui.graphics.Color(0xFFFFD873)
     val num = com.rabbi.scrollcounter.ui.theme.AppFonts.Numbers
     val fresh = com.rabbi.scrollcounter.face.Mood.FRESH
     Box(
         Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(18.dp))
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(C(0xFF2A2F3A), C(0xFF14171D)))),
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF2A2F3A), androidx.compose.ui.graphics.Color(0xFF14171D)))),
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.animation.Crossfade(style, label = "pillStyle") { st ->
@@ -445,9 +444,9 @@ private fun PillPreview(style: Int) {
                         contentAlignment = Alignment.Center
                     ) { AnimatedFace(fresh, 38.dp) }
                     Text(
-                        "12", color = C(0xFF5A3A12), fontFamily = num, fontSize = 13.sp,
-                        modifier = Modifier.padding(top = 38.dp).clip(RoundedCornerShape(20.dp)).background(C(0xFFFFF1D0))
-                            .border(1.5.dp, C(0xFF3A2A12), RoundedCornerShape(20.dp))
+                        "12", color = androidx.compose.ui.graphics.Color(0xFF5A3A12), fontFamily = num, fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 38.dp).clip(RoundedCornerShape(20.dp)).background(androidx.compose.ui.graphics.Color(0xFFFFF1D0))
+                            .border(1.5.dp, androidx.compose.ui.graphics.Color(0xFF3A2A12), RoundedCornerShape(20.dp))
                             .padding(horizontal = 9.dp, vertical = 2.dp)
                     )
                 }
@@ -458,8 +457,8 @@ private fun PillPreview(style: Int) {
                 ) {
                     AnimatedFace(fresh, 42.dp)
                     Text("12", color = gold, fontFamily = num, fontSize = 22.sp, modifier = Modifier.padding(top = 2.dp))
-                    Box(Modifier.padding(top = 5.dp).width(46.dp).height(5.dp).clip(RoundedCornerShape(50)).background(C(0x33FFFFFF))) {
-                        Box(Modifier.width(18.dp).height(5.dp).clip(RoundedCornerShape(50)).background(C(0xFFF8C33A)))
+                    Box(Modifier.padding(top = 5.dp).width(46.dp).height(5.dp).clip(RoundedCornerShape(50)).background(androidx.compose.ui.graphics.Color(0x33FFFFFF))) {
+                        Box(Modifier.width(18.dp).height(5.dp).clip(RoundedCornerShape(50)).background(androidx.compose.ui.graphics.Color(0xFFF8C33A)))
                     }
                 }
                 3 -> Row(
@@ -473,8 +472,8 @@ private fun PillPreview(style: Int) {
                             val inset = sw / 2
                             val arcSize = androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw)
                             val tl = androidx.compose.ui.geometry.Offset(inset, inset)
-                            drawArc(C(0x33FFFFFF), 0f, 360f, false, tl, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
-                            drawArc(C(0xFFF8C33A), -90f, 130f, false, tl, arcSize,
+                            drawArc(androidx.compose.ui.graphics.Color(0x33FFFFFF), 0f, 360f, false, tl, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+                            drawArc(androidx.compose.ui.graphics.Color(0xFFF8C33A), -90f, 130f, false, tl, arcSize,
                                 style = androidx.compose.ui.graphics.drawscope.Stroke(sw, cap = androidx.compose.ui.graphics.StrokeCap.Round))
                         },
                         contentAlignment = Alignment.Center
@@ -482,7 +481,7 @@ private fun PillPreview(style: Int) {
                     Spacer(Modifier.width(9.dp))
                     androidx.compose.foundation.layout.Column {
                         Text("12", color = gold, fontFamily = num, fontSize = 28.sp)
-                        Text("/33", color = C(0xB3FFFFFF), fontFamily = num, fontSize = 12.sp)
+                        Text("/33", color = androidx.compose.ui.graphics.Color(0xB3FFFFFF), fontFamily = num, fontSize = 12.sp)
                     }
                 }
                 else -> Row(
