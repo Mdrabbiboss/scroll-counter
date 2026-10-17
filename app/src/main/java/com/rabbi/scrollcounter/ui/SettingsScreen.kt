@@ -58,6 +58,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.border
 import com.rabbi.scrollcounter.BuildConfig
 import com.rabbi.scrollcounter.ads.AdsConsent
 import com.rabbi.scrollcounter.data.ScrollStore
@@ -171,7 +174,7 @@ fun SettingsScreen(
                 Text(tr("The little counter at the top while you watch reels"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(14.dp))
                 val size = remember(tick) { store.pillSize }
-                PillPreview(ScrollStore.PILL_SCALES[size])
+                PillPreview(size)
                 Spacer(Modifier.height(14.dp))
                 SegmentedToggle(listOf(tr("Small"), tr("Normal"), tr("Large"), tr("XL")), size, { store.pillSize = it })
             }
@@ -421,27 +424,77 @@ private fun DetectionLogDialog(onDismiss: () -> Unit) {
 
 /** A live copy of the on-screen counter at the chosen size. */
 @Composable
-private fun PillPreview(scale: Float) {
-    val sc by androidx.compose.animation.core.animateFloatAsState(scale, androidx.compose.animation.core.spring(dampingRatio = 0.7f), label = "pill")
+private fun PillPreview(style: Int) {
+    val C = androidx.compose.ui.graphics.Color
+    val glass = androidx.compose.ui.graphics.Brush.linearGradient(listOf(C(0xC0061F1C), C(0xC00D5F55)))
+    val rim = androidx.compose.foundation.BorderStroke(1.dp, C(0x40FFFFFF))
+    val gold = C(0xFFFFD873)
+    val num = com.rabbi.scrollcounter.ui.theme.AppFonts.Numbers
+    val fresh = com.rabbi.scrollcounter.face.Mood.FRESH
     Box(
-        Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(18.dp))
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF2A2F3A), androidx.compose.ui.graphics.Color(0xFF14171D)))),
+        Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(18.dp))
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(C(0xFF2A2F3A), C(0xFF14171D)))),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            Modifier.clip(RoundedCornerShape((30 * sc).dp))
-                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(androidx.compose.ui.graphics.Color(0xB0061F1C), androidx.compose.ui.graphics.Color(0xB00D5F55))))
-                .padding(start = (5 * sc).dp, end = (16 * sc).dp, top = (4 * sc).dp, bottom = (4 * sc).dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AnimatedFace(com.rabbi.scrollcounter.face.Mood.FRESH, (34 * sc).dp)
-            Spacer(Modifier.width((7 * sc).dp))
-            Text(
-                "12",
-                color = androidx.compose.ui.graphics.Color(0xFFFFD873),
-                fontFamily = com.rabbi.scrollcounter.ui.theme.AppFonts.Numbers,
-                fontSize = (23 * sc).sp
-            )
+        androidx.compose.animation.Crossfade(style, label = "pillStyle") { st ->
+            when (st) {
+                0 -> Box(contentAlignment = Alignment.TopCenter) {
+                    Box(
+                        Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).background(glass)
+                            .border(rim, androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) { AnimatedFace(fresh, 38.dp) }
+                    Text(
+                        "12", color = C(0xFF5A3A12), fontFamily = num, fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 38.dp).clip(RoundedCornerShape(20.dp)).background(C(0xFFFFF1D0))
+                            .border(1.5.dp, C(0xFF3A2A12), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 9.dp, vertical = 2.dp)
+                    )
+                }
+                2 -> androidx.compose.foundation.layout.Column(
+                    Modifier.clip(RoundedCornerShape(20.dp)).background(glass).border(rim, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AnimatedFace(fresh, 42.dp)
+                    Text("12", color = gold, fontFamily = num, fontSize = 22.sp, modifier = Modifier.padding(top = 2.dp))
+                    Box(Modifier.padding(top = 5.dp).width(46.dp).height(5.dp).clip(RoundedCornerShape(50)).background(C(0x33FFFFFF))) {
+                        Box(Modifier.width(18.dp).height(5.dp).clip(RoundedCornerShape(50)).background(C(0xFFF8C33A)))
+                    }
+                }
+                3 -> Row(
+                    Modifier.clip(RoundedCornerShape(40.dp)).background(glass).border(rim, RoundedCornerShape(40.dp))
+                        .padding(start = 5.dp, end = 18.dp, top = 5.dp, bottom = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(56.dp).drawBehind {
+                            val sw = size.width * 0.075f
+                            val inset = sw / 2
+                            val arcSize = androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw)
+                            val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+                            drawArc(C(0x33FFFFFF), 0f, 360f, false, tl, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+                            drawArc(C(0xFFF8C33A), -90f, 130f, false, tl, arcSize,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(sw, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                        },
+                        contentAlignment = Alignment.Center
+                    ) { AnimatedFace(fresh, 42.dp) }
+                    Spacer(Modifier.width(9.dp))
+                    androidx.compose.foundation.layout.Column {
+                        Text("12", color = gold, fontFamily = num, fontSize = 28.sp)
+                        Text("/33", color = C(0xB3FFFFFF), fontFamily = num, fontSize = 12.sp)
+                    }
+                }
+                else -> Row(
+                    Modifier.clip(RoundedCornerShape(30.dp)).background(glass).border(rim, RoundedCornerShape(30.dp))
+                        .padding(start = 5.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AnimatedFace(fresh, 34.dp)
+                    Spacer(Modifier.width(7.dp))
+                    Text("12", color = gold, fontFamily = num, fontSize = 23.sp)
+                }
+            }
         }
     }
 }

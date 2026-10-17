@@ -48,9 +48,10 @@ jobs:
         run: |
           AAPT2=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)aapt2
           APK=app/build/outputs/apk/release/app-release.apk
-          $AAPT2 dump badging $APK | grep -E "application-icon|application:" || true
-          $AAPT2 dump resources $APK | grep -E -A8 "mipmap/ic_app|drawable/sc_app_icon" || true
-          $AAPT2 dump xmltree --file AndroidManifest.xml $APK | grep -E "icon|roundIcon" || true
+          { $AAPT2 dump badging $APK | grep -E "application-icon|application:";
+            $AAPT2 dump resources $APK | grep -E -A6 "mipmap/ic_app |drawable/sc_app_icon"; } > icon.txt 2>&1 || true
+          MSG=$(head -60 icon.txt | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::notice title=Icon check::${MSG}"
 
       - name: Upload debug APK (install on your phone to test)
         uses: actions/upload-artifact@v4

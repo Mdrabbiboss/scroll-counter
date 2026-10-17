@@ -396,7 +396,7 @@ class ScrollTrackerService : AccessibilityService() {
         if (!store.bubbleOn) return
         val p = pill ?: return
         val wasShowing = p.isShowing
-        p.show(total, limit, bump, store.pillScale)
+        p.show(total, limit, bump, store.pillSize)
         if (!wasShowing) {
             handler.removeCallbacks(watcher)
             handler.postDelayed(watcher, WATCH_MS)
