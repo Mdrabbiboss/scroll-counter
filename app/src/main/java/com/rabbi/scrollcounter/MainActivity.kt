@@ -380,10 +380,10 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                 current = store.dailyLimit,
                 locked = store.limitLockedToday,
                 onDismiss = { showLimit = false },
-                onSquatUnlock = {
+                onSquatUnlock = if (!store.squatUnlockAvailable) null else ({
                     showLimit = false
                     squatLauncher.launch(android.content.Intent(context, com.rabbi.scrollcounter.squat.SquatUnlockActivity::class.java))
-                },
+                }),
                 onSave = {
                     store.dailyLimit = it
                     // A new, higher limit means today's alerts may fire again.

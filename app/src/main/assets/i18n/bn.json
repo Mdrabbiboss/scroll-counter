@@ -367,5 +367,6 @@
 "You already set your limit today. Stick with it! It unlocks at midnight — or earn one more change with 10 squats.": "আজ আপনি লিমিট ঠিক করে ফেলেছেন। এটাই মেনে চলুন! রাত 12টায় লক খুলবে — অথবা 10টা স্কোয়াট দিয়ে আরেকবার বদলানোর সুযোগ নিন।",
 "Do 10 squats to unlock": "আনলক করতে 10টা স্কোয়াট দিন",
 "Uses the camera to count — nothing is recorded": "গুনতে ক্যামেরা ব্যবহার হয় — কিছু রেকর্ড হয় না",
-"Camera\nUsed only when you choose \"Do 10 squats to unlock\", to count your squats with on-device pose detection. No photo or video is recorded, saved or sent.": "ক্যামেরা\nশুধু তখনই ব্যবহার হয় যখন আপনি \"আনলক করতে 10টা স্কোয়াট দিন\" বেছে নেন, ফোনের ভিতরেই শরীরের ভঙ্গি চিনে স্কোয়াট গুনতে। কোনো ছবি বা ভিডিও রেকর্ড, সেভ বা পাঠানো হয় না।"
+"Camera\nUsed only when you choose \"Do 10 squats to unlock\", to count your squats with on-device pose detection. No photo or video is recorded, saved or sent.": "ক্যামেরা\nশুধু তখনই ব্যবহার হয় যখন আপনি \"আনলক করতে 10টা স্কোয়াট দিন\" বেছে নেন, ফোনের ভিতরেই শরীরের ভঙ্গি চিনে স্কোয়াট গুনতে। কোনো ছবি বা ভিডিও রেকর্ড, সেভ বা পাঠানো হয় না।",
+"You already set your limit today and used today's squat unlock. Stick with it! It unlocks at midnight.": "আজ আপনি লিমিট ঠিক করেছেন আর আজকের স্কোয়াট আনলকও ব্যবহার করে ফেলেছেন। এটাই মেনে চলুন! রাত 12টায় লক খুলবে।"
 }

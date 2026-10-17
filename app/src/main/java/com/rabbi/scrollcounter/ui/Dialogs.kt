@@ -307,7 +307,7 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit, onSquatUnlock:
             Spacer(Modifier.height(16.dp))
             Text(
                 if (onSquatUnlock != null) tr("You already set your limit today. Stick with it! It unlocks at midnight — or earn one more change with 10 squats.")
-                else tr("You already set your limit today. Stick with it! It unlocks at midnight."),
+                else tr("You already set your limit today and used today's squat unlock. Stick with it! It unlocks at midnight."),
                 style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))

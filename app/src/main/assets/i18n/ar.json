@@ -367,5 +367,6 @@
 "You already set your limit today. Stick with it! It unlocks at midnight — or earn one more change with 10 squats.": "لقد حددت حدك اليوم. التزم به! يُفتح عند منتصف الليل — أو اكسب تغييرًا إضافيًا بـ 10 تمارين قرفصاء.",
 "Do 10 squats to unlock": "أدِّ 10 قرفصاء للفتح",
 "Uses the camera to count — nothing is recorded": "تُستخدم الكاميرا للعدّ — لا يُسجَّل شيء",
-"Camera\nUsed only when you choose \"Do 10 squats to unlock\", to count your squats with on-device pose detection. No photo or video is recorded, saved or sent.": "الكاميرا\nتُستخدم فقط عندما تختار \"أدِّ 10 قرفصاء للفتح\"، لعدّ تمارين القرفصاء بالتعرّف على وضعية الجسم على الجهاز نفسه. لا تُسجَّل أو تُحفظ أو تُرسَل أي صورة أو فيديو."
+"Camera\nUsed only when you choose \"Do 10 squats to unlock\", to count your squats with on-device pose detection. No photo or video is recorded, saved or sent.": "الكاميرا\nتُستخدم فقط عندما تختار \"أدِّ 10 قرفصاء للفتح\"، لعدّ تمارين القرفصاء بالتعرّف على وضعية الجسم على الجهاز نفسه. لا تُسجَّل أو تُحفظ أو تُرسَل أي صورة أو فيديو.",
+"You already set your limit today and used today's squat unlock. Stick with it! It unlocks at midnight.": "لقد حددت حدك اليوم واستخدمت فتح القرفصاء لهذا اليوم. التزم به! يُفتح عند منتصف الليل."
 }

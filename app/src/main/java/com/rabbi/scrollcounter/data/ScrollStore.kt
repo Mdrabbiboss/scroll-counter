@@ -102,7 +102,7 @@ class ScrollStore private constructor(context: Context) {
             val value = when (v) { is Int -> v.toString(); is Float -> String.format(Locale.US, "%.1f", v); else -> return@mapNotNull null }
             Triple(date, k, value)
         }.sortedBy { it.first }
-        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}")
+        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}|${settings.getString(KEY_SQUAT_USED, null) ?: "-"}")
         rows.forEach { sb.append('\n').append(it.second).append('|').append(it.third) }
         return sb.toString()
     }
@@ -134,6 +134,11 @@ class ScrollStore private constructor(context: Context) {
         // Keep the earliest first day (streaks and history), and the limit if none is set here.
         head.getOrNull(1)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { saved ->
             if (saved.isBefore(firstDay)) { settings.edit().putString(KEY_FIRST_DAY, saved.toString()).apply(); changed = true }
+        }
+        // Today's squat unlock stays used even after clearing data.
+        head.getOrNull(6)?.takeIf { it != "-" }?.let { used ->
+            val mine = settings.getString(KEY_SQUAT_USED, null)
+            if (mine == null || used > mine) { settings.edit().putString(KEY_SQUAT_USED, used).apply(); changed = true }
         }
         // Best streak and earned badges are never lost: keep the higher / earliest of both copies.
         head.getOrNull(4)?.toIntOrNull()?.let { if (it > bestStreak) { settings.edit().putInt(KEY_BEST, it).apply(); changed = true } }
@@ -363,9 +368,14 @@ class ScrollStore private constructor(context: Context) {
             return settings.getString(KEY_LIMIT_DAY, null) == today && settings.getString(KEY_SQUAT_UNLOCK, null) != today
         }
 
-    /** 10 squats done: the locked limit may be changed once more today. */
+    /** The squat unlock can be used once a day. */
+    val squatUnlockAvailable: Boolean
+        get() = settings.getString(KEY_SQUAT_USED, null) != LocalDate.now().toString()
+
+    /** 10 squats done: the locked limit may be changed once more today (once per day). */
     fun grantSquatUnlock() {
-        settings.edit().putString(KEY_SQUAT_UNLOCK, LocalDate.now().toString())
+        val today = LocalDate.now().toString()
+        settings.edit().putString(KEY_SQUAT_UNLOCK, today).putString(KEY_SQUAT_USED, today)
             .putInt(KEY_SQUATS_TOTAL, settings.getInt(KEY_SQUATS_TOTAL, 0) + 10).apply()
         bump()
     }
@@ -485,6 +495,7 @@ class ScrollStore private constructor(context: Context) {
         private const val KEY_BEST = "best_streak"
         private const val KEY_SQUAT_UNLOCK = "squat_unlock_day"
         private const val KEY_SQUATS_TOTAL = "squats_total"
+        private const val KEY_SQUAT_USED = "squat_used_day"
         private const val KEY_BADGES = "badge_dates"
         const val MAX_LIMIT = 500
 
