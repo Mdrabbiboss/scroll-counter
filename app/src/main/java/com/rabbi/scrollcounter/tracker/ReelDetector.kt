@@ -189,6 +189,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     fun settle(appKey: String, root: AccessibilityNodeInfo? = null): Int {
         val st = states[appKey] ?: return 0
         val pager = lastPager
+        // Only a container named as reels, or any pager in a short-video-only app, is trusted
+        // outright. Self-drawn and unnamed apps (Facebook, Facebook Lite…) may reuse the very same
+        // view for reels, profiles and feeds, so there EVERY swipe has to look like a reel swipe.
         val confident = st.opaque || isConfident(pager)
         lastMoveExact = false
         leftReels = false
@@ -204,6 +207,15 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // photo viewer or post can look like a full-screen page too. Only a run of exact one-screen
         // swipes onto new pages proves it — profiles and feeds never move like that. Until then
         // nothing is counted, shown or closed.
+        val proven = pager != null && pager.hashCode() in provenNodes
+        if (proven) {
+            // Already seen working as reels: each swipe still has to move exactly one screen onto
+            // a new page to count — a profile or feed scrolled in the same view never does.
+            if (n == 1 && lastMoveExact) { rememberShape(pager); return 1 }
+            leftReels = true
+            DetectLog.add(appKey, "not an exact reel swipe → not counted")
+            return 0
+        }
         if (n == 1 && lastMoveExact) {
             st.candStreak++
             if (st.candStreak >= 2) {
@@ -289,16 +301,17 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     private val provenNodes = HashSet<Int>()
 
     /**
-     * Is this container known for sure to be a reels / shorts feed — by its view name, by being a
-     * short-video-only app (TikTok…), or by having been proven with exact page swipes?
+     * Is this container known for sure to be a reels / shorts feed — by its view name, or by being
+     * a short-video-only app (TikTok…)? Only these may show the counter, count the opened reel or
+     * close the app just by being on screen. (Pagers proven by swipes still count only swipe by
+     * swipe, because some apps reuse the same view for profiles and feeds.)
      */
     private fun isConfident(n: AccessibilityNodeInfo?): Boolean {
         n ?: return false
         val pkg = n.packageName?.toString() ?: ""
         if (pkg in ALL_REELS_APPS) return true
         val id = (n.viewIdResourceName ?: "").lowercase()
-        if (id.isNotEmpty() && ID_HINTS.any { id.contains(it) }) return true
-        return n.hashCode() in provenNodes
+        return id.isNotEmpty() && ID_HINTS.any { id.contains(it) }
     }
 
     /** The last accepted scroll came from a container that is surely reels (see [isConfident]). */
@@ -420,7 +433,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += pages.roundToInt().coerceIn(1, 3)
             if (n == 0) { DetectLog.add(appKey, "forward to a reel already seen → not counted"); return 0 }
             advance(st, index)
-            lastMoveExact = abs(pages - 1f) <= 0.08f && childNow != null && childNow != childBefore
+            lastMoveExact = abs(pages - 1f) <= 0.12f && childNow != null && childNow != childBefore
             return mark(st, n)
         }
         // The app reported neither a number nor a distance: go by whether a different page view
