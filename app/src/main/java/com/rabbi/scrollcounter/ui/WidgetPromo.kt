@@ -191,7 +191,7 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
             Spacer(Modifier.height(18.dp))
             // Chip
             Text(
-                "HOME SCREEN WIDGET",
+                tr("HOME SCREEN WIDGET"),
                 color = Brand.Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp,
                 modifier = Modifier.alpha(enter.value).clip(RoundedCornerShape(50))
                     .background(Brand.Gold.copy(alpha = 0.12f))
@@ -201,9 +201,9 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
             Spacer(Modifier.height(14.dp))
             Text(
                 buildAnnotatedString {
-                    append("Your reels count,\n")
+                    append(tr("Your reels count,\n"))
                     withStyle(SpanStyle(brush = Brush.linearGradient(listOf(Color(0xFFFFE08A), Brand.Gold, Color(0xFFFF9F43))))) {
-                        append("one glance away")
+                        append(tr("one glance away"))
                     }
                 },
                 color = Color.White, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, fontFamily = com.rabbi.scrollcounter.ui.theme.AppFonts.Display,
@@ -212,7 +212,7 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Live count, a buddy that gets tired as you scroll, and your streak — without opening the app.",
+                tr("Live count, a buddy that gets tired as you scroll, and your streak — without opening the app."),
                 color = Color.White.copy(alpha = 0.62f), fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.alpha(enter.value).padding(horizontal = 8.dp)
             )
@@ -248,19 +248,19 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
 
             // ---- feature chips ----
             Row(Modifier.alpha(enter.value), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FeatureChip(com.rabbi.scrollcounter.face.GlyphArt.Glyph.BOLT, "Live count")
-                FeatureChip(null, "Mood buddy")
-                FeatureChip(com.rabbi.scrollcounter.face.GlyphArt.Glyph.FLAME, "Streaks")
+                FeatureChip(com.rabbi.scrollcounter.face.GlyphArt.Glyph.BOLT, tr("Live count"))
+                FeatureChip(null, tr("Mood buddy"))
+                FeatureChip(com.rabbi.scrollcounter.face.GlyphArt.Glyph.FLAME, tr("Streaks"))
             }
             Spacer(Modifier.height(16.dp))
 
             // ---- buttons ----
-            GoldButton(if (placed) "Added!" else "Add widget", shimmer, placed) {
+            GoldButton(if (placed) tr("Added!") else tr("Add widget"), shimmer, placed) {
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 if (!placed) onAdd()
             }
             Text(
-                "Not now",
+                tr("Not now"),
                 color = Color.White.copy(alpha = 0.6f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onClose).padding(horizontal = 24.dp, vertical = 12.dp)
@@ -280,9 +280,9 @@ fun WidgetPromoScreen(placed: Boolean, onAdd: () -> Unit, onClose: () -> Unit) {
                         ) { Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(56.dp)) }
                     }
                     Spacer(Modifier.height(18.dp))
-                    Text("Widget added!", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(tr("Widget added!"), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(4.dp))
-                    Text("Check your home screen", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
+                    Text(tr("Check your home screen"), color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
                 }
             }
         }

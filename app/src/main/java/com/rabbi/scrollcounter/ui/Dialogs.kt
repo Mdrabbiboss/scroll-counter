@@ -114,10 +114,10 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
                 .padding(top = 8.dp, bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Set your daily reel limit", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+            Text(tr("Set your daily reel limit"), style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Now: $current reels" + if (valid && value != current) "  →  New: $value reels" else "",
+                tr("Now: %1\$s reels", current) + if (valid && value != current) tr("  →  New: %1\$s reels", value) else "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (valid && value != current) Brand.Gold else Color.White.copy(alpha = 0.65f),
                 fontWeight = FontWeight.SemiBold
@@ -158,10 +158,10 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
             Spacer(Modifier.height(8.dp))
             Text(
                 when {
-                    value == null -> "Type a number"
-                    value < MIN_LIMIT -> "Minimum is $MIN_LIMIT reels"
-                    value > MAX_LIMIT -> "Maximum is $MAX_LIMIT reels"
-                    else -> "reels per day  ·  tap the number to type"
+                    value == null -> tr("Type a number")
+                    value < MIN_LIMIT -> tr("Minimum is %1\$s reels", MIN_LIMIT)
+                    value > MAX_LIMIT -> tr("Maximum is %1\$s reels", MAX_LIMIT)
+                    else -> tr("reels per day  ·  tap the number to type")
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (valid) Color.White.copy(alpha = 0.65f) else Brand.Over
@@ -209,8 +209,8 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
 
             Spacer(Modifier.height(16.dp))
             Text(
-                if (valid) "Heads-up at ${(value!! * 0.8f).toInt()} · reels close at $value"
-                else "You'll get a heads-up at 80% of your limit",
+                if (valid) tr("Heads-up at %1\$s · reels close at %2\$s", (value!! * 0.8f).toInt(), value)
+                else tr("You'll get a heads-up at 80% of your limit"),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
@@ -231,19 +231,19 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
                         Icon(Icons.Rounded.Check, null, tint = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (valid && value != current) "Save & lock for today" else "Save limit",
+                            if (valid && value != current) tr("Save & lock for today") else tr("Save limit"),
                             color = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black
                         )
                     }
                 }
                 Text(
-                    "You can change your limit only once a day. After saving, it stays until tomorrow.",
+                    tr("You can change your limit only once a day. After saving, it stays until tomorrow."),
                     style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                 )
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.75f))
+                    Text(tr("Cancel"), color = Color.White.copy(alpha = 0.75f))
                 }
             }
         }
@@ -276,7 +276,7 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Rounded.Lock, null, tint = Brand.Gold, modifier = Modifier.size(30.dp)) }
             Spacer(Modifier.height(14.dp))
-            Text("Today's limit is locked", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+            Text(tr("Today's limit is locked"), style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(14.dp))
             Box(
                 Modifier.width(170.dp).clip(RoundedCornerShape(24.dp))
@@ -288,7 +288,7 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
                 Text("$current", style = MaterialTheme.typography.displayMedium, color = Color.White.copy(alpha = 0.85f))
             }
             Spacer(Modifier.height(6.dp))
-            Text("reels per day", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
+            Text(tr("reels per day"), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
             Spacer(Modifier.height(18.dp))
             // Live countdown until the limit can be changed again (midnight).
             Column(
@@ -298,14 +298,14 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
                     .padding(vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("YOU CAN EDIT AGAIN IN", style = MaterialTheme.typography.labelSmall, color = Brand.Gold.copy(alpha = 0.85f), letterSpacing = 1.4.sp)
+                Text(tr("YOU CAN EDIT AGAIN IN"), style = MaterialTheme.typography.labelSmall, color = Brand.Gold.copy(alpha = 0.85f), letterSpacing = 1.4.sp)
                 Spacer(Modifier.height(2.dp))
                 UnlockCountdown(MaterialTheme.typography.headlineMedium, Color.White, weight = FontWeight.Black)
-                Text("hours : minutes : seconds", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
+                Text(tr("hours : minutes : seconds"), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                "You already set your limit today. Stick with it! It unlocks at midnight.",
+                tr("You already set your limit today. Stick with it! It unlocks at midnight."),
                 style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))
@@ -315,7 +315,7 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
                     .clickable(onClick = onDismiss),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Got it", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(tr("Got it"), color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -354,7 +354,7 @@ fun ConfirmDialog(
                 )
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel")) } }
     )
 }
 
@@ -366,14 +366,10 @@ fun ConfirmDialog(
 fun DeleteHistoryDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    title: String = "Delete all history?",
-    body: String = "This permanently removes from this phone:\n" +
-        "• Every past day's reel count and distance (today's count stays)\n" +
-        "• Your hourly activity and app breakdown\n" +
-        "• Your streak (it starts again from zero)\n\n" +
-        "This can't be undone.",
-    confirmLabel: String = "Delete everything",
-    dismissLabel: String = "Keep my history",
+    title: String = tr("Delete all history?"),
+    body: String = tr("This permanently removes from this phone:\n• Every past day's reel count and distance (today's count stays)\n• Your hourly activity and app breakdown\n• Your streak (it starts again from zero)\n\nThis can't be undone."),
+    confirmLabel: String = tr("Delete everything"),
+    dismissLabel: String = tr("Keep my history"),
 ) {
     val a = remember { (3..19).random() }
     val b = remember { (2..15).random() }
@@ -408,7 +404,7 @@ fun DeleteHistoryDialog(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                Text("Solve this to confirm", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Solve this to confirm"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -430,7 +426,7 @@ fun DeleteHistoryDialog(
                 }
                 if (wrong) {
                     Spacer(Modifier.height(6.dp))
-                    Text("Not quite — try again", style = MaterialTheme.typography.bodySmall, color = danger)
+                    Text(tr("Not quite — try again"), style = MaterialTheme.typography.bodySmall, color = danger)
                 }
             }
         },
@@ -445,16 +441,8 @@ fun DeleteHistoryDialog(
     )
 }
 
-const val DISCLOSURE_TEXT =
-    "Scroll Counter uses Android's Accessibility Service to count the Reels, Shorts and short videos you watch " +
-        "in any social or video app (Facebook, Instagram, TikTok, YouTube, Snapchat and others) and on short-video websites in your browser.\n\n" +
-        "• To recognise a Reels feed it looks only at the screen's layout — the size of the video player, its view names and how it scrolls\n" +
-        "• In browsers it checks the address bar and page title only to tell when a short-video page (TikTok, Shorts, Reels) is open — never stored\n" +
-        "• To tell one reel from the next it makes a one-way code from the labels on the video page, in memory only — it never stores or sends any text\n" +
-        "• It does NOT store messages, captions, comments or anything you type\n" +
-        "• It shows a small counter at the top while you watch, and takes you to the home screen when your daily limit is reached\n" +
-        "• Chats, comments, normal feeds and reading are ignored, and your data never leaves your phone\n\n" +
-        "On the next screen, tap \"Scroll Counter\" and switch it on."
+val DISCLOSURE_TEXT: String get() =
+    tr("Scroll Counter uses Android's Accessibility Service to count the Reels, Shorts and short videos you watch in any social or video app (Facebook, Instagram, TikTok, YouTube, Snapchat and others) and on short-video websites in your browser.\n\n• To recognise a Reels feed it looks only at the screen's layout — the size of the video player, its view names and how it scrolls\n• In browsers it checks the address bar only to tell when a short-video page (TikTok, Shorts, Reels) is open — never stored\n• It does NOT read or store messages, captions, comments or anything you type\n• It shows a small counter at the top while you watch, counts your watch time, and closes Reels when your daily limit is reached\n• Chats, comments, normal feeds and reading are ignored, and your data never leaves your phone\n\nOn the next screen, tap \"Scroll Counter\" and switch it on.")
 
 /** Prominent disclosure + animated how-to, shown before sending the user to Accessibility settings (Google Play policy). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -470,13 +458,13 @@ fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 .padding(horizontal = 22.dp).padding(bottom = 20.dp).navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Turn on scroll tracking", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+            Text(tr("Turn on scroll tracking"), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
             Spacer(Modifier.height(4.dp))
-            Text("Watch how — it takes 10 seconds:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Watch how — it takes 10 seconds:"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
             TutorialVideo(com.rabbi.scrollcounter.R.raw.accessibility_tutorial, aspect = 480f / 1104f, modifier = Modifier.fillMaxWidth(0.55f))
             Spacer(Modifier.height(16.dp))
-            Text("How tracking works", style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
+            Text(tr("How tracking works"), style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(4.dp))
             Text(DISCLOSURE_TEXT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(18.dp))
@@ -484,41 +472,25 @@ fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
                 onClick = onAgree,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(18.dp)
-            ) { Text("Agree & open settings", style = MaterialTheme.typography.titleMedium) }
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+            ) { Text(tr("Agree & open settings"), style = MaterialTheme.typography.titleMedium) }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(tr("Not now")) }
         }
     }
 }
 
-const val PRIVACY_POLICY_TEXT =
-    "What we collect\n" +
-        "Only how many Reels / Shorts you watch, an estimated scroll distance, and the hour it happened, " +
-        "per app (and per browser for short-video websites). Nothing about what you watched; web addresses are never stored.\n\n" +
-        "Where it is stored\n" +
-        "On your phone only. Scroll Counter has no account, no server and no analytics. History older " +
-        "than 60 days is deleted automatically, and you can delete everything in Settings.\n\n" +
-        "Accessibility Service\n" +
-        "Used only to recognise when a Reels / Shorts feed is on screen and when you move to the next video. " +
-        "It looks at the screen's layout (sizes, view names and how it scrolls) only; in browsers it also checks the address bar to recognise short-video pages, without storing it. It does not read, store or send messages, " +
-        "captions or anything you type.\n\n" +
-        "Ads\n" +
-        "The app shows Google AdMob banner ads. Google may use your device's advertising ID to show ads, " +
-        "and asks for your consent where the law requires it. You can change ad choices in Settings.\n\n" +
-        "History backup\n" +
-        "So clearing the app's data or reinstalling can't erase your counts, a small backup file of the numbers only " +
-        "(date, app, reel count, distance, hour) is kept in a hidden \".ScrollCounter\" folder on your phone's storage, " +
-        "and a copy in Google Play services' Block Store. It never contains what you watched and is never uploaded by the app."
+val PRIVACY_POLICY_TEXT: String get() =
+    tr("What we collect\nOnly how many Reels / Shorts you watch, how long you watch them, an estimated scroll distance, and the hour it happened, per app (and per browser for short-video websites). Nothing about what you watched; web addresses are never stored.\n\nWhere it is stored\nOn your phone only. Scroll Counter has no account, no server and no analytics. History older than 60 days is deleted automatically, and you can delete everything in Settings.\n\nAccessibility Service\nUsed only to recognise when a Reels / Shorts feed is on screen and when you move to the next video. It looks at the screen's layout (sizes, view names and how it scrolls) only; in browsers it also checks the address bar to recognise short-video pages, without storing it. It does not read, store or send messages, captions or anything you type.\n\nAds\nThe app shows Google AdMob banner ads. Google may use your device's advertising ID to show ads, and asks for your consent where the law requires it. You can change ad choices in Settings.\n\nHistory backup\nSo clearing the app's data or reinstalling can't erase your counts, a small backup file of the numbers only (date, app, reel count, watch time, distance, hour, streak badges) is kept in a hidden \".ScrollCounter\" folder on your phone's storage, and a copy in Google Play services' Block Store. It never contains what you watched and is never uploaded by the app.")
 
 @Composable
 fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Privacy policy") },
+        title = { Text(tr("Privacy policy")) },
         text = {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                 Text(PRIVACY_POLICY_TEXT, style = MaterialTheme.typography.bodyMedium)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Close")) } }
     )
 }

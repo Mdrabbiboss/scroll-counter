@@ -1,5 +1,7 @@
 package com.rabbi.scrollcounter
 
+import com.rabbi.scrollcounter.ui.tr
+
 import android.Manifest
 import android.graphics.Color as AndroidColor
 import android.os.Build
@@ -58,6 +60,8 @@ import com.rabbi.scrollcounter.data.ThemeMode
 import com.rabbi.scrollcounter.tracker.Notifier
 import com.rabbi.scrollcounter.tracker.TrackerStatus
 import com.rabbi.scrollcounter.ui.DisclosureDialog
+import com.rabbi.scrollcounter.ui.BadgeCelebration
+import com.rabbi.scrollcounter.ui.SharePreviewSheet
 import com.rabbi.scrollcounter.ui.WidgetPromoScreen
 import com.rabbi.scrollcounter.ui.HistoryScreen
 import com.rabbi.scrollcounter.ui.LimitDialog
@@ -76,7 +80,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val store = ScrollStore.get(this)
-        setContent { AppRoot(this, store) }
+        setContent {
+            // Arabic and Urdu read right-to-left.
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalLayoutDirection provides
+                    if (com.rabbi.scrollcounter.ui.I18n.lang.rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr
+            ) { AppRoot(this, store) }
+        }
         // Housekeeping and ads start after the first frame, so they never delay opening the app.
         Thread {
             store.prune()
@@ -136,6 +146,40 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     }
 
     var showDisclosure by remember { mutableStateOf(false) }
+
+    // ---- Language: pick on the first screen or in Settings; the app redraws in it ----
+    var showLanguages by remember { mutableStateOf(false) }
+    val openLanguages: () -> Unit = { showLanguages = true }
+    val pickLanguage: (com.rabbi.scrollcounter.ui.Lang) -> Unit = { l ->
+        showLanguages = false
+        if (l != store.language) {
+            store.language = l
+            com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(context)
+            activity.recreate()
+        }
+    }
+
+    // ---- Streak badges: celebrate new ones; share images of the day or a badge ----
+    var celebrate by remember { mutableStateOf<com.rabbi.scrollcounter.data.Badges.Badge?>(null) }
+    var sharing by remember { mutableStateOf<Pair<android.graphics.Bitmap, String>?>(null) }
+    val shareDay: () -> Unit = {
+        val t0 = store.todayTotal(); val l0 = store.dailyLimit
+        sharing = com.rabbi.scrollcounter.share.ShareCard.renderDay(context) to
+            com.rabbi.scrollcounter.ui.tr("I've watched %1\$s reels today (limit %2\$s). Tracking my reels with Scroll Counter.", t0, l0)
+    }
+    val shareBadge: (com.rabbi.scrollcounter.data.Badges.Badge) -> Unit = { b ->
+        sharing = com.rabbi.scrollcounter.share.ShareCard.renderBadge(context, b) to
+            com.rabbi.scrollcounter.ui.tr("I just earned the \"%1\$s\" badge: %2\$s! Tracking my reels with Scroll Counter.",
+                com.rabbi.scrollcounter.ui.tr(b.title), com.rabbi.scrollcounter.ui.tr(b.description))
+    }
+    LaunchedEffect(tick, store.onboarded) {
+        if (!store.onboarded || celebrate != null) return@LaunchedEffect
+        val fresh = runCatching { store.updateBadges() }.getOrDefault(emptyList())
+        fresh.maxByOrNull { it.days }?.let {
+            celebrate = it
+            if (store.buddySounds) com.rabbi.scrollcounter.face.BuddyVoice.speak(context, com.rabbi.scrollcounter.face.Mood.FRESH)
+        }
+    }
     var showLimit by remember { mutableStateOf(false) }
     val onboarded = remember(tick) { store.onboarded }
 
@@ -193,6 +237,8 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                     onOpenAccessibility = { TrackerStatus.openAccessibilitySettings(context) },
                     onRequestNotifications = requestNotifications,
                     onOpenStorage = requestStorage,
+                    language = store.language,
+                    onPickLanguage = openLanguages,
                     onOpenBattery = { TrackerStatus.openBatterySettings(context) },
                     onFinish = { store.onboarded = true }
                 )
@@ -225,9 +271,9 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                         if (t == Tab.Today) com.rabbi.scrollcounter.ui.AnimatedFace(
                                             com.rabbi.scrollcounter.face.Mood.of(todayTotal, limitNow), 30.dp, bounceKey = todayTotal,
                                             modifier = Modifier.graphicsLayer { alpha = if (tab == t) 1f else 0.7f }
-                                        ) else Icon(t.icon, contentDescription = t.label)
+                                        ) else Icon(t.icon, contentDescription = com.rabbi.scrollcounter.ui.tr(t.label))
                                     },
-                                    label = { Text(t.label) },
+                                    label = { Text(com.rabbi.scrollcounter.ui.tr(t.label)) },
                                     colors = NavigationBarItemDefaults.colors(
                                         indicatorColor = accent.copy(alpha = if (dark) 0.26f else 0.22f),
                                         selectedIconColor = if (dark) androidx.compose.ui.graphics.Color(0xFFFFD98A) else MaterialTheme.colorScheme.onSurface,
@@ -264,7 +310,10 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                 ) { t ->
                     tabStates.SaveableStateProvider(t.name) {
                         when (t) {
-                            Tab.Today -> TodayScreen(store, tick, status, { showDisclosure = true }, { showLimit = true }, onAddWidget = addWidget)
+                            Tab.Today -> TodayScreen(
+                                store, tick, status, { showDisclosure = true }, { showLimit = true }, onAddWidget = addWidget,
+                                onShareDay = { shareDay() }, onShareBadge = { shareBadge(it) }
+                            )
                             Tab.History -> HistoryScreen(store, tick)
                             Tab.Settings -> SettingsScreen(
                                 store, tick, status,
@@ -272,6 +321,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                 onEditLimit = { showLimit = true },
                                 onRequestNotifications = requestNotifications,
                                 onRequestStorage = requestStorage,
+                                onPickLanguage = openLanguages,
                                 onAddWidget = addWidget
                             )
                         }
@@ -298,17 +348,13 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
         if (showWidgetHelp) {
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { showWidgetHelp = false },
-                title = { Text("Add the widget") },
+                title = { Text(tr("Add the widget")) },
                 text = {
                     Text(
-                        "Your launcher doesn't support one-tap adding, so do it by hand:\n\n" +
-                            "1. Go to your home screen\n" +
-                            "2. Touch and hold an empty spot\n" +
-                            "3. Tap \"Widgets\"\n" +
-                            "4. Find \"Scroll Counter\", then drag it onto the home screen"
+                        tr("Your launcher doesn't support one-tap adding, so do it by hand:\n\n1. Go to your home screen\n2. Touch and hold an empty spot\n3. Tap \"Widgets\"\n4. Find \"Scroll Counter\", then drag it onto the home screen")
                     )
                 },
-                confirmButton = { androidx.compose.material3.TextButton(onClick = { showWidgetHelp = false }) { Text("Got it") } }
+                confirmButton = { androidx.compose.material3.TextButton(onClick = { showWidgetHelp = false }) { Text(tr("Got it")) } }
             )
         }
 
@@ -318,6 +364,11 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                 onDismiss = { showDisclosure = false }
             )
         }
+        if (showLanguages) com.rabbi.scrollcounter.ui.LanguageSheet(store.language, pickLanguage) { showLanguages = false }
+        celebrate?.let { b ->
+            BadgeCelebration(b, onShare = { celebrate = null; shareBadge(b) }, onDismiss = { celebrate = null })
+        }
+        sharing?.let { (bmp, msg) -> SharePreviewSheet(bmp, msg) { sharing = null } }
         if (showLimit) {
             LimitDialog(
                 current = store.dailyLimit,

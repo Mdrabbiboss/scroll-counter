@@ -59,6 +59,8 @@ fun OnboardingScreen(
     onOpenAccessibility: () -> Unit,
     onRequestNotifications: () -> Unit,
     onOpenStorage: () -> Unit,
+    language: Lang = Lang.EN,
+    onPickLanguage: () -> Unit = {},
     onOpenBattery: () -> Unit,
     onFinish: () -> Unit,
 ) {
@@ -85,6 +87,10 @@ fun OnboardingScreen(
     Column(
         Modifier.fillMaxSize().glassBackdrop(isDarkTheme()).safeDrawingPadding().padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
+        // Language first — right at the top of the very first screen.
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.End) {
+            LanguageChip(language, onPickLanguage)
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             repeat(5) { i ->
                 Box(
@@ -103,33 +109,31 @@ fun OnboardingScreen(
                     0 -> Welcome()
                     1 -> if (status.trackerOn) StepBody(
                         Icons.Rounded.AccessibilityNew, MaterialTheme.colorScheme.primary,
-                        "Allow scroll tracking",
-                        "Scroll tracking is on. Scroll Counter can now count your reels in the apps you chose.",
+                        tr("Allow scroll tracking"),
+                        tr("Scroll tracking is on. Scroll Counter can now count your reels in the apps you chose."),
                         done = true,
-                        badge = "REQUIRED"
+                        badge = tr("REQUIRED")
                     ) else AccessibilityStep()
                     2 -> StepBody(
                         Icons.Rounded.NotificationsActive, Brand.Warn,
-                        "Get a heads-up",
-                        "Scroll Counter can tell you when you've used 80% of your daily limit, and again when you pass it. Nothing else.",
+                        tr("Get a heads-up"),
+                        tr("Scroll Counter can tell you when you've used 80% of your daily limit, and again when you pass it. Nothing else."),
                         done = status.notificationsOn,
-                        badge = "REQUIRED"
+                        badge = tr("REQUIRED")
                     )
                     3 -> StepBody(
                         Icons.Rounded.Lock, Brand.Gold,
-                        "Keep your history safe",
-                        "Turn on \"Allow access to manage all files\" for Scroll Counter. It saves a small backup of your reel counts on your phone, " +
-                            "so clearing the app's data or reinstalling it never wipes today's count or your last 60 days. Only numbers are saved.",
+                        tr("Keep your history safe"),
+                        tr("Turn on \"Allow access to manage all files\" for Scroll Counter. It saves a small backup of your reel counts on your phone, so clearing the app's data or reinstalling it never wipes today's count or your last 60 days. Only numbers are saved."),
                         done = status.historySafe,
-                        badge = "REQUIRED"
+                        badge = tr("REQUIRED")
                     )
                     else -> StepBody(
                         Icons.Rounded.BatteryChargingFull, Brand.Good,
-                        "Keep counting reliably",
-                        "Some phones (Xiaomi, Oppo, Vivo, Samsung and others) stop background services to save battery. " +
-                            "Set Scroll Counter to \"Unrestricted\" / \"Don't optimize\" so your count stays accurate. It uses almost no battery.",
+                        tr("Keep counting reliably"),
+                        tr("Some phones (Xiaomi, Oppo, Vivo, Samsung and others) stop background services to save battery. Set Scroll Counter to \"Unrestricted\" / \"Don't optimize\" so your count stays accurate. It uses almost no battery."),
                         done = status.batteryUnrestricted,
-                        badge = "REQUIRED"
+                        badge = tr("REQUIRED")
                     )
                 }
             }
@@ -137,35 +141,35 @@ fun OnboardingScreen(
 
         // Buttons — no skipping: every permission must be given to reach the end.
         when (step) {
-            0 -> PrimaryButton("Get started") { step = 1 }
+            0 -> PrimaryButton(tr("Get started")) { step = 1 }
             1 -> {
-                if (status.trackerOn) PrimaryButton("Continue") { step = 2 }
+                if (status.trackerOn) PrimaryButton(tr("Continue")) { step = 2 }
                 else {
-                    PrimaryButton("Agree & open settings", onOpenAccessibility)
+                    PrimaryButton(tr("Agree & open settings"), onOpenAccessibility)
                     RequiredNote()
                 }
             }
             2 -> {
-                if (status.notificationsOn) PrimaryButton("Continue") { step = 3 }
+                if (status.notificationsOn) PrimaryButton(tr("Continue")) { step = 3 }
                 else {
-                    PrimaryButton("Allow notifications", onRequestNotifications)
+                    PrimaryButton(tr("Allow notifications"), onRequestNotifications)
                     RequiredNote()
                 }
             }
             3 -> {
-                if (status.historySafe) PrimaryButton("Continue") { step = 4 }
+                if (status.historySafe) PrimaryButton(tr("Continue")) { step = 4 }
                 else {
-                    PrimaryButton("Allow history backup", onOpenStorage)
+                    PrimaryButton(tr("Allow history backup"), onOpenStorage)
                     RequiredNote()
                 }
             }
             else -> {
-                if (status.batteryUnrestricted) PrimaryButton("Finish", onFinish)
+                if (status.batteryUnrestricted) PrimaryButton(tr("Finish"), onFinish)
                 else {
-                    PrimaryButton("Allow unrestricted battery") { batteryTries++; onOpenBattery() }
+                    PrimaryButton(tr("Allow unrestricted battery")) { batteryTries++; onOpenBattery() }
                     RequiredNote()
                     // A few phones hide this option entirely; don't trap their owners forever.
-                    if (batteryTries >= 3) SecondaryButton("My phone doesn't have this option", onFinish)
+                    if (batteryTries >= 3) SecondaryButton(tr("My phone doesn't have this option"), onFinish)
                 }
             }
         }
@@ -176,10 +180,10 @@ fun OnboardingScreen(
 private fun Welcome() {
     WelcomeShowcase(Modifier.fillMaxWidth())
     Spacer(Modifier.height(18.dp))
-    Text("See your reels count", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    Text(tr("See your reels count"), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(8.dp))
     Text(
-        "Every Reel, Short and TikTok you swipe — counted live, with a little buddy that gets tired as you go.",
+        tr("Every Reel, Short and TikTok you swipe — counted live, with a little buddy that gets tired as you go."),
         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
     )
     Spacer(Modifier.height(16.dp))
@@ -189,7 +193,7 @@ private fun Welcome() {
 @Composable
 private fun AccessibilityStep() {
     Text(
-        "REQUIRED",
+        tr("REQUIRED"),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.error,
         modifier = Modifier.clip(RoundedCornerShape(50))
@@ -197,9 +201,9 @@ private fun AccessibilityStep() {
             .padding(horizontal = 12.dp, vertical = 5.dp)
     )
     Spacer(Modifier.height(10.dp))
-    Text("Allow scroll tracking", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    Text(tr("Allow scroll tracking"), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
     Spacer(Modifier.height(4.dp))
-    Text("Watch how — it takes 10 seconds:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(tr("Watch how — it takes 10 seconds:"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(16.dp))
     // Real walkthrough of the phone's Accessibility screen (other apps hidden).
     TutorialVideo(
@@ -208,13 +212,13 @@ private fun AccessibilityStep() {
     )
     Spacer(Modifier.height(18.dp))
     PremiumCard {
-        Text("How tracking works", style = MaterialTheme.typography.titleMedium)
+        Text(tr("How tracking works"), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(6.dp))
         Text(DISCLOSURE_TEXT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Spacer(Modifier.height(10.dp))
     Text(
-        "Scroll Counter greyed out or says \"Restricted setting\"? Open phone Settings → Apps → Scroll Counter → ⋮ → Allow restricted settings, then try again.",
+        tr("Scroll Counter greyed out or says \"Restricted setting\"? Open phone Settings → Apps → Scroll Counter → ⋮ → Allow restricted settings, then try again."),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -243,7 +247,7 @@ private fun StepBody(icon: ImageVector, tint: Color, title: String, text: String
         contentAlignment = Alignment.Center
     ) { Icon(if (done) Icons.Rounded.CheckCircle else icon, null, tint = if (done) Brand.Good else tint, modifier = Modifier.size(46.dp)) }
     Spacer(Modifier.height(20.dp))
-    val required = badge == "REQUIRED"
+    val required = badge == tr("REQUIRED")
     Text(
         badge,
         style = MaterialTheme.typography.labelMedium,
@@ -259,7 +263,7 @@ private fun StepBody(icon: ImageVector, tint: Color, title: String, text: String
         androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
             AppGlyph(com.rabbi.scrollcounter.face.GlyphArt.Glyph.CHECK, 20.dp)
             Spacer(Modifier.width(8.dp))
-            Text("Done", style = MaterialTheme.typography.titleMedium, color = Brand.Good)
+            Text(tr("Done"), style = MaterialTheme.typography.titleMedium, color = Brand.Good)
         }
         Spacer(Modifier.height(12.dp))
     }
@@ -272,7 +276,7 @@ private fun RequiredNote() {
         Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(6.dp))
         Text(
-            "Required — you can't continue without it",
+            tr("Required — you can't continue without it"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

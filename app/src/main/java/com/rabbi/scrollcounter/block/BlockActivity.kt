@@ -1,5 +1,7 @@
 package com.rabbi.scrollcounter.block
 
+import com.rabbi.scrollcounter.ui.tr
+
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -50,7 +52,7 @@ class BlockActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val store = ScrollStore.get(this)
-        val appName = intent.getStringExtra(EXTRA_APP) ?: "social apps"
+        val appName = intent.getStringExtra(EXTRA_APP) ?: tr("social apps")
         setContent {
             ScrollCounterTheme(dark = true) {
                 BlockScreen(
@@ -119,10 +121,10 @@ private fun BlockScreen(
             contentAlignment = Alignment.Center
         ) { com.rabbi.scrollcounter.ui.AnimatedFace(Mood.EXHAUSTED, 180.dp) }
         Spacer(Modifier.height(20.dp))
-        Text("Daily limit reached", style = MaterialTheme.typography.headlineMedium, color = Color.White, textAlign = TextAlign.Center)
+        Text(tr("Daily limit reached"), style = MaterialTheme.typography.headlineMedium, color = Color.White, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp))
         Text(
-            "You've watched $total reels today (limit $limit).\nReels in $appName are closed for today — posts and chats still work. Your eyes and mind need a break.",
+            tr("You've watched %1\$s reels today (limit %2\$s).\nReels in %3\$s are closed for today — posts and chats still work. Your eyes and mind need a break.", total, limit, appName),
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
@@ -133,7 +135,7 @@ private fun BlockScreen(
             modifier = Modifier.fillMaxWidth().height(54.dp),
             shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Brand.HeroTop)
-        ) { Text("Okay, take a break", fontWeight = FontWeight.SemiBold) }
+        ) { Text(tr("Okay, take a break"), fontWeight = FontWeight.SemiBold) }
         Spacer(Modifier.height(10.dp))
         if (graceAvailable) {
             OutlinedButton(
@@ -141,11 +143,11 @@ private fun BlockScreen(
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(18.dp),
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White.copy(alpha = 0.55f))
-            ) { Text("5 more minutes (once a day)", color = Color.White, fontWeight = FontWeight.Medium) }
+            ) { Text(tr("5 more minutes (once a day)"), color = Color.White, fontWeight = FontWeight.Medium) }
         } else {
-            Text("You've already used today's 5 extra minutes.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
+            Text(tr("You've already used today's 5 extra minutes."), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f))
         }
         Spacer(Modifier.height(6.dp))
-        TextButton(onClick = onOpenApp) { Text("Open Scroll Counter", color = Color.White, fontWeight = FontWeight.Medium) }
+        TextButton(onClick = onOpenApp) { Text(tr("Open Scroll Counter"), color = Color.White, fontWeight = FontWeight.Medium) }
     }
 }

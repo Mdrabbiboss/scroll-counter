@@ -1,5 +1,7 @@
 package com.rabbi.scrollcounter.tracker
 
+import com.rabbi.scrollcounter.ui.tr
+
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -23,15 +25,15 @@ object Notifier {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Daily limit alerts",
+            tr("Daily limit alerts"),
             NotificationManager.IMPORTANCE_DEFAULT
-        ).apply { description = "Warns you near your daily scroll limit and when you pass it" }
+        ).apply { description = tr("Warns you near your daily scroll limit and when you pass it") }
         nm.createNotificationChannel(channel)
         // Quiet, always-on entry that puts the buddy icon in the status bar while counting.
         // DEFAULT importance (but no sound / vibration): phones hide the status-bar icon of
         // "silent" (low) notifications, and the buddy icon up there is the whole point.
-        val live = NotificationChannel(LIVE_CHANNEL_ID, "Live reel counter", NotificationManager.IMPORTANCE_DEFAULT).apply {
-            description = "Shows the buddy in the status bar and today's reel count while Scroll Counter is on"
+        val live = NotificationChannel(LIVE_CHANNEL_ID, tr("Live reel counter"), NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = tr("Shows the buddy in the status bar and today's reel count while Scroll Counter is on")
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
@@ -65,8 +67,8 @@ object Notifier {
             .setLargeIcon(face)
             .setContentTitle("Scroll Counter")
             .setContentText(
-                if (left > 0) "Counting your reels · $count today, $left left"
-                else "Daily limit reached · $count reels today"
+                if (left > 0) tr("Counting your reels · %1\$s today, %2\$s left", count, left)
+                else tr("Daily limit reached · %1\$s reels today", count)
             )
             .setContentIntent(pi)
             .setOnlyAlertOnce(true)
@@ -98,21 +100,21 @@ object Notifier {
 
     fun limitReached(context: Context, count: Int, limit: Int) = post(
         context, LIMIT_ID,
-        "Daily reel limit reached",
-        "You've watched $count reels today (limit $limit). Time for a break?"
+        tr("Daily reel limit reached"),
+        tr("You've watched %1\$s reels today (limit %2\$s). Time for a break?", count, limit)
     )
 
     fun almostThere(context: Context, count: Int, limit: Int) = post(
         context, WARN_ID,
-        "80% of today's limit used",
-        "$count of $limit reels. Only ${limit - count} left today."
+        tr("80% of today's limit used"),
+        tr("%1\$s of %2\$s reels. Only %3\$s left today.", count, limit, limit - count)
     )
 
     /** Sends a test notification from Settings so the user can check alerts work. */
     fun test(context: Context) = post(
         context, WARN_ID,
-        "Alerts are working",
-        "You'll get a note like this near and at your daily limit."
+        tr("Alerts are working"),
+        tr("You'll get a note like this near and at your daily limit.")
     )
 
     @SuppressLint("MissingPermission")

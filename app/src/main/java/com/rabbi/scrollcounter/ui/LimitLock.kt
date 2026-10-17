@@ -46,7 +46,7 @@ fun formatCountdown(seconds: Long): String {
 /** 22h 45m (for short subtitles) */
 fun formatCountdownShort(seconds: Long): String {
     val h = seconds / 3600; val m = (seconds % 3600) / 60
-    return if (h > 0) "${h}h ${m}m" else "${m.coerceAtLeast(1)}m"
+    return if (h > 0) tr("%1\$sh %2\$sm", h, m) else tr("%1\$sm", m.coerceAtLeast(1))
 }
 
 /** A live, ticking "HH:MM:SS" until the limit unlocks. Recomposes only itself every second. */

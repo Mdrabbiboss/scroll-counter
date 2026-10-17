@@ -75,7 +75,11 @@ fun TodayScreen(
     onEnableTracking: () -> Unit,
     onEditLimit: () -> Unit,
     onAddWidget: () -> Unit = {},
+    onShareDay: () -> Unit = {},
+    onShareBadge: (com.rabbi.scrollcounter.data.Badges.Badge) -> Unit = {},
 ) {
+    var showBadges by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (showBadges) BadgesSheet(store, tick, onShareBadge = { showBadges = false; onShareBadge(it) }, onDismiss = { showBadges = false })
     val now = LocalDate.now()
     val today = remember(tick) { store.dayStats(now) }
     val hours = remember(tick) { store.hourly(now) }
@@ -86,7 +90,7 @@ fun TodayScreen(
     val paused = remember(tick) { store.paused }
     val streak = remember(tick) { store.streak() }
     val peak = hours.indices.maxByOrNull { hours[it] }?.takeIf { hours[it] > 0 }
-    val greeting = when (LocalTime.now().hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
+    val greeting = when (LocalTime.now().hour) { in 5..11 -> tr("Good morning"); in 12..16 -> tr("Good afternoon"); else -> tr("Good evening") }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -96,9 +100,9 @@ fun TodayScreen(
         item {
             ScreenHeader(greeting, now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM"))) {
                 when {
-                    !status.trackerOn -> StatusChip("Off", MaterialTheme.colorScheme.error)
-                    paused -> StatusChip("Paused", Brand.Warn)
-                    else -> StatusChip("Tracking", Brand.Good)
+                    !status.trackerOn -> StatusChip(tr("Off"), MaterialTheme.colorScheme.error)
+                    paused -> StatusChip(tr("Paused"), Brand.Warn)
+                    else -> StatusChip(tr("Tracking"), Brand.Good)
                 }
             }
         }
@@ -107,29 +111,30 @@ fun TodayScreen(
 
         item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit, limitLocked, buddySounds) }
         if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
+        item { BadgesCard(store, tick, onOpen = { showBadges = true }, onShare = onShareDay) }
 
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(Icons.Rounded.Straighten, "Distance", formatDistance(today.totalMeters), distanceComparison(today.totalMeters), Modifier.weight(1f))
+                StatTile(Icons.Rounded.Straighten, tr("Distance"), formatDistance(today.totalMeters), distanceComparison(today.totalMeters), Modifier.weight(1f))
                 StatTile(
-                    Icons.Rounded.EmojiEvents, "Streak",
-                    if (streak == 1) "1 day" else "$streak days",
-                    "under your limit", Modifier.weight(1f), tint = Brand.Warn
+                    Icons.Rounded.EmojiEvents, tr("Streak"),
+                    if (streak == 1) tr("1 day") else tr("%1\$s days", streak),
+                    tr("under your limit"), Modifier.weight(1f), tint = Brand.Warn
                 )
             }
         }
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatTile(
-                    Icons.Rounded.Schedule, "Peak hour",
+                    Icons.Rounded.Schedule, tr("Peak hour"),
                     peak?.let { formatHour(it) } ?: "—",
-                    peak?.let { "${hours[it]} reels" } ?: "No data yet", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary
+                    peak?.let { tr("%1\$s reels", hours[it]) } ?: tr("No data yet"), Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary
                 )
                 val top = today.topApp
                 StatTile(
-                    Icons.Rounded.TouchApp, "Most scrolled",
+                    Icons.Rounded.TouchApp, tr("Most scrolled"),
                     top?.let { TrackedApps.forKey(it.key)?.name } ?: "—",
-                    top?.let { "${it.scrolls} reels" } ?: "Nothing yet", Modifier.weight(1f), tint = Color(0xFFE1306C)
+                    top?.let { tr("%1\$s reels", it.scrolls) } ?: tr("Nothing yet"), Modifier.weight(1f), tint = Color(0xFFE1306C)
                 )
             }
         }
@@ -139,22 +144,22 @@ fun TodayScreen(
             val secs = today.totalSeconds
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatTile(
-                    Icons.Rounded.Timer, "Watch time",
-                    if (secs == 0) "0 min" else formatDuration(secs),
-                    "on reels today", Modifier.weight(1f), tint = Color(0xFF38BDF8)
+                    Icons.Rounded.Timer, tr("Watch time"),
+                    if (secs == 0) tr("0 min") else formatDuration(secs),
+                    tr("on reels today"), Modifier.weight(1f), tint = Color(0xFF38BDF8)
                 )
                 StatTile(
-                    Icons.Rounded.HourglassTop, "Per reel",
+                    Icons.Rounded.HourglassTop, tr("Per reel"),
                     if (today.totalScrolls == 0 || secs == 0) "—" else formatDuration((secs / today.totalScrolls).coerceAtLeast(1)),
-                    "average time", Modifier.weight(1f), tint = Brand.Gold
+                    tr("average time"), Modifier.weight(1f), tint = Brand.Gold
                 )
             }
         }
 
         item {
             PremiumCard {
-                Text("Activity by hour", style = MaterialTheme.typography.titleMedium)
-                Text("When you scroll the most today", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Activity by hour"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("When you scroll the most today"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(14.dp))
                 HourlyChart(hours, highlightHour = peak)
             }
@@ -162,12 +167,12 @@ fun TodayScreen(
 
         item {
             PremiumCard {
-                Text("By app", style = MaterialTheme.typography.titleMedium)
+                Text(tr("By app"), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 if (today.apps.isEmpty()) {
                     EmptyNote(
-                        if (status.trackerOn) "No scrolling yet today. Open Facebook, TikTok, Instagram or YouTube and it shows up here."
-                        else "Turn on tracking to start counting."
+                        if (status.trackerOn) tr("No scrolling yet today. Open Facebook, TikTok, Instagram or YouTube and it shows up here.")
+                        else tr("Turn on tracking to start counting.")
                     )
                 } else {
                     val max = today.apps.maxOf { it.scrolls }
@@ -187,10 +192,10 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
     val state = com.rabbi.scrollcounter.widget.WidgetState(count, limit, streak)
     val ringState = state.copy(total = (progress * limit).toInt().coerceAtLeast(if (count > 0) 1 else 0))
     val message = when {
-        count >= limit -> "Limit reached — time for a real-world break."
-        ratio >= 0.8f -> "Almost there — only ${limit - count} reels left."
-        count == 0 -> "A clean slate. Keep it mindful today."
-        else -> "${limit - count} reels left in today's limit."
+        count >= limit -> tr("Limit reached — time for a real-world break.")
+        ratio >= 0.8f -> tr("Almost there — only %1\$s reels left.", limit - count)
+        count == 0 -> tr("A clean slate. Keep it mindful today.")
+        else -> tr("%1\$s reels left in today's limit.", limit - count)
     }
     // Calm, still background — no moving sparkles behind the numbers.
     val phase = 0f
@@ -222,7 +227,7 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                 ) {
                     AppGlyph(com.rabbi.scrollcounter.face.GlyphArt.Glyph.FLAME, 18.dp, dim = streak == 0)
                     Spacer(Modifier.width(6.dp))
-                    Text(if (streak == 1) "1 day" else "$streak days", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(if (streak == 1) tr("1 day") else tr("%1\$s days", streak), color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -244,7 +249,7 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                         ),
                         color = Color.White, fontWeight = FontWeight.Black
                     )
-                    Text("of $limit reels today", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
+                    Text(tr("of %1\$s reels today", limit), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f))
                 }
                 // A tiny animated buddy rides the tip of the ring (same geometry as WidgetArt.ring).
                 val stroke = ringSize.value * 0.095f
@@ -310,7 +315,7 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(mood.label, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(tr(mood.label), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
                     Text(message, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.82f))
                 }
             }
@@ -327,9 +332,9 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("DAILY LIMIT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.65f), letterSpacing = 1.2.sp)
-                    Text("$limit reels", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
-                    Text("${(ratio * 100).toInt().coerceAtMost(999)}% used", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
+                    Text(tr("DAILY LIMIT"), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.65f), letterSpacing = 1.2.sp)
+                    Text(tr("%1\$s reels", limit), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(tr("%1\$s%% used", (ratio * 100).toInt().coerceAtMost(999)), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                 }
                 Row(
                     Modifier.clip(RoundedCornerShape(16.dp))
@@ -340,12 +345,12 @@ private fun HeroCard(count: Int, limit: Int, streak: Int, apps: List<com.rabbi.s
                     Icon(if (limitLocked) Icons.Rounded.Lock else Icons.Rounded.Edit, null, tint = Color(0xFF4A2A00), modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     if (limitLocked) Column {
-                        Text("Locked today", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                        Text(tr("Locked today"), color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                         UnlockCountdown(
                             MaterialTheme.typography.labelMedium, Color(0xFF4A2A00).copy(alpha = 0.8f),
-                            prefix = "Unlocks in ", weight = FontWeight.SemiBold
+                            prefix = tr("Unlocks in "), weight = FontWeight.SemiBold
                         )
-                    } else Text("Edit limit", color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
+                    } else Text(tr("Edit limit"), color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -370,11 +375,11 @@ private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("Put your count on the home screen", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text("See today's reels without opening the app", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                Text(tr("Put your count on the home screen"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(tr("See today's reels without opening the app"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
             }
             Spacer(Modifier.width(8.dp))
-            PillButton("Add", gold = true, onClick = onAdd)
+            PillButton(tr("Add"), gold = true, onClick = onAdd)
         }
     }
 }
@@ -382,15 +387,15 @@ private fun WidgetBanner(count: Int, limit: Int, onAdd: () -> Unit) {
 @Composable
 private fun SetupBanner(onEnable: () -> Unit) {
     PremiumCard(container = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f)) {
-        Text("Turn on scroll tracking", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(tr("Turn on scroll tracking"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Allow Scroll Counter in Accessibility settings so it can count the Reels and Shorts you watch. It never reads your messages.",
+            tr("Allow Scroll Counter in Accessibility settings so it can count the Reels and Shorts you watch. It never reads your messages."),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
         Spacer(Modifier.height(12.dp))
-        Button(onClick = onEnable) { Text("Enable tracking") }
+        Button(onClick = onEnable) { Text(tr("Enable tracking")) }
     }
 }
 
@@ -401,10 +406,10 @@ private fun PausedBanner(onResume: () -> Unit) {
             Icon(Icons.Rounded.PauseCircle, null, tint = Brand.Warn)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("Tracking is paused", style = MaterialTheme.typography.titleMedium)
-                Text("Reels aren't being counted right now.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Tracking is paused"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("Reels aren't being counted right now."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(onClick = onResume, colors = ButtonDefaults.buttonColors(containerColor = Brand.Warn, contentColor = Color(0xFF2A1A00))) { Text("Resume") }
+            Button(onClick = onResume, colors = ButtonDefaults.buttonColors(containerColor = Brand.Warn, contentColor = Color(0xFF2A1A00))) { Text(tr("Resume")) }
         }
     }
 }

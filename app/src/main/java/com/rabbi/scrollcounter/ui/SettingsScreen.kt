@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
@@ -79,6 +80,7 @@ fun SettingsScreen(
     onEditLimit: () -> Unit,
     onRequestNotifications: () -> Unit,
     onRequestStorage: () -> Unit = {},
+    onPickLanguage: () -> Unit = {},
     onAddWidget: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -92,11 +94,11 @@ fun SettingsScreen(
     ) {
         protectedNow = com.rabbi.scrollcounter.guard.UninstallGuard.isAdminActive(context)
         store.uninstallGuard = protectedNow
-        if (protectedNow) Toast.makeText(context, "Uninstall protection is on", Toast.LENGTH_SHORT).show()
+        if (protectedNow) Toast.makeText(context, tr("Uninstall protection is on"), Toast.LENGTH_SHORT).show()
     }
     val onProtect: () -> Unit = {
         runCatching { adminLauncher.launch(com.rabbi.scrollcounter.guard.UninstallGuard.activateIntent(context)) }
-            .onFailure { Toast.makeText(context, "This phone doesn't allow it", Toast.LENGTH_SHORT).show() }
+            .onFailure { Toast.makeText(context, tr("This phone doesn't allow it"), Toast.LENGTH_SHORT).show() }
     }
     val browsersOn = remember(tick) { store.browsersOn }
     // Only apps installed on this phone — rebuilt every time Settings opens, so new apps appear.
@@ -119,24 +121,24 @@ fun SettingsScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item { ScreenHeader("Settings", "Scroll Counter") { AppLogo(48.dp) } }
+        item { ScreenHeader(tr("Settings"), "Scroll Counter") { AppLogo(48.dp) } }
 
         // ---- Tracking ----
-        item { SectionLabel("Tracking") }
+        item { SectionLabel(tr("Tracking")) }
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.AccessibilityNew, "Scroll tracking",
-                    if (status.trackerOn) "On — allowed in Accessibility" else "Off — tap Enable to start counting",
+                    Icons.Rounded.AccessibilityNew, tr("Scroll tracking"),
+                    if (status.trackerOn) tr("On — allowed in Accessibility") else tr("Off — tap Enable to start counting"),
                     iconTint = if (status.trackerOn) Brand.Good else MaterialTheme.colorScheme.error,
                 ) {
-                    if (status.trackerOn) PillButton("Manage", Icons.Rounded.OpenInNew) { TrackerStatus.openAccessibilitySettings(context) }
-                    else PillButton("Enable", gold = true, onClick = onEnableTracking)
+                    if (status.trackerOn) PillButton(tr("Manage"), Icons.Rounded.OpenInNew) { TrackerStatus.openAccessibilitySettings(context) }
+                    else PillButton(tr("Enable"), gold = true, onClick = onEnableTracking)
                 }
                 SettingRow(
-                    Icons.Rounded.BatteryChargingFull, "Battery optimization",
-                    if (status.batteryUnrestricted) "Unrestricted — tracking stays reliable"
-                    else "Restricted — some phones may stop tracking",
+                    Icons.Rounded.BatteryChargingFull, tr("Battery optimization"),
+                    if (status.batteryUnrestricted) tr("Unrestricted — tracking stays reliable")
+                    else tr("Restricted — some phones may stop tracking"),
                     iconTint = if (status.batteryUnrestricted) Brand.Good else Brand.Warn,
                     onClick = { TrackerStatus.openBatterySettings(context) }
                 )
@@ -144,43 +146,43 @@ fun SettingsScreen(
         }
 
         // ---- Goal ----
-        item { SectionLabel("Daily goal") }
+        item { SectionLabel(tr("Daily goal")) }
         item {
             PremiumCard {
                 val now by rememberNow()
                 val today = now.toLocalDate()
                 val locked = remember(tick, today) { store.limitLockedToday }
-                SettingRow(Icons.Rounded.Flag, "Daily reel limit",
-                    if (locked) "$limit reels · unlocks in ${formatCountdownShort(secondsToUnlock(now))}" else "$limit reels per day · max ${ScrollStore.MAX_LIMIT}, once a day",
+                SettingRow(Icons.Rounded.Flag, tr("Daily reel limit"),
+                    if (locked) tr("%1\$s reels · unlocks in %2\$s", limit, formatCountdownShort(secondsToUnlock(now))) else tr("%1\$s reels per day · max %2\$s, once a day", limit, ScrollStore.MAX_LIMIT),
                     iconTint = Brand.Gold, onClick = onEditLimit) {
-                    if (locked) PillButton("Locked", Icons.Rounded.Lock, onClick = onEditLimit)
-                    else PillButton("Edit", Icons.Rounded.Edit, gold = true, onClick = onEditLimit)
+                    if (locked) PillButton(tr("Locked"), Icons.Rounded.Lock, onClick = onEditLimit)
+                    else PillButton(tr("Edit"), Icons.Rounded.Edit, gold = true, onClick = onEditLimit)
                 }
             }
         }
 
         // ---- On-screen counter ----
-        item { SectionLabel("On-screen counter") }
+        item { SectionLabel(tr("On-screen counter")) }
         item {
             PremiumCard {
-                Text("Counter size", style = MaterialTheme.typography.titleMedium)
-                Text("The little counter at the top while you watch reels", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Counter size"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("The little counter at the top while you watch reels"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(14.dp))
                 val size = remember(tick) { store.pillSize }
                 PillPreview(ScrollStore.PILL_SCALES[size])
                 Spacer(Modifier.height(14.dp))
-                SegmentedToggle(listOf("Small", "Normal", "Large", "XL"), size, { store.pillSize = it })
+                SegmentedToggle(listOf(tr("Small"), tr("Normal"), tr("Large"), tr("XL")), size, { store.pillSize = it })
             }
         }
 
         // ---- Protection ----
-        item { SectionLabel("Protection") }
+        item { SectionLabel(tr("Protection")) }
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.Shield, "Prevent app uninstall",
-                    if (protectedNow) "On — Scroll Counter can't be uninstalled until you turn this off here"
-                    else "Stops you from uninstalling Scroll Counter on impulse",
+                    Icons.Rounded.Shield, tr("Prevent app uninstall"),
+                    if (protectedNow) tr("On — Scroll Counter can't be uninstalled until you turn this off here")
+                    else tr("Stops you from uninstalling Scroll Counter on impulse"),
                     iconTint = if (protectedNow) Brand.Good else Brand.Gold,
                     onClick = { if (protectedNow) confirm = Confirm.UNPROTECT else onProtect() }
                 ) {
@@ -190,8 +192,8 @@ fun SettingsScreen(
                     )
                 }
                 SettingRow(
-                    Icons.Rounded.Widgets, "Home screen widget",
-                    if (status.widgetPlaced) "On your home screen" else "Tap to add it to your home screen",
+                    Icons.Rounded.Widgets, tr("Home screen widget"),
+                    if (status.widgetPlaced) tr("On your home screen") else tr("Tap to add it to your home screen"),
                     iconTint = Brand.Good,
                     onClick = onAddWidget
                 )
@@ -199,29 +201,29 @@ fun SettingsScreen(
         }
 
         // ---- Notifications ----
-        item { SectionLabel("Notifications") }
+        item { SectionLabel(tr("Notifications")) }
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.NotificationsActive, "Notification permission",
-                    if (status.notificationsOn) "Allowed" else "Off — alerts can't be shown",
+                    Icons.Rounded.NotificationsActive, tr("Notification permission"),
+                    if (status.notificationsOn) tr("Allowed") else tr("Off — alerts can't be shown"),
                     iconTint = if (status.notificationsOn) Brand.Good else MaterialTheme.colorScheme.error,
                 ) {
-                    if (status.notificationsOn) PillButton("Test", Icons.Rounded.NotificationsActive) {
+                    if (status.notificationsOn) PillButton(tr("Test"), Icons.Rounded.NotificationsActive) {
                         Notifier.test(context)
-                        Toast.makeText(context, "Test notification sent", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, tr("Test notification sent"), Toast.LENGTH_SHORT).show()
                     }
-                    else PillButton("Allow", gold = true, onClick = onRequestNotifications)
+                    else PillButton(tr("Allow"), gold = true, onClick = onRequestNotifications)
                 }
                 SettingRow(
-                    Icons.Rounded.WarningAmber, "80% heads-up",
-                    "When you reach ${(limit * ScrollTrackerService.WARN_AT).toInt()} reels",
+                    Icons.Rounded.WarningAmber, tr("80% heads-up"),
+                    tr("When you reach %1\$s reels", (limit * ScrollTrackerService.WARN_AT).toInt()),
                     iconTint = Brand.Warn,
                     onClick = { store.warnAlertsOn = !warnAlerts }
                 ) { PremiumSwitch(checked = warnAlerts, onCheckedChange = { store.warnAlertsOn = it }) }
                 SettingRow(
-                    Icons.Rounded.Campaign, "Limit reached alert",
-                    "When you pass $limit reels",
+                    Icons.Rounded.Campaign, tr("Limit reached alert"),
+                    tr("When you pass %1\$s reels", limit),
                     iconTint = MaterialTheme.colorScheme.error,
                     onClick = { store.limitAlertsOn = !limitAlerts }
                 ) { PremiumSwitch(checked = limitAlerts, onCheckedChange = { store.limitAlertsOn = it }) }
@@ -229,116 +231,119 @@ fun SettingsScreen(
         }
 
         // ---- Apps ----
-        item { SectionLabel("Apps to track") }
+        item { SectionLabel(tr("Apps to track")) }
         item {
             PremiumCard {
                 Text(
-                    "Reels are counted in every app — these are the social & video apps on your phone. New apps appear here automatically.",
+                    tr("Reels are counted in every app — these are the social & video apps on your phone. New apps appear here automatically."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 6.dp)
                 )
                 val list = apps
                 if (list == null) {
-                    Text("Looking for your apps…", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
+                    Text(tr("Looking for your apps…"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
                 } else if (list.isEmpty()) {
-                    Text("No social apps installed yet", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
+                    Text(tr("No social apps installed yet"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
                 }
                 list?.forEach { app ->
                     val enabled = remember(tick, app.key) { store.isAppEnabled(app.key) }
-                    TrackedAppRow(app, if (enabled) "Counting reels" else "Not counted", enabled) { store.setAppEnabled(app.key, it) }
+                    TrackedAppRow(app, if (enabled) tr("Counting reels") else tr("Not counted"), enabled) { store.setAppEnabled(app.key, it) }
                 }
             }
         }
 
-        item { SectionLabel("Browsers") }
+        item { SectionLabel(tr("Browsers")) }
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.Public, "Count reels on websites",
-                    if (browsersOn) "TikTok, Shorts & Reels in Chrome or any browser" else "Off — browsers are ignored",
+                    Icons.Rounded.Public, tr("Count reels on websites"),
+                    if (browsersOn) tr("TikTok, Shorts & Reels in Chrome or any browser") else tr("Off — browsers are ignored"),
                     onClick = { store.browsersOn = !browsersOn }
                 ) { PremiumSwitch(checked = browsersOn, onCheckedChange = { store.browsersOn = it }) }
                 if (browsersOn) browsers.forEach { app ->
                     val enabled = remember(tick, app.key) { store.isAppEnabled(app.key) }
-                    TrackedAppRow(app, "Browser", enabled) { store.setAppEnabled(app.key, it) }
+                    TrackedAppRow(app, tr("Browser"), enabled) { store.setAppEnabled(app.key, it) }
                 }
             }
         }
 
         // ---- Appearance ----
-        item { SectionLabel("Appearance") }
+        item { SectionLabel(tr("Appearance")) }
         item {
             PremiumCard {
-                SettingRow(Icons.Rounded.Palette, "Theme", "Follow the phone, or pick one")
+                SettingRow(Icons.Rounded.Language, tr("Language"), store.language.native, iconTint = Brand.Gold, onClick = onPickLanguage) {
+                    PillButton(tr("Change"), onClick = onPickLanguage)
+                }
+                Spacer(Modifier.height(8.dp))
+                SettingRow(Icons.Rounded.Palette, tr("Theme"), tr("Follow the phone, or pick one"))
                 Spacer(Modifier.height(8.dp))
                 SegmentedToggle(
-                    listOf("System", "Light", "Dark"),
+                    listOf(tr("System"), tr("Light"), tr("Dark")),
                     theme.ordinal,
                     { store.themeMode = ThemeMode.entries[it] }
                 )
                 Spacer(Modifier.height(8.dp))
                 val sounds = remember(tick) { store.buddySounds }
                 SettingRow(
-                    Icons.Rounded.MusicNote, "Buddy sounds",
-                    if (sounds) "Your buddy talks by mood, like a pet (media volume)" else "Off",
+                    Icons.Rounded.MusicNote, tr("Buddy sounds"),
+                    if (sounds) tr("Your buddy talks by mood, like a pet (media volume)") else tr("Off"),
                     iconTint = Brand.Gold
                 ) { PremiumSwitch(checked = sounds, onCheckedChange = { store.buddySounds = it }) }
             }
         }
 
         // ---- Data ----
-        item { SectionLabel("Your data") }
+        item { SectionLabel(tr("Your data")) }
         item {
             PremiumCard {
                 SettingRow(
-                    Icons.Rounded.Lock, "History backup",
-                    if (status.historySafe) "On — clear data or reinstall can't wipe your counts"
-                    else "Off — tap to allow, or clearing data will erase your history",
+                    Icons.Rounded.Lock, tr("History backup"),
+                    if (status.historySafe) tr("On — clear data or reinstall can't wipe your counts")
+                    else tr("Off — tap to allow, or clearing data will erase your history"),
                     iconTint = if (status.historySafe) Brand.Good else MaterialTheme.colorScheme.error,
                     onClick = onRequestStorage
                 ) {
-                    if (!status.historySafe) PillButton("Allow", gold = true, onClick = onRequestStorage)
+                    if (!status.historySafe) PillButton(tr("Allow"), gold = true, onClick = onRequestStorage)
                 }
-                SettingRow(Icons.Rounded.DeleteForever, "Delete all history", "Removes every stored day", iconTint = MaterialTheme.colorScheme.error,
+                SettingRow(Icons.Rounded.DeleteForever, tr("Delete all history"), tr("Removes every stored day"), iconTint = MaterialTheme.colorScheme.error,
                     onClick = { confirm = Confirm.DELETE_ALL })
             }
         }
 
         // ---- About ----
-        item { SectionLabel("About") }
+        item { SectionLabel(tr("About")) }
         item {
             PremiumCard {
-                SettingRow(Icons.Rounded.PrivacyTip, "Privacy policy", "What's stored and what isn't", onClick = { showPolicy = true })
+                SettingRow(Icons.Rounded.PrivacyTip, tr("Privacy policy"), tr("What's stored and what isn't"), onClick = { showPolicy = true })
                 if (AdsConsent.privacyOptionsRequired) {
-                    SettingRow(Icons.Rounded.Shield, "Ad privacy choices", "Change your ad consent",
+                    SettingRow(Icons.Rounded.Shield, tr("Ad privacy choices"), tr("Change your ad consent"),
                         onClick = { (context as? Activity)?.let { AdsConsent.showPrivacyOptions(it) } })
                 }
-                SettingRow(Icons.Rounded.Star, "Rate Scroll Counter", "Opens Google Play", iconTint = Brand.Warn, onClick = { rateApp(context) })
-                SettingRow(Icons.Rounded.Share, "Share with friends", null, onClick = { shareApp(context) })
+                SettingRow(Icons.Rounded.Star, tr("Rate Scroll Counter"), tr("Opens Google Play"), iconTint = Brand.Warn, onClick = { rateApp(context) })
+                SettingRow(Icons.Rounded.Share, tr("Share with friends"), null, onClick = { shareApp(context) })
             }
         }
     }
 
     when (confirm) {
         Confirm.UNPROTECT -> DeleteHistoryDialog(
-            title = "Turn off uninstall protection?",
-            body = "Scroll Counter will be uninstallable again, and the device-admin protection is removed.\n\n" +
-                "Sure you want to drop this commitment?",
-            confirmLabel = "Turn off",
-            dismissLabel = "Keep protection",
+            title = tr("Turn off uninstall protection?"),
+            body = tr("Scroll Counter will be uninstallable again, and the device-admin protection is removed.\n\nSure you want to drop this commitment?"),
+            confirmLabel = tr("Turn off"),
+            dismissLabel = tr("Keep protection"),
             onConfirm = {
                 com.rabbi.scrollcounter.guard.UninstallGuard.turnOff(context)
                 protectedNow = false
                 confirm = null
-                Toast.makeText(context, "Uninstall protection turned off", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, tr("Uninstall protection turned off"), Toast.LENGTH_SHORT).show()
             },
             onDismiss = { confirm = null }
         )
         Confirm.DELETE_ALL -> DeleteHistoryDialog(
             onConfirm = {
                 store.clearAll(); confirm = null
-                Toast.makeText(context, "All history deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, tr("All history deleted"), Toast.LENGTH_SHORT).show()
             },
             onDismiss = { confirm = null }
         )
@@ -363,7 +368,7 @@ private fun rateApp(context: Context) {
 private fun shareApp(context: Context) {
     val text = "I'm tracking how much I scroll with Scroll Counter: https://play.google.com/store/apps/details?id=${context.packageName}"
     val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-    context.startActivity(Intent.createChooser(send, "Share Scroll Counter").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    context.startActivity(Intent.createChooser(send, tr("Share Scroll Counter")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 @Composable
@@ -394,17 +399,17 @@ private fun DetectionLogDialog(onDismiss: () -> Unit) {
     }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Detection check") },
+        title = { Text(tr("Detection check")) },
         text = {
             Column {
                 Text(
-                    "Open an app, watch a few reels, then come back here. Newest first.",
+                    tr("Open an app, watch a few reels, then come back here. Newest first."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(10.dp))
                 androidx.compose.foundation.lazy.LazyColumn(Modifier.height(380.dp)) {
-                    if (lines.isEmpty()) item { Text("Nothing yet — make sure tracking is on, then scroll some reels.", style = MaterialTheme.typography.bodySmall) }
+                    if (lines.isEmpty()) item { Text(tr("Nothing yet — make sure tracking is on, then scroll some reels."), style = MaterialTheme.typography.bodySmall) }
                     items(lines.size) { i ->
                         Text(
                             lines[i],
@@ -415,16 +420,16 @@ private fun DetectionLogDialog(onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text(tr("Close")) } },
         dismissButton = {
             val ctx = androidx.compose.ui.platform.LocalContext.current
             Row {
-                androidx.compose.material3.TextButton(onClick = { com.rabbi.scrollcounter.tracker.DetectLog.clear(); lines = emptyList() }) { Text("Clear") }
+                androidx.compose.material3.TextButton(onClick = { com.rabbi.scrollcounter.tracker.DetectLog.clear(); lines = emptyList() }) { Text(tr("Clear")) }
                 androidx.compose.material3.TextButton(onClick = {
                     val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
-                    cm?.setPrimaryClip(android.content.ClipData.newPlainText("Scroll Counter detection", lines.joinToString("\n")))
-                    Toast.makeText(ctx, "Copied — paste it in the chat", Toast.LENGTH_SHORT).show()
-                }) { Text("Copy") }
+                    cm?.setPrimaryClip(android.content.ClipData.newPlainText(tr("Scroll Counter detection"), lines.joinToString("\n")))
+                    Toast.makeText(ctx, tr("Copied — paste it in the chat"), Toast.LENGTH_SHORT).show()
+                }) { Text(tr("Copy")) }
             }
         }
     )

@@ -460,28 +460,28 @@ fun Modifier.pressScale(source: MutableInteractionSource): Modifier {
 
 /** 45 sec · 12 min · 1h 05m */
 fun formatDuration(seconds: Int): String = when {
-    seconds < 60 -> "$seconds sec"
-    seconds < 3600 -> "${seconds / 60} min"
-    else -> "${seconds / 3600}h %02dm".format((seconds % 3600) / 60)
+    seconds < 60 -> tr("%1\$s sec", seconds)
+    seconds < 3600 -> tr("%1\$s min", seconds / 60)
+    else -> tr("%1\$sh %%02dm", seconds / 3600).format((seconds % 3600) / 60)
 }
 
 fun formatDistance(meters: Float): String =
     if (meters < 1000f) String.format(Locale.US, "%.0f m", meters)
-    else String.format(Locale.US, "%.2f km", meters / 1000f)
+    else String.format(Locale.US, tr("%.2f km"), meters / 1000f)
 
 /** A relatable comparison for the distance scrolled. */
 fun distanceComparison(meters: Float): String = when {
-    meters < 1f -> "Nothing scrolled yet"
-    meters < 330f -> "≈ ${(meters / 3f).toInt().coerceAtLeast(1)} building floors"
-    meters < 8849f -> String.format(Locale.US, "≈ %.1f Eiffel Towers", meters / 330f)
-    else -> String.format(Locale.US, "≈ %.2f× Mount Everest", meters / 8849f)
+    meters < 1f -> tr("Nothing scrolled yet")
+    meters < 330f -> tr("≈ %1\$s building floors", (meters / 3f).toInt().coerceAtLeast(1))
+    meters < 8849f -> String.format(Locale.US, tr("≈ %.1f Eiffel Towers"), meters / 330f)
+    else -> String.format(Locale.US, tr("≈ %.2f× Mount Everest"), meters / 8849f)
 }
 
 fun formatHour(h: Int): String = when {
-    h == 0 -> "12 AM"
-    h < 12 -> "$h AM"
-    h == 12 -> "12 PM"
-    else -> "${h - 12} PM"
+    h == 0 -> tr("12 AM")
+    h < 12 -> tr("%1\$s AM", h)
+    h == 12 -> tr("12 PM")
+    else -> tr("%1\$s PM", h - 12)
 }
 
 /** Scroll Counter's own drawn icons (no system emoji): fire, sparkle, bolt, check, or the buddy. */

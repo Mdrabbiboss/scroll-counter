@@ -1,5 +1,7 @@
 package com.rabbi.scrollcounter.widget
 
+import com.rabbi.scrollcounter.ui.tr
+
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -78,7 +80,7 @@ class ScrollWidget : AppWidgetProvider() {
             )
             return RemoteViews(context.packageName, R.layout.widget_scroll).apply {
                 setImageViewBitmap(R.id.widget_image, bmp)
-                setContentDescription(R.id.widget_image, "${state.total} of ${state.limit} reels today")
+                setContentDescription(R.id.widget_image, tr("%1\$s of %2\$s reels today", state.total, state.limit))
                 setOnClickPendingIntent(R.id.widget_root, open)
             }
         }

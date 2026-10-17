@@ -59,6 +59,7 @@ class ScrollStore private constructor(context: Context) {
     init {
         // Bring back counts from the durable copy (after a reinstall or "clear data").
         restoreDurable()
+        com.rabbi.scrollcounter.ui.I18n.apply(appContext, language)
         TrackedApps.attach(appContext)
         com.rabbi.scrollcounter.ui.theme.AppFonts.load(appContext)
     }
@@ -101,7 +102,7 @@ class ScrollStore private constructor(context: Context) {
             val value = when (v) { is Int -> v.toString(); is Float -> String.format(Locale.US, "%.1f", v); else -> return@mapNotNull null }
             Triple(date, k, value)
         }.sortedBy { it.first }
-        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}")
+        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}")
         rows.forEach { sb.append('\n').append(it.second).append('|').append(it.third) }
         return sb.toString()
     }
@@ -133,6 +134,17 @@ class ScrollStore private constructor(context: Context) {
         // Keep the earliest first day (streaks and history), and the limit if none is set here.
         head.getOrNull(1)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { saved ->
             if (saved.isBefore(firstDay)) { settings.edit().putString(KEY_FIRST_DAY, saved.toString()).apply(); changed = true }
+        }
+        // Best streak and earned badges are never lost: keep the higher / earliest of both copies.
+        head.getOrNull(4)?.toIntOrNull()?.let { if (it > bestStreak) { settings.edit().putInt(KEY_BEST, it).apply(); changed = true } }
+        head.getOrNull(5)?.takeIf { it != "-" }?.let { raw ->
+            val mine = badgeDates().toMutableMap()
+            var more = false
+            parseBadgeDates(raw).forEach { (d, date) ->
+                val cur = mine[d]
+                if (cur == null || date < cur) { mine[d] = date; more = true }
+            }
+            if (more) { saveBadgeDates(mine); changed = true }
         }
         // The limit (and the day it was last changed) follow the newest copy, so clearing data
         // can't unlock a limit that was already changed today.
@@ -238,6 +250,46 @@ class ScrollStore private constructor(context: Context) {
             day = day.minusDays(1)
         }
         return n
+    }
+
+    // ---------------- Streak badges ----------------
+
+    /** Longest streak ever reached (kept even after a streak breaks). */
+    val bestStreak: Int get() = settings.getInt(KEY_BEST, 0)
+
+    private fun badgeDatesRaw(): String? = settings.getString(KEY_BADGES, null)?.takeIf { it.isNotBlank() }
+
+    private fun parseBadgeDates(raw: String): Map<Int, String> = raw.split(';').mapNotNull {
+        val p = it.split('=')
+        val d = p.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+        val date = p.getOrNull(1)?.takeIf { s -> runCatching { LocalDate.parse(s) }.isSuccess } ?: return@mapNotNull null
+        d to date
+    }.toMap()
+
+    /** Earned badges: streak length → date it was unlocked (yyyy-MM-dd). */
+    fun badgeDates(): Map<Int, String> = badgeDatesRaw()?.let { parseBadgeDates(it) } ?: emptyMap()
+
+    private fun saveBadgeDates(m: Map<Int, String>) {
+        settings.edit().putString(KEY_BADGES, m.entries.sortedBy { it.key }.joinToString(";") { "${it.key}=${it.value}" }).apply()
+    }
+
+    /**
+     * Updates the best streak and unlocks any badge it has reached. Returns the badges unlocked
+     * just now (to celebrate), oldest first.
+     */
+    @Synchronized
+    fun updateBadges(): List<Badges.Badge> {
+        val s = streak()
+        val best = maxOf(bestStreak, s)
+        if (best != bestStreak) settings.edit().putInt(KEY_BEST, best).apply()
+        val dates = badgeDates().toMutableMap()
+        val today = LocalDate.now().toString()
+        val fresh = Badges.ALL.filter { it.days <= best && it.days !in dates }
+        if (fresh.isEmpty()) { if (best != bestStreak) bump(); return emptyList() }
+        fresh.forEach { dates[it.days] = today }
+        saveBadgeDates(dates)
+        bump()
+        return fresh
     }
 
     fun clearDay(date: LocalDate) {
@@ -368,6 +420,15 @@ class ScrollStore private constructor(context: Context) {
 
     fun isAppEnabled(key: String): Boolean = settings.getBoolean("app_$key", true)
 
+    /** The app's language (chosen on the first screen or in Settings; defaults to the phone's). */
+    var language: com.rabbi.scrollcounter.ui.Lang
+        get() = com.rabbi.scrollcounter.ui.Lang.of(settings.getString("lang", null)) ?: com.rabbi.scrollcounter.ui.Lang.fromDevice()
+        set(value) {
+            settings.edit().putString("lang", value.code).apply()
+            com.rabbi.scrollcounter.ui.I18n.apply(appContext, value)
+            bump()
+        }
+
     /** The buddy's little pet sounds on the You screen. */
     var buddySounds: Boolean
         get() = settings.getBoolean("buddy_sounds", true)
@@ -407,6 +468,8 @@ class ScrollStore private constructor(context: Context) {
         val PILL_SCALES = floatArrayOf(0.8f, 1f, 1.3f, 1.65f)
         private const val KEY_FIRST_DAY = "first_day"
         private const val KEY_LIMIT_DAY = "limit_set_day"
+        private const val KEY_BEST = "best_streak"
+        private const val KEY_BADGES = "badge_dates"
         const val MAX_LIMIT = 500
 
         @Volatile

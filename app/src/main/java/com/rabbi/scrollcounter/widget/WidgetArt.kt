@@ -1,5 +1,7 @@
 package com.rabbi.scrollcounter.widget
 
+import com.rabbi.scrollcounter.ui.tr
+
 import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
@@ -53,18 +55,18 @@ object WidgetArt {
 
     private fun scene(s: WidgetState): Scene = if (s.paused) Scene(
         0xFF2B3036.toInt(), 0xFF13161A.toInt(), 0xFF94A3B8.toInt(),
-        0xFFCBD5E1.toInt(), 0xFF94A3B8.toInt(), "Tracking paused", Deco.NONE
+        0xFFCBD5E1.toInt(), 0xFF94A3B8.toInt(), tr("Tracking paused"), Deco.NONE
     ) else when (s.mood) {
         Mood.FRESH -> Scene(0xFF0F6B50.toInt(), 0xFF07291F.toInt(), 0xFF34D399.toInt(),
-            0xFFB8F5DC.toInt(), 0xFF34D399.toInt(), "Feeling fresh!", Deco.SPARKLES)
+            0xFFB8F5DC.toInt(), 0xFF34D399.toInt(), tr("Feeling fresh!"), Deco.SPARKLES)
         Mood.OKAY -> Scene(0xFF11507A.toInt(), 0xFF071E33.toInt(), 0xFF38BDF8.toInt(),
-            0xFFC7ECFF.toInt(), 0xFF38BDF8.toInt(), "Nice balance", Deco.BUBBLES)
+            0xFFC7ECFF.toInt(), 0xFF38BDF8.toInt(), tr("Nice balance"), Deco.BUBBLES)
         Mood.TIRED -> Scene(0xFF8A4A10.toInt(), 0xFF2B1606.toInt(), 0xFFF59E0B.toInt(),
-            0xFFFFE9A8.toInt(), 0xFFF59E0B.toInt(), "Take a break?", Deco.SUN)
+            0xFFFFE9A8.toInt(), 0xFFF59E0B.toInt(), tr("Take a break?"), Deco.SUN)
         Mood.DRAINED -> Scene(0xFF6A1D45.toInt(), 0xFF1F0816.toInt(), 0xFFFB7185.toInt(),
-            0xFFFFD0A8.toInt(), 0xFFFB7185.toInt(), "Put it down?", Deco.MOON)
+            0xFFFFD0A8.toInt(), 0xFFFB7185.toInt(), tr("Put it down?"), Deco.MOON)
         Mood.EXHAUSTED -> Scene(0xFF7F1414.toInt(), 0xFF240404.toInt(), 0xFFEF4444.toInt(),
-            0xFFFFC2C2.toInt(), 0xFFEF4444.toInt(), "Limit reached", Deco.ALERT)
+            0xFFFFC2C2.toInt(), 0xFFEF4444.toInt(), tr("Limit reached"), Deco.ALERT)
     }
 
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -136,7 +138,7 @@ object WidgetArt {
         tp.typeface = medium
         tp.textSize = ringSize * 0.105f
         tp.color = 0xCCFFFFFF.toInt()
-        c.drawText("of ${state.limit} reels", cx, cy + ringSize * 0.23f, tp)
+        c.drawText(tr("of %1\$s reels", state.limit), cx, cy + ringSize * 0.23f, tp)
 
         // ---- buddy peeking up from the bottom-right ----
         val faceR = if (wide) h * 0.26f else u * 0.19f
@@ -169,10 +171,10 @@ object WidgetArt {
         tp.clearShadowLayer()
 
         val sub = when {
-            state.paused -> "Tap to resume"
-            state.mood == Mood.EXHAUSTED -> "Rest time"
-            state.streak > 0 -> "${state.streak} day${if (state.streak == 1) "" else "s"}"
-            else -> "Day 1"
+            state.paused -> tr("Tap to resume")
+            state.mood == Mood.EXHAUSTED -> tr("Rest time")
+            state.streak > 0 -> if (state.streak == 1) tr("1 day streak") else tr("%1\$s day streak", state.streak)
+            else -> tr("Day 1")
         }
         tp.typeface = bold
         tp.textSize = subSize
@@ -442,7 +444,7 @@ object WidgetArt {
     }
 
     private fun compact(n: Int): String = when {
-        n >= 10_000 -> "${n / 1000}k"
+        n >= 10_000 -> tr("%1\$sk", n / 1000)
         else -> n.toString()
     }
 

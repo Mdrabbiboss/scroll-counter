@@ -83,20 +83,20 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { ScreenHeader("History", "Your scrolling over time") }
-        item { SegmentedToggle(listOf("7 days", "30 days"), range, { range = it }) }
+        item { ScreenHeader(tr("History"), tr("Your scrolling over time")) }
+        item { SegmentedToggle(listOf(tr("7 days"), tr("30 days")), range, { range = it }) }
         item {
             PremiumCard {
                 val sel = days.getOrNull(selected) ?: days.last()
                 Text(
-                    if (sel.date == today) "Today" else sel.date.format(DayFmt),
+                    if (sel.date == today) tr("Today") else sel.date.format(DayFmt),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("${sel.totalScrolls}", style = MaterialTheme.typography.headlineMedium)
                     Text(
-                        "  reels · ${formatDistance(sel.totalMeters)}" + if (sel.totalSeconds > 0) " · ${formatDuration(sel.totalSeconds)}" else "",
+                        tr("  reels · %1\$s", formatDistance(sel.totalMeters)) + if (sel.totalSeconds > 0) " · ${formatDuration(sel.totalSeconds)}" else "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -106,7 +106,7 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
                 BarChart(days, limit, selected) { selected = it }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Tap a bar to see that day. Dashed line = limit ($limit).",
+                    tr("Tap a bar to see that day. Dashed line = limit (%1\$s).", limit),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -114,27 +114,27 @@ fun HistoryScreen(store: ScrollStore, tick: Long) {
         }
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(Icons.Rounded.Insights, "Daily avg", "$avg", "reels per day", Modifier.weight(1f))
-                StatTile(Icons.Rounded.CheckCircle, "On target", "$under/${tracked.size}", "days under limit", Modifier.weight(1f), tint = Brand.Good)
+                StatTile(Icons.Rounded.Insights, tr("Daily avg"), "$avg", tr("reels per day"), Modifier.weight(1f))
+                StatTile(Icons.Rounded.CheckCircle, tr("On target"), "$under/${tracked.size}", tr("days under limit"), Modifier.weight(1f), tint = Brand.Good)
             }
         }
         item {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(Icons.Rounded.TrendingUp, "Total", "$total", "reels in $n days", Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary)
-                StatTile(Icons.Rounded.Straighten, "Distance", formatDistance(meters), distanceComparison(meters), Modifier.weight(1f), tint = Brand.Warn)
+                StatTile(Icons.Rounded.TrendingUp, tr("Total"), "$total", tr("reels in %1\$s days", n), Modifier.weight(1f), tint = MaterialTheme.colorScheme.secondary)
+                StatTile(Icons.Rounded.Straighten, tr("Distance"), formatDistance(meters), distanceComparison(meters), Modifier.weight(1f), tint = Brand.Warn)
             }
         }
         item {
             val secs = days.sumOf { it.totalSeconds }
             val daysWithTime = tracked.size.coerceAtLeast(1)
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(Icons.Rounded.Timer, "Watch time", if (secs == 0) "0 min" else formatDuration(secs), "on reels in $n days", Modifier.weight(1f), tint = androidx.compose.ui.graphics.Color(0xFF38BDF8))
-                StatTile(Icons.Rounded.HourglassTop, "Daily time", if (secs == 0) "0 min" else formatDuration((secs / daysWithTime).coerceAtLeast(1)), "average per day", Modifier.weight(1f), tint = Brand.Gold)
+                StatTile(Icons.Rounded.Timer, tr("Watch time"), if (secs == 0) tr("0 min") else formatDuration(secs), tr("on reels in %1\$s days", n), Modifier.weight(1f), tint = androidx.compose.ui.graphics.Color(0xFF38BDF8))
+                StatTile(Icons.Rounded.HourglassTop, tr("Daily time"), if (secs == 0) tr("0 min") else formatDuration((secs / daysWithTime).coerceAtLeast(1)), tr("average per day"), Modifier.weight(1f), tint = Brand.Gold)
             }
         }
         item {
             PremiumCard {
-                Text("Day by day", style = MaterialTheme.typography.titleMedium)
+                Text(tr("Day by day"), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 days.reversed().forEachIndexed { i, d ->
                     if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -189,7 +189,7 @@ private fun BarChart(days: List<DayStats>, limit: Int, selected: Int, onSelect: 
         if (days.size <= 10) {
             days.forEach { d ->
                 Text(
-                    if (d.date == today) "Today" else d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                    if (d.date == today) tr("Today") else d.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
                     modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -198,7 +198,7 @@ private fun BarChart(days: List<DayStats>, limit: Int, selected: Int, onSelect: 
             val f = DateTimeFormatter.ofPattern("d MMM")
             Text(days.first().date.format(f), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(days[days.size / 2].date.format(f), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Today", Modifier.weight(1f), textAlign = TextAlign.End, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Today"), Modifier.weight(1f), textAlign = TextAlign.End, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -210,9 +210,9 @@ private fun DayRow(day: DayStats, limit: Int, isToday: Boolean, onClick: () -> U
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(if (isToday) "Today" else day.date.format(DayFmt), style = MaterialTheme.typography.bodyLarge)
+            Text(if (isToday) tr("Today") else day.date.format(DayFmt), style = MaterialTheme.typography.bodyLarge)
             Text(
-                if (day.totalScrolls == 0) "No reels" else formatDistance(day.totalMeters) + (if (day.totalSeconds > 0) " · " + formatDuration(day.totalSeconds) else "") + (day.topApp?.let { " · most on " + (com.rabbi.scrollcounter.data.TrackedApps.forKey(it.key)?.name ?: "") } ?: ""),
+                if (day.totalScrolls == 0) tr("No reels") else formatDistance(day.totalMeters) + (if (day.totalSeconds > 0) " · " + formatDuration(day.totalSeconds) else "") + (day.topApp?.let { tr(" · most on ") + (com.rabbi.scrollcounter.data.TrackedApps.forKey(it.key)?.name ?: "") } ?: ""),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -236,22 +236,22 @@ private fun DaySheet(store: ScrollStore, tick: Long, date: LocalDate, limit: Int
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 16.dp)
         ) {
             Text(
-                if (date == LocalDate.now()) "Today" else date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")),
+                if (date == LocalDate.now()) tr("Today") else date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")),
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(verticalAlignment = Alignment.Bottom) {
                 Text("${day.totalScrolls}", style = MaterialTheme.typography.displayMedium,
                     color = if (day.totalScrolls >= limit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                Text("  / $limit reels", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 10.dp))
+                Text(tr("  / %1\$s reels", limit), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 10.dp))
             }
             Text(
-                "${formatDistance(day.totalMeters)} · ${distanceComparison(day.totalMeters)}" + (peak?.let { " · busiest at ${formatHour(it)}" } ?: ""),
+                "${formatDistance(day.totalMeters)} · ${distanceComparison(day.totalMeters)}" + (peak?.let { tr(" · busiest at %1\$s", formatHour(it)) } ?: ""),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(18.dp))
             HourlyChart(hours, highlightHour = peak)
             Spacer(Modifier.height(18.dp))
-            if (day.apps.isEmpty()) EmptyNote("No scrolling was tracked on this day.")
+            if (day.apps.isEmpty()) EmptyNote(tr("No scrolling was tracked on this day."))
             else {
                 val max = day.apps.maxOf { it.scrolls }
                 day.apps.sortedByDescending { it.scrolls }.forEach { AppStatRow(it, max, day.totalScrolls) }

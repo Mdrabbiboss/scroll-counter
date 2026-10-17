@@ -96,7 +96,7 @@ fun PhoneFrame(width: Dp, height: Dp, content: @Composable BoxScope.() -> Unit) 
 // ---------------------------------------------------------------------------------------------
 
 private val Handles = listOf("@sunset.diaries", "@ocean.daily", "@citylights", "@into.the.woods", "@dune.walker", "@peak.hunter")
-private val Captions = listOf("Golden hour never misses", "Sound of the waves", "This city never sleeps", "Lost in the green", "Endless sand", "Above the clouds")
+private val Captions get() = listOf(tr("Golden hour never misses"), tr("Sound of the waves"), tr("This city never sleeps"), tr("Lost in the green"), tr("Endless sand"), tr("Above the clouds"))
 private val Likes = listOf("24.1K", "8,302", "112K", "3,954", "41.7K", "9,880")
 
 /** One illustrated "reel": a little landscape scene, so the feed reads as real content. */
@@ -248,7 +248,7 @@ fun WelcomeShowcase(modifier: Modifier = Modifier) {
                 ) {
                     ReelAction(Icons.Rounded.Favorite, Likes[current])
                     ReelAction(Icons.Rounded.ChatBubble, "${(current + 3) * 127}")
-                    ReelAction(Icons.Rounded.Share, "Share")
+                    ReelAction(Icons.Rounded.Share, tr("Share"))
                 }
                 Column(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 22.dp, end = 60.dp).alpha(fade)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -283,9 +283,9 @@ fun WelcomeShowcase(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(14.dp))
         // Narration chip so it's clear what's happening
         val caption = when (beat) {
-            0 -> "Every new reel  =  +1"
-            1 -> "It adds up fast…  ${mood.label.lowercase()}"
-            else -> "1000 reels. Time for a break!"
+            0 -> tr("Every new reel  =  +1")
+            1 -> tr("It adds up fast…  %1\$s", tr(mood.label).lowercase())
+            else -> tr("1000 reels. Time for a break!")
         }
         androidx.compose.animation.AnimatedContent(targetState = caption, label = "caption") { c ->
             Text(
@@ -395,13 +395,13 @@ fun AccessibilityGuide(modifier: Modifier = Modifier) {
             Box(
                 Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp)
                     .clip(RoundedCornerShape(50)).background(Brand.Gold).padding(horizontal = 12.dp, vertical = 4.dp)
-            ) { Text("Step ${scene + 1}", color = Brand.GoldDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+            ) { Text(tr("Step %1\$s", scene + 1), color = Brand.GoldDeep, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
         }
         Spacer(Modifier.height(16.dp))
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            GuideStep(1, "Tap \"Scroll Counter\" (under Downloaded / Installed apps)", scene == 0)
-            GuideStep(2, "Turn on \"Use Scroll Counter\"", scene == 1)
-            GuideStep(3, "Tap \"Allow\"", scene == 2)
+            GuideStep(1, tr("Tap \"Scroll Counter\" (under Downloaded / Installed apps)"), scene == 0)
+            GuideStep(2, tr("Turn on \"Use Scroll Counter\""), scene == 1)
+            GuideStep(3, tr("Tap \"Allow\""), scene == 2)
         }
     }
 }
@@ -431,18 +431,18 @@ private fun GuideStep(n: Int, text: String, active: Boolean) {
 @Composable
 private fun SceneList(hl: Float) {
     Column(Modifier.fillMaxWidth()) {
-        Text("‹  Accessibility", color = SetText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(tr("‹  Accessibility"), color = SetText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(14.dp))
-        Text("DOWNLOADED APPS", color = SetMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        Text(tr("DOWNLOADED APPS"), color = SetMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
-        MiniRow("Accessibility Menu", "Off", false)
+        MiniRow(tr("Accessibility Menu"), tr("Off"), false)
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
                 .background(Brand.Gold.copy(alpha = 0.22f * hl))
                 .border(1.dp, Brand.Gold.copy(alpha = hl), RoundedCornerShape(8.dp))
-        ) { MiniRow("Scroll Counter", "Off", true) }
-        MiniRow("Select to Speak", "Off", false)
-        MiniRow("TalkBack", "Off", false)
+        ) { MiniRow("Scroll Counter", tr("Off"), true) }
+        MiniRow(tr("Select to Speak"), tr("Off"), false)
+        MiniRow(tr("TalkBack"), tr("Off"), false)
     }
 }
 
@@ -470,13 +470,13 @@ private fun SceneApp(toggle: Float) {
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1C2523)).padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Use Scroll Counter", color = SetText, fontSize = 10.sp, modifier = Modifier.weight(1f))
+            Text(tr("Use Scroll Counter"), color = SetText, fontSize = 10.sp, modifier = Modifier.weight(1f))
             MiniSwitch(toggle)
         }
         Spacer(Modifier.height(10.dp))
-        Text("Options", color = SetMuted, fontSize = 8.sp)
-        MiniRow("Scroll Counter shortcut", "Off", false)
-        MiniRow("Settings", "", false)
+        Text(tr("Options"), color = SetMuted, fontSize = 8.sp)
+        MiniRow(tr("Scroll Counter shortcut"), tr("Off"), false)
+        MiniRow(tr("Settings"), "", false)
     }
 }
 
@@ -501,19 +501,19 @@ private fun BoxScope.SceneDialog(hl: Float) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "Allow Scroll Counter to have full control of your device?",
+            tr("Allow Scroll Counter to have full control of your device?"),
             color = SetText, fontSize = 9.sp, textAlign = TextAlign.Center, lineHeight = 12.sp
         )
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
                 Modifier.clip(RoundedCornerShape(50)).background(Color(0xFF3A4442)).padding(horizontal = 12.dp, vertical = 5.dp)
-            ) { Text("Deny", color = SetText, fontSize = 9.sp) }
+            ) { Text(tr("Deny"), color = SetText, fontSize = 9.sp) }
             Box(
                 Modifier.clip(RoundedCornerShape(50))
                     .background(lerp(Color(0xFF0E8C7F), Brand.Gold, hl))
                     .padding(horizontal = 12.dp, vertical = 5.dp)
-            ) { Text("Allow", color = if (hl > 0.5f) Brand.GoldDeep else Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
+            ) { Text(tr("Allow"), color = if (hl > 0.5f) Brand.GoldDeep else Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
         }
     }
 }

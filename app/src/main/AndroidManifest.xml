@@ -75,6 +75,17 @@
             android:launchMode="singleTask"
             android:taskAffinity="com.rabbi.scrollcounter.block" />
 
+        <!-- Share images (progress / badge cards) with other apps -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/share_paths" />
+        </provider>
+
         <!-- Home-screen widget -->
         <receiver
             android:name=".widget.ScrollWidget"
