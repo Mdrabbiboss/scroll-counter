@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">Tienilo attivo per contare i tuoi reel</string>
+    <string name="accessibility_description">🙂 Tienilo attivo per contare i tuoi reel 🙂
+Scroll Counter lo usa solo per capire quando passi al reel successivo su TikTok, Instagram, Facebook, YouTube, Snapchat e altre app, così da contarli, mostrare il contatore dal vivo e fermarti al limite. Non legge mai app bancarie, password o messaggi. Niente lascia il tuo telefono.</string>
+    <string name="widget_description">Gli scorrimenti di oggi e quanto è stanco il tuo pollice</string>
+    <string name="admin_description">Impedisce di disinstallare Scroll Counter d\'impulso. Non usa alcun potere di amministratore.</string>
+</resources>

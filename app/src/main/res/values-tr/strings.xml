@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">Reels\'lerinizi saymak için AÇIK tutun</string>
+    <string name="accessibility_description">🙂 Reels\'lerinizi saymak için AÇIK tutun 🙂
+Scroll Counter bunu yalnızca TikTok, Instagram, Facebook, YouTube, Snapchat ve diğer uygulamalarda sonraki reels\'e ne zaman geçtiğinizi anlamak için kullanır; böylece sayar, canlı sayacı gösterir ve sizi sınırda durdurur. Banka uygulamalarınızı, şifrelerinizi veya mesajlarınızı asla okumaz. Hiçbir şey telefonunuzdan çıkmaz.</string>
+    <string name="widget_description">Bugünkü kaydırmalar ve başparmağınızın ne kadar yorulduğu</string>
+    <string name="admin_description">Scroll Counter\'ın bir anlık hevesle kaldırılmasını engeller. Hiçbir yönetici yetkisi kullanılmaz.</string>
+</resources>

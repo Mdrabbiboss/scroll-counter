@@ -13,7 +13,17 @@ enum class Lang(val code: String, val native: String, val english: String, val r
     AR("ar", "العربية", "Arabic", rtl = true),
     ES("es", "Español", "Spanish"),
     PT("pt", "Português", "Portuguese"),
-    ID("id", "Bahasa Indonesia", "Indonesian");
+    FR("fr", "Français", "French"),
+    DE("de", "Deutsch", "German"),
+    IT("it", "Italiano", "Italian"),
+    RU("ru", "Русский", "Russian"),
+    TR("tr", "Türkçe", "Turkish"),
+    ID("id", "Bahasa Indonesia", "Indonesian"),
+    VI("vi", "Tiếng Việt", "Vietnamese"),
+    TH("th", "ไทย", "Thai"),
+    JA("ja", "日本語", "Japanese"),
+    KO("ko", "한국어", "Korean"),
+    ZH("zh", "中文（简体）", "Chinese (Simplified)");
 
     /** Latin digits everywhere (so every number in the app looks the same), local month/day names. */
     val locale: Locale get() = Locale.forLanguageTag("$code-u-nu-latn")

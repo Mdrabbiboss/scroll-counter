@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">Не выключайте, чтобы считать ваши рилс</string>
+    <string name="accessibility_description">🙂 Не выключайте, чтобы считать ваши рилс 🙂
+Scroll Counter использует это только чтобы понять, когда вы листаете к следующему рилс в TikTok, Instagram, Facebook, YouTube, Snapchat и других приложениях — чтобы считать их, показывать живой счётчик и останавливать вас на лимите. Он никогда не читает банковские приложения, пароли или сообщения. Ничего не покидает ваш телефон.</string>
+    <string name="widget_description">Сегодняшняя прокрутка и усталость вашего пальца</string>
+    <string name="admin_description">Не даёт удалить Scroll Counter сгоряча. Права администратора не используются.</string>
+</resources>

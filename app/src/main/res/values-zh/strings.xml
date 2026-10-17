@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">请保持开启以统计你的短视频</string>
+    <string name="accessibility_description">🙂 请保持开启以统计你的短视频 🙂
+Scroll Counter 仅用它来判断你何时在 TikTok、Instagram、Facebook、YouTube、Snapchat 等应用中滑到下一个短视频，以便计数、显示实时计数器并在达到上限时提醒你停下。它从不读取你的银行应用、密码或消息。任何数据都不会离开你的手机。</string>
+    <string name="widget_description">今天的滑动次数和你拇指的疲劳程度</string>
+    <string name="admin_description">防止你一时冲动卸载 Scroll Counter。不使用任何管理员权限。</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">リールを数えるためにオンのままにしてください</string>
+    <string name="accessibility_description">🙂 リールを数えるためにオンのままにしてください 🙂
+Scroll Counterは、TikTok、Instagram、Facebook、YouTube、Snapchatなどで次のリールにスワイプしたタイミングを知るためだけにこれを使います。リールを数え、ライブカウンターを表示し、上限で止めるためです。銀行アプリ、パスワード、メッセージを読むことはありません。データがスマホの外に出ることはありません。</string>
+    <string name="widget_description">今日のスクロールと親指の疲れ具合</string>
+    <string name="admin_description">衝動的にScroll Counterをアンインストールするのを防ぎます。管理者権限は使いません。</string>
+</resources>

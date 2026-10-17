@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">เปิดไว้เพื่อนับรีลของคุณ</string>
+    <string name="accessibility_description">🙂 เปิดไว้เพื่อนับรีลของคุณ 🙂
+Scroll Counter ใช้สิ่งนี้เพื่อรู้ว่าคุณปัดไปรีลถัดไปใน TikTok, Instagram, Facebook, YouTube, Snapchat และแอปอื่นๆ เมื่อใดเท่านั้น เพื่อนับ แสดงตัวนับสด และหยุดคุณเมื่อถึงขีดจำกัด ไม่เคยอ่านแอปธนาคาร รหัสผ่าน หรือข้อความของคุณ ไม่มีข้อมูลใดออกจากโทรศัพท์ของคุณ</string>
+    <string name="widget_description">การเลื่อนของวันนี้และนิ้วโป้งของคุณเหนื่อยแค่ไหน</string>
+    <string name="admin_description">ป้องกันการถอนการติดตั้ง Scroll Counter ตามอารมณ์ ไม่ใช้สิทธิ์ผู้ดูแลระบบใดๆ</string>
+</resources>

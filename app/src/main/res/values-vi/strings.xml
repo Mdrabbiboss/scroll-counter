@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">Giữ BẬT để đếm reels của bạn</string>
+    <string name="accessibility_description">🙂 Giữ BẬT để đếm reels của bạn 🙂
+Scroll Counter chỉ dùng tính năng này để biết khi nào bạn lướt sang reel tiếp theo trên TikTok, Instagram, Facebook, YouTube, Snapchat và các ứng dụng khác, nhằm đếm chúng, hiện bộ đếm trực tiếp và dừng bạn khi đạt giới hạn. Ứng dụng không bao giờ đọc ứng dụng ngân hàng, mật khẩu hay tin nhắn. Không có gì rời khỏi điện thoại của bạn.</string>
+    <string name="widget_description">Số lần lướt hôm nay và ngón cái của bạn mệt đến đâu</string>
+    <string name="admin_description">Ngăn việc gỡ Scroll Counter theo cảm hứng nhất thời. Không dùng quyền quản trị nào.</string>
+</resources>

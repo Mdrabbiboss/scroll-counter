@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">릴스를 세려면 켜 두세요</string>
+    <string name="accessibility_description">🙂 릴스를 세려면 켜 두세요 🙂
+Scroll Counter는 TikTok, Instagram, Facebook, YouTube, Snapchat 등에서 다음 릴스로 넘길 때를 알아보는 데에만 이 기능을 사용해요. 릴스를 세고, 실시간 카운터를 보여 주고, 한도에서 멈추게 하려고요. 은행 앱, 비밀번호, 메시지는 절대 읽지 않아요. 아무것도 휴대폰 밖으로 나가지 않아요.</string>
+    <string name="widget_description">오늘의 스크롤과 엄지손가락의 피로도</string>
+    <string name="admin_description">충동적으로 Scroll Counter를 삭제하지 못하게 해요. 관리자 권한은 사용하지 않아요.</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">Eingeschaltet lassen, um deine Reels zu zählen</string>
+    <string name="accessibility_description">🙂 Eingeschaltet lassen, um deine Reels zu zählen 🙂
+Scroll Counter nutzt dies nur, um zu erkennen, wann du in TikTok, Instagram, Facebook, YouTube, Snapchat und anderen Apps zum nächsten Reel wischst — um sie zu zählen, deinen Live-Zähler zu zeigen und dich am Limit zu stoppen. Es liest nie deine Banking-Apps, Passwörter oder Nachrichten. Nichts verlässt dein Handy.</string>
+    <string name="widget_description">Heutige Scrolls und wie müde dein Daumen ist</string>
+    <string name="admin_description">Verhindert, dass Scroll Counter aus einer Laune heraus deinstalliert wird. Es werden keine Admin-Rechte genutzt.</string>
+</resources>
