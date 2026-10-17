@@ -47,6 +47,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var currentChild: Int? = null    // identity of the page view that filled the pager last
         var currentFp: String? = null
         val seenFps = LinkedHashSet<String>()
+        var behind = 0                   // reels you went back by (feeds that only report distance)
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
         var sigKey: String? = null
         var sigMax = Int.MIN_VALUE
@@ -130,6 +131,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             st.indexReliable = false
             st.lastScrollY = -1
             st.accum = 0f
+            st.behind = 0
         }
 
         if (from >= 0 && to >= 0) {
@@ -217,16 +219,28 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (index != null) st.lastIdx = index
 
         if (index != null && prev != Int.MIN_VALUE) {
-            if (index > prev) { st.indexReliable = true; return mark(st, (index - prev).coerceAtMost(3)) }
-            if (index < prev) { st.indexReliable = true; return 0 }              // went back
+            if (index > prev) {
+                st.indexReliable = true
+                // Only reels past the furthest one reached count: going back and forward again
+                // over reels you've already seen never counts them twice.
+                val frontier = maxOf(prev, st.maxIndex)
+                st.maxIndex = maxOf(st.maxIndex, index)
+                if (index <= frontier) { DetectLog.add(appKey, "forward to #$index, already seen → not counted"); return 0 }
+                return mark(st, (index - frontier).coerceAtMost(3))
+            }
+            if (index < prev) { st.indexReliable = true; st.maxIndex = maxOf(st.maxIndex, prev); return 0 }   // went back
             // Same number: trust it if it has proven reliable, otherwise fall through to distance.
             if (st.indexReliable && !(hadDelta && pages >= 0.6f)) return 0
         }
         if (hadDelta) {
-            return when {
-                pages >= 0.35f -> mark(st, pages.roundToInt().coerceIn(1, 3))
-                else -> 0                                                       // bounce, back, or nudge
-            }
+            if (pages <= -0.35f) { st.behind += (-pages).roundToInt().coerceIn(1, 3); return 0 }   // went back
+            if (pages < 0.35f) return 0                                                         // bounce or nudge
+            var n = pages.roundToInt().coerceIn(1, 3)
+            // Coming forward again over reels you went back past: those were already counted.
+            val again = minOf(n, st.behind)
+            st.behind -= again; n -= again
+            if (n == 0) { DetectLog.add(appKey, "forward to a reel already seen → not counted"); return 0 }
+            return mark(st, n)
         }
         return mark(st)
     }

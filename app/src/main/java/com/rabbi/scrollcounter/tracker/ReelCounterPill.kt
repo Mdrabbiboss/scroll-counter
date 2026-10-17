@@ -28,7 +28,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
     private var root: FrameLayout? = null
     private var pill: android.view.View? = null
     private lateinit var face: FaceView
-    private lateinit var countText: TextView
+    private lateinit var countText: RollingNumber
 
     private var visible = false
     val isShowing: Boolean get() = visible
@@ -59,7 +59,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
         visible = true
 
         face.mood = mood
-        countText.text = count.toString()
+        countText.setNumber(count, roll = bump && !firstAppearance)
         limitText?.text = "/$limit"
         val ratio = if (limit > 0) count.toFloat() / limit else 0f
         // Frosted, slightly see-through glass — classy, never a solid block over the video.
@@ -78,8 +78,8 @@ class ReelCounterPill(private val service: AccessibilityService) {
         badge?.let { b ->
             // Bubble: a cream badge like a sticker; it turns orange / red near and over the limit.
             b.setColor(when { ratio >= 1f -> 0xFFDC2626.toInt(); ratio >= 0.8f -> 0xFFEA580C.toInt(); else -> 0xFFFFF1D0.toInt() })
-            countText.setTextColor(if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFF5A3A12.toInt())
-        } ?: countText.setTextColor(if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFFFFD873.toInt())
+            countText.textColor = if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFF5A3A12.toInt()
+        } ?: run { countText.textColor = if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFFFFD873.toInt() }
 
         if (firstAppearance) {
             p.animate().cancel()
@@ -95,9 +95,6 @@ class ReelCounterPill(private val service: AccessibilityService) {
             p.scaleX = 1.07f; p.scaleY = 1.07f
             p.animate().scaleX(1f).scaleY(1f).setDuration(260)
                 .setInterpolator(DecelerateInterpolator(1.6f)).withLayer().start()
-            countText.translationY = dp(5f); countText.alpha = 0.35f
-            countText.animate().translationY(0f).alpha(1f).setDuration(200)
-                .setInterpolator(DecelerateInterpolator()).start()
         }
         if (bump) face.post { face.react() }
     }
@@ -124,6 +121,11 @@ class ReelCounterPill(private val service: AccessibilityService) {
         tints += this
     }
 
+    private fun counter(sizeSp: Float) = RollingNumber(service).apply {
+        setTextSizeSp(sizeSp)
+        setTypeface(com.rabbi.scrollcounter.ui.theme.AppFonts.numbers)
+    }
+
     private fun number(sizeSp: Float) = TextView(service).apply {
         textSize = sizeSp
         typeface = com.rabbi.scrollcounter.ui.theme.AppFonts.numbers
@@ -147,9 +149,9 @@ class ReelCounterPill(private val service: AccessibilityService) {
                     addView(face, FrameLayout.LayoutParams(dp(38f).toInt(), dp(38f).toInt(), Gravity.CENTER))
                 }
                 addView(circle, FrameLayout.LayoutParams(dp(48f).toInt(), dp(48f).toInt(), Gravity.CENTER_HORIZONTAL))
-                countText = number(13f).apply {
+                countText = counter(13f).apply {
                     setPadding(dp(9f).toInt(), dp(2.5f).toInt(), dp(9f).toInt(), dp(2.5f).toInt())
-                    minWidth = dp(30f).toInt()
+                    minimumWidth = dp(30f).toInt()
                     background = GradientDrawable().apply {
                         cornerRadius = dp(20f)
                         setStroke(dp(1.5f).toInt(), 0xFF3A2A12.toInt())
@@ -167,7 +169,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
                 background = glass(dp(20f))
                 elevation = dp(4f)
                 addView(face, LinearLayout.LayoutParams(dp(42f).toInt(), dp(42f).toInt()))
-                countText = number(22f).apply { setShadowLayer(dp(3f), 0f, dp(1f), 0x66000000) }
+                countText = counter(22f).apply { setShadow(dp(3f), dp(1f), 0x66000000) }
                 addView(countText, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(3f).toInt() })
                 meter = Meter(ctx, ring = false)
                 addView(meter, LinearLayout.LayoutParams(dp(46f).toInt(), dp(5f).toInt()).apply { topMargin = dp(6f).toInt() })
@@ -187,7 +189,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
                 addView(ringBox, LinearLayout.LayoutParams(dp(56f).toInt(), dp(56f).toInt()))
                 val col = LinearLayout(ctx).apply {
                     orientation = LinearLayout.VERTICAL
-                    countText = number(28f).apply { setShadowLayer(dp(3f), 0f, dp(1f), 0x66000000) }
+                    countText = counter(28f).apply { setShadow(dp(3f), dp(1f), 0x66000000) }
                     addView(countText, LinearLayout.LayoutParams(-2, -2))
                     limitText = number(12f).apply { setTextColor(0xB3FFFFFF.toInt()) }
                     addView(limitText, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(1f).toInt() })
@@ -202,7 +204,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
                 background = glass(dp(30f))
                 elevation = dp(4f)
                 addView(face, LinearLayout.LayoutParams(dp(34f).toInt(), dp(34f).toInt()))
-                countText = number(23f).apply { setShadowLayer(dp(3f), 0f, dp(1f), 0x66000000) }
+                countText = counter(23f).apply { setShadow(dp(3f), dp(1f), 0x66000000) }
                 addView(countText, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7f).toInt() })
             }
         }
