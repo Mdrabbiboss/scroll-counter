@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Scroll Counter</string>
-    <string name="accessibility_label">Scroll Counter 🙂</string>
+    <string name="app_name" translatable="false">Scroll Counter</string>
+    <string name="accessibility_label" translatable="false">Scroll Counter 🙂</string>
     <string name="accessibility_summary">Keep this ON to count your reels</string>
     <string name="accessibility_description">🙂 Keep this ON to count your reels 🙂
 Scroll Counter uses this only to notice when you swipe to the next reel on TikTok, Instagram, Facebook, YouTube, Snapchat and other apps, so it can count them, show your live counter and stop you at your limit. It never reads your bank apps, passwords or messages. Nothing leaves your phone.</string>

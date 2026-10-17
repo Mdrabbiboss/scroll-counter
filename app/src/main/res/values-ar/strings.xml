@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">أبقِ هذا مفعّلًا لعدّ مقاطعك</string>
+    <string name="accessibility_description">🙂 أبقِ هذا مفعّلًا لعدّ مقاطعك 🙂
+يستخدم Scroll Counter هذا فقط ليعرف متى تمرّر إلى المقطع التالي في TikTok وInstagram وFacebook وYouTube وSnapchat وغيرها، حتى يعدّها ويعرض العدّاد المباشر ويوقفك عند حدك. لا يقرأ أبدًا تطبيقات البنوك أو كلمات المرور أو الرسائل. لا شيء يغادر هاتفك.</string>
+    <string name="widget_description">تمريرات اليوم ومدى تعب إبهامك</string>
+    <string name="admin_description">يمنع إلغاء تثبيت Scroll Counter باندفاع. لا تُستخدم أي صلاحيات إدارية.</string>
+</resources>

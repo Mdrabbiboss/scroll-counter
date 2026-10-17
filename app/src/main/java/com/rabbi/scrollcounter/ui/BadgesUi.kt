@@ -79,7 +79,7 @@ fun BadgeMedal(badge: Badges.Badge, unlocked: Boolean, size: Dp, modifier: Modif
     }
 }
 
-private val BadgeDateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
+private val BadgeDateFmt: DateTimeFormatter get() = DateTimeFormatter.ofPattern("d MMM yyyy")
 
 /** You screen: the row of streak medals, progress to the next one, and a share button. */
 @Composable

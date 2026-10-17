@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">Biarkan AKTIF untuk menghitung reels-mu</string>
+    <string name="accessibility_description">🙂 Biarkan AKTIF untuk menghitung reels-mu 🙂
+Scroll Counter memakai ini hanya untuk tahu kapan kamu menggeser ke reel berikutnya di TikTok, Instagram, Facebook, YouTube, Snapchat, dan aplikasi lain, agar bisa menghitungnya, menampilkan penghitung langsung, dan menghentikanmu di batasmu. Ia tidak pernah membaca aplikasi bank, kata sandi, atau pesanmu. Tidak ada yang keluar dari ponselmu.</string>
+    <string name="widget_description">Guliran hari ini dan seberapa lelah jempolmu</string>
+    <string name="admin_description">Mencegah Scroll Counter di-uninstal secara impulsif. Tidak ada kekuatan admin yang dipakai.</string>
+</resources>

@@ -54,6 +54,10 @@ class BlockActivity : ComponentActivity() {
         val store = ScrollStore.get(this)
         val appName = intent.getStringExtra(EXTRA_APP) ?: tr("social apps")
         setContent {
+          androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalLayoutDirection provides
+                if (com.rabbi.scrollcounter.ui.I18n.lang.rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr
+          ) {
             ScrollCounterTheme(dark = true) {
                 BlockScreen(
                     appName = appName,
@@ -73,7 +77,8 @@ class BlockActivity : ComponentActivity() {
                 )
             }
         }
-    }
+      }
+        }
 
     private fun goHome() {
         startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

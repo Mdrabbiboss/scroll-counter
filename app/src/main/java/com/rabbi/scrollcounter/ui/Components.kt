@@ -462,7 +462,7 @@ fun Modifier.pressScale(source: MutableInteractionSource): Modifier {
 fun formatDuration(seconds: Int): String = when {
     seconds < 60 -> tr("%1\$s sec", seconds)
     seconds < 3600 -> tr("%1\$s min", seconds / 60)
-    else -> tr("%1\$sh %%02dm", seconds / 3600).format((seconds % 3600) / 60)
+    else -> tr("%1\$sh %2\$sm", seconds / 3600, "%02d".format((seconds % 3600) / 60))
 }
 
 fun formatDistance(meters: Float): String =

@@ -15,7 +15,8 @@ enum class Lang(val code: String, val native: String, val english: String, val r
     PT("pt", "Português", "Portuguese"),
     ID("id", "Bahasa Indonesia", "Indonesian");
 
-    val locale: Locale get() = Locale.forLanguageTag(code)
+    /** Latin digits everywhere (so every number in the app looks the same), local month/day names. */
+    val locale: Locale get() = Locale.forLanguageTag("$code-u-nu-latn")
 
     companion object {
         fun of(code: String?): Lang? = entries.firstOrNull { it.code == code }

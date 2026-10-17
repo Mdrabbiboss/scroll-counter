@@ -59,7 +59,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-private val DayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+private val DayFmt: DateTimeFormatter get() = DateTimeFormatter.ofPattern("EEE, d MMM")
 
 @Composable
 fun HistoryScreen(store: ScrollStore, tick: Long) {

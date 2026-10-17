@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">रील्स गिनने के लिए इसे चालू रखें</string>
+    <string name="accessibility_description">🙂 रील्स गिनने के लिए इसे चालू रखें 🙂
+Scroll Counter इसका इस्तेमाल सिर्फ यह जानने के लिए करता है कि आप TikTok, Instagram, Facebook, YouTube, Snapchat और दूसरे ऐप्स में अगली रील पर कब स्वाइप करते हैं, ताकि उन्हें गिन सके, लाइव काउंटर दिखा सके और लिमिट पर आपको रोक सके। यह कभी आपके बैंक ऐप्स, पासवर्ड या मैसेज नहीं पढ़ता। कुछ भी आपके फ़ोन से बाहर नहीं जाता।</string>
+    <string name="widget_description">आज की स्क्रॉल और आपका अंगूठा कितना थका है</string>
+    <string name="admin_description">Scroll Counter को जल्दबाज़ी में अनइंस्टॉल होने से बचाता है। कोई एडमिन शक्ति इस्तेमाल नहीं होती।</string>
+</resources>

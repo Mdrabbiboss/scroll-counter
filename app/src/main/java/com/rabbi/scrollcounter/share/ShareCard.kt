@@ -129,7 +129,7 @@ object ShareCard {
             val dir = File(context.cacheDir, "share").apply { mkdirs() }
             val file = File(dir, "scroll-counter.png")
             file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            val uri = FileProvider.getUriForFile(context, tr("%1\$s.share", context.packageName), file)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.share", file)
             val send = Intent(Intent.ACTION_SEND)
                 .setType("image/png")
                 .putExtra(Intent.EXTRA_STREAM, uri)

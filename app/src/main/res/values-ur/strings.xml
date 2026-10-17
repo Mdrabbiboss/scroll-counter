@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">ریلز گننے کے لیے اسے آن رکھیں</string>
+    <string name="accessibility_description">🙂 ریلز گننے کے لیے اسے آن رکھیں 🙂
+Scroll Counter اسے صرف یہ جاننے کے لیے استعمال کرتا ہے کہ آپ TikTok، Instagram، Facebook، YouTube، Snapchat اور دوسری ایپس میں اگلی ریل پر کب سوائپ کرتے ہیں، تاکہ انہیں گن سکے، لائیو کاؤنٹر دکھا سکے اور حد پر آپ کو روک سکے۔ یہ کبھی آپ کی بینک ایپس، پاس ورڈز یا پیغامات نہیں پڑھتا۔ کچھ بھی آپ کے فون سے باہر نہیں جاتا۔</string>
+    <string name="widget_description">آج کی اسکرولنگ اور آپ کا انگوٹھا کتنا تھکا ہے</string>
+    <string name="admin_description">Scroll Counter کو جلدبازی میں ان انسٹال ہونے سے بچاتا ہے۔ کوئی ایڈمن اختیار استعمال نہیں ہوتا۔</string>
+</resources>

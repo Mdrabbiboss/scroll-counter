@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_summary">রিল গুনতে এটা চালু রাখুন</string>
+    <string name="accessibility_description">🙂 রিল গুনতে এটা চালু রাখুন 🙂
+Scroll Counter এটা শুধু বুঝতে ব্যবহার করে কখন আপনি TikTok, Instagram, Facebook, YouTube, Snapchat ও অন্যান্য অ্যাপে পরের রিলে সোয়াইপ করেন, যাতে সেগুলো গুনতে পারে, লাইভ কাউন্টার দেখাতে পারে আর লিমিটে আপনাকে থামাতে পারে। এটা কখনো আপনার ব্যাংক অ্যাপ, পাসওয়ার্ড বা মেসেজ পড়ে না। কিছুই আপনার ফোনের বাইরে যায় না।</string>
+    <string name="widget_description">আজকের স্ক্রল আর আপনার আঙুল কতটা ক্লান্ত</string>
+    <string name="admin_description">হুট করে Scroll Counter আনইনস্টল হওয়া আটকায়। কোনো অ্যাডমিন ক্ষমতা ব্যবহার করা হয় না।</string>
+</resources>
