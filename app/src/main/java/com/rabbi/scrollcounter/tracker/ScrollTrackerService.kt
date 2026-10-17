@@ -327,12 +327,13 @@ class ScrollTrackerService : AccessibilityService() {
         }
         // Readable reels pager → close right away. Self-drawn apps (Facebook Lite) report feed and
         // reels from the same view, so for them we wait until the swipe is confirmed as reels.
-        if (!det.lastAcceptedOpaque && shouldBlock(store)) { block(app.name); return }
+        // Anything not yet proven to be reels is only closed / shown after its swipes confirm it.
+        if (!det.lastAcceptedOpaque && det.lastAcceptedConfident && shouldBlock(store)) { block(app.name); return }
         // Judge the swipe once the feed is still.
         settleApp = app
         handler.removeCallbacks(settleRunnable)
         handler.postDelayed(settleRunnable, ReelDetector.SETTLE_MS)
-        if (pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+        if (det.lastAcceptedConfident && pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
     }
 
     private fun onBrowserScroll(store: ScrollStore, app: TrackedApp, event: AccessibilityEvent) {

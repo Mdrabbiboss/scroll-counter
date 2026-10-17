@@ -50,6 +50,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var behind = 0                   // reels you went back by (feeds that only report distance)
         var eventFresh = false           // this swipe ended on an exact item number (from == to)
         var pagerNode = 0                // identity of the pager view (changes when the app rebuilds it)
+        var candStreak = 0               // exact one-screen swipes on a not-yet-proven pager
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
         var sigKey: String? = null
         var sigMax = Int.MIN_VALUE
@@ -93,7 +94,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (trusted) lastWasOpaque = false
         val accepted = trusted || (span < 2 && isReelPager(src))
         if (!trusted && span >= 2) lastReason = "list shows ${span + 1} items"
-        if (accepted && !lastWasOpaque) {
+        // Only a container that is surely reels is trusted through messy mid-swipe layouts.
+        val sure = accepted && !lastWasOpaque && (isConfident(src) || isConfident(runCatching { innerPager(src) }.getOrNull()))
+        lastAcceptedConfident = sure || (trusted && nodeId in trustedPagers)
+        if (sure) {
             if (trustedPagers.size > 20) trustedPagers.clear()
             trustedPagers.add(nodeId)
         }
@@ -172,6 +176,55 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      */
     fun settle(appKey: String, root: AccessibilityNodeInfo? = null): Int {
         val st = states[appKey] ?: return 0
+        val pager = lastPager
+        val confident = st.opaque || isConfident(pager)
+        lastMoveExact = false
+        val n = settleInner(appKey, st, root)
+        if (n <= 0 || confident) return n
+        // Not proven to be reels yet (no reels view name, not a short-video-only app): a profile,
+        // photo viewer or post can look like a full-screen page too. Only a run of exact one-screen
+        // swipes onto new pages proves it — profiles and feeds never move like that. Until then
+        // nothing is counted, shown or closed.
+        if (n == 1 && lastMoveExact) {
+            st.candStreak++
+            if (st.candStreak >= 2) {
+                pager?.let { provenNodes.add(it.hashCode()) }
+                st.candStreak = 0
+                DetectLog.add(appKey, "2 exact reel swipes → reels confirmed")
+                return 2
+            }
+            DetectLog.add(appKey, "exact page swipe 1/2 → waiting to confirm reels")
+            return 0
+        }
+        st.candStreak = 0
+        DetectLog.add(appKey, "not an exact reel swipe on an unconfirmed page → not counted")
+        return 0
+    }
+
+    /** Set by [settleInner]: the swipe moved exactly one whole page onto a new one. */
+    private var lastMoveExact = false
+
+    /** Pager views proven to be reels by exact one-screen swipes (by view identity). */
+    private val provenNodes = HashSet<Int>()
+
+    /**
+     * Is this container known for sure to be a reels / shorts feed — by its view name, by being a
+     * short-video-only app (TikTok…), or by having been proven with exact page swipes?
+     */
+    private fun isConfident(n: AccessibilityNodeInfo?): Boolean {
+        n ?: return false
+        val pkg = n.packageName?.toString() ?: ""
+        if (pkg in ALL_REELS_APPS) return true
+        val id = (n.viewIdResourceName ?: "").lowercase()
+        if (id.isNotEmpty() && ID_HINTS.any { id.contains(it) }) return true
+        return n.hashCode() in provenNodes
+    }
+
+    /** The last accepted scroll came from a container that is surely reels (see [isConfident]). */
+    var lastAcceptedConfident = false
+        private set
+
+    private fun settleInner(appKey: String, st: AppState, root: AccessibilityNodeInfo?): Int {
         if (!st.pending) return 0
         // A comment / share sheet open over the reel: scrolling it is never a new reel, even when
         // the app (Facebook Lite…) reports that scroll from the same view as the video feed.
@@ -251,6 +304,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 st.maxIndex = maxOf(st.maxIndex, index)
                 st.behind = 0
                 if (index <= frontier) { DetectLog.add(appKey, "forward to #$index, already seen → not counted"); return 0 }
+                lastMoveExact = index - prev == 1
                 return mark(st, (index - frontier).coerceAtMost(3))
             }
             if (index < prev) {
@@ -279,6 +333,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += pages.roundToInt().coerceIn(1, 3)
             if (n == 0) { DetectLog.add(appKey, "forward to a reel already seen → not counted"); return 0 }
             advance(st, index)
+            lastMoveExact = abs(pages - 1f) <= 0.08f && childNow != null && childNow != childBefore
             return mark(st, n)
         }
         // The app reported neither a number nor a distance: go by whether a different page view
@@ -287,6 +342,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (childNow == childBefore) { DetectLog.add(appKey, "same page on screen → not counted"); return 0 }
             if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += 1
             advance(st, index)
+            lastMoveExact = true
             return mark(st)
         }
         if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += 1
@@ -564,7 +620,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         knownPagerIds[pkg]?.let { id ->
             val hits = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull().orEmpty()
             for (n in hits) {
-                if (n.isVisibleToUser && isReelPager(n) && !lastWasOpaque) { found(pkg, n); return true }
+                if (n.isVisibleToUser && isReelPager(n) && !lastWasOpaque && surelyReels(n)) { found(pkg, n); return true }
             }
         }
 
@@ -574,7 +630,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         while (queue.isNotEmpty() && visited < 160) {
             val n = queue.removeFirst()
             visited++
-            if (n.isScrollable && isReelPager(n) && !lastWasOpaque) { found(pkg, n); return true }
+            if (n.isScrollable && isReelPager(n) && !lastWasOpaque && surelyReels(n)) { found(pkg, n); return true }
             n.getBoundsInScreen(rect)
             if (rect.height() >= screenH * 0.4f) {
                 for (i in 0 until minOf(n.childCount, 14)) {
@@ -586,6 +642,17 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     }
 
     private val knownPagerIds = HashMap<String, String>()
+
+    /**
+     * Only a container that is surely reels may show the counter, count the opened reel or close
+     * the app just by being on screen. Anything else (a profile with a full-screen cover photo,
+     * a photo viewer…) must first prove itself with exact reel swipes — see [settle].
+     */
+    private fun surelyReels(n: AccessibilityNodeInfo): Boolean {
+        if (isConfident(n) || isConfident(runCatching { innerPager(n) }.getOrNull())) return true
+        lastReason = "not confirmed as reels"
+        return false
+    }
 
     private fun found(pkg: String, n: AccessibilityNodeInfo) {
         lastPager = innerPager(n) ?: n
