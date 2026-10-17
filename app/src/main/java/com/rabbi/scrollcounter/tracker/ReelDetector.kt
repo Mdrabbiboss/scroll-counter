@@ -249,6 +249,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 // over reels you've already seen never counts them twice.
                 val frontier = maxOf(prev, st.maxIndex)
                 st.maxIndex = maxOf(st.maxIndex, index)
+                st.behind = 0
                 if (index <= frontier) { DetectLog.add(appKey, "forward to #$index, already seen → not counted"); return 0 }
                 return mark(st, (index - frontier).coerceAtMost(3))
             }
@@ -256,31 +257,47 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 st.indexReliable = true
                 // A jump back of many reels at once is the app refreshing its feed, not you swiping
                 // back: start counting from here again.
-                if (prev - index > 3) { st.maxIndex = index; DetectLog.add(appKey, "feed restarted at #$index"); return 0 }
-                st.maxIndex = maxOf(st.maxIndex, prev); return 0                 // went back
+                if (prev - index > 3) { st.maxIndex = index; st.behind = 0; DetectLog.add(appKey, "feed restarted at #$index"); return 0 }
+                st.maxIndex = maxOf(st.maxIndex, prev)
+                st.behind = (st.maxIndex - index).coerceIn(0, 30); return 0       // went back
             }
             // Same number: trust it if it has proven reliable, otherwise fall through to distance.
             if (st.indexReliable && !(hadDelta && pages >= 0.6f)) return 0
         }
         if (hadDelta) {
-            if (pages <= -0.35f) { st.behind = (st.behind + (-pages).roundToInt().coerceIn(1, 3)).coerceAtMost(30); return 0 }   // went back
+            if (pages <= -0.35f) {                                                              // went back
+                val k = (-pages).roundToInt().coerceIn(1, 3)
+                st.behind = (st.behind + k).coerceAtMost(30)
+                if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx -= k
+                return 0
+            }
             if (pages < 0.35f) return 0                                                         // bounce or nudge
             var n = pages.roundToInt().coerceIn(1, 3)
             // Coming forward again over reels you went back past: those were already counted.
             val again = minOf(n, st.behind)
             st.behind -= again; n -= again
+            if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += pages.roundToInt().coerceIn(1, 3)
             if (n == 0) { DetectLog.add(appKey, "forward to a reel already seen → not counted"); return 0 }
-            if (index != null) st.maxIndex = maxOf(st.maxIndex, index)
+            advance(st, index)
             return mark(st, n)
         }
         // The app reported neither a number nor a distance: go by whether a different page view
         // now fills the screen. Same page view = the swipe bounced back onto the same reel.
         if (childNow != null && childBefore != null) {
             if (childNow == childBefore) { DetectLog.add(appKey, "same page on screen → not counted"); return 0 }
+            if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += 1
+            advance(st, index)
             return mark(st)
         }
-        if (index != null) st.maxIndex = maxOf(st.maxIndex, index)
+        if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx += 1
+        advance(st, index)
         return mark(st)
+    }
+
+    /** A reel was counted without the app's own number: move the "furthest reached" mark along. */
+    private fun advance(st: AppState, index: Int?) {
+        val at = index ?: st.lastIdx.takeIf { it != Int.MIN_VALUE } ?: return
+        st.maxIndex = maxOf(st.maxIndex, at)
     }
 
     /** Identity of the page view that exactly fills the pager, or null. No text is read. */
