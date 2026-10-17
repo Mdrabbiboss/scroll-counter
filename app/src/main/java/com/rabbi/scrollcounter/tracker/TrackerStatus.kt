@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
@@ -53,6 +54,16 @@ object TrackerStatus {
     /** One-tap "Allow" dialog for unrestricted battery; falls back to the settings list. */
     @android.annotation.SuppressLint("BatteryLife")
     fun openBatterySettings(context: Context) {
+        // OnePlus / Oppo / Realme: their "Set now" answer to the one-tap request opens the battery
+        // page without telling it which app it's for, so its "Allow background usage" page shows
+        // Android's default icon. Open the app's own battery page directly instead (the same way
+        // App info does), falling back to App info itself.
+        if (Build.MANUFACTURER.lowercase() in setOf("oneplus", "oppo", "realme")) {
+            val page = Intent("android.settings.VIEW_ADVANCED_POWER_USAGE_DETAIL", Uri.parse("package:${context.packageName}"))
+            if (start(context, page)) return
+            openAppDetails(context)
+            return
+        }
         val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
         if (start(context, direct)) return
         if (!start(context, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))) {
