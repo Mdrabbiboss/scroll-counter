@@ -368,5 +368,6 @@
 "Do 10 squats to unlock": "Faça 10 agachamentos para destravar",
 "Uses the camera to count — nothing is recorded": "Usa a câmera para contar — nada é gravado",
 "Camera\nUsed only when you choose \"Do 10 squats to unlock\", to count your squats with on-device pose detection. No photo or video is recorded, saved or sent.": "Câmera\nUsada só quando você escolhe \"Faça 10 agachamentos para destravar\", para contar seus agachamentos com detecção de postura no próprio aparelho. Nenhuma foto ou vídeo é gravado, salvo ou enviado.",
-"You already set your limit today and used today's squat unlock. Stick with it! It unlocks at midnight.": "Você já definiu seu limite hoje e usou o destravamento com agachamentos de hoje. Mantenha-se firme! Ele destrava à meia-noite."
+"You already set your limit today and used today's squat unlock. Stick with it! It unlocks at midnight.": "Você já definiu seu limite hoje e usou o destravamento com agachamentos de hoje. Mantenha-se firme! Ele destrava à meia-noite.",
+"This permanently removes from this phone:\n• Every past day: reels, watch time, distance, hours and apps\n• Your streak, best streak and streak badges (they start again from zero)\n\nToday's numbers stay, so deleting can't reset your daily limit.\n\nThis can't be undone.": "Isto remove para sempre deste celular:\n• Cada dia anterior: reels, tempo assistido, distância, horas e apps\n• Sua sequência, melhor sequência e selos de sequência (recomeçam do zero)\n\nOs números de hoje ficam, então apagar não reinicia seu limite diário.\n\nNão dá para desfazer."
 }

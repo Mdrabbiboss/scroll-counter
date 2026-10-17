@@ -43,6 +43,13 @@ object DurableStore {
         main.postDelayed(task, SAVE_DELAY_MS)
     }
 
+    /** Save immediately (e.g. right after deleting history). */
+    fun saveNow(context: Context, text: String) {
+        pending?.let { main.removeCallbacks(it) }
+        pending = null
+        save(context.applicationContext, text)
+    }
+
     private fun save(context: Context, text: String) {
         io.execute { Vault.write(context, text) }
         var bytes = gzip(text)

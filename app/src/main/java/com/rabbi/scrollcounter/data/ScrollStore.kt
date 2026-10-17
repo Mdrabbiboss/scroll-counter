@@ -102,7 +102,7 @@ class ScrollStore private constructor(context: Context) {
             val value = when (v) { is Int -> v.toString(); is Float -> String.format(Locale.US, "%.1f", v); else -> return@mapNotNull null }
             Triple(date, k, value)
         }.sortedBy { it.first }
-        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}|${settings.getString(KEY_SQUAT_USED, null) ?: "-"}")
+        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}|${settings.getString(KEY_SQUAT_USED, null) ?: "-"}|${settings.getString(KEY_RESET_DAY, null) ?: "-"}")
         rows.forEach { sb.append('\n').append(it.second).append('|').append(it.third) }
         return sb.toString()
     }
@@ -113,11 +113,20 @@ class ScrollStore private constructor(context: Context) {
         val lines = text.lines()
         val head = lines.firstOrNull()?.split('|') ?: return
         if (head.firstOrNull() != "v1") return
+        // "Delete all history" sets a reset day. A copy made before that reset must never bring the
+        // deleted days, the old start day, streak or badges back — only its newer days count.
+        val savedReset = head.getOrNull(7)?.takeIf { it != "-" }
+        var localReset = settings.getString(KEY_RESET_DAY, null)
+        if (savedReset != null && (localReset == null || savedReset > localReset)) {
+            settings.edit().putString(KEY_RESET_DAY, savedReset).apply(); localReset = savedReset
+        }
+        val stale = localReset != null && (savedReset == null || savedReset < localReset)
         val editor = stats.edit()
         var changed = false
         for (line in lines.drop(1)) {
             val p = line.split('|')
             if (p.size != 4) continue
+            if (localReset != null && p[1] < localReset) continue   // deleted on purpose
             val key = "${p[0]}|${p[1]}|${p[2]}"
             when (p[0]) {
                 "c", "h", "t" -> {
@@ -132,8 +141,8 @@ class ScrollStore private constructor(context: Context) {
         }
         editor.apply()
         // Keep the earliest first day (streaks and history), and the limit if none is set here.
-        head.getOrNull(1)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { saved ->
-            if (saved.isBefore(firstDay)) { settings.edit().putString(KEY_FIRST_DAY, saved.toString()).apply(); changed = true }
+        head.getOrNull(1)?.takeIf { !stale }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { saved ->
+            if (saved.isBefore(firstDay) && (localReset == null || saved.toString() >= localReset)) { settings.edit().putString(KEY_FIRST_DAY, saved.toString()).apply(); changed = true }
         }
         // Today's squat unlock stays used even after clearing data.
         head.getOrNull(6)?.takeIf { it != "-" }?.let { used ->
@@ -141,8 +150,8 @@ class ScrollStore private constructor(context: Context) {
             if (mine == null || used > mine) { settings.edit().putString(KEY_SQUAT_USED, used).apply(); changed = true }
         }
         // Best streak and earned badges are never lost: keep the higher / earliest of both copies.
-        head.getOrNull(4)?.toIntOrNull()?.let { if (it > bestStreak) { settings.edit().putInt(KEY_BEST, it).apply(); changed = true } }
-        head.getOrNull(5)?.takeIf { it != "-" }?.let { raw ->
+        head.getOrNull(4)?.takeIf { !stale }?.toIntOrNull()?.let { if (it > bestStreak) { settings.edit().putInt(KEY_BEST, it).apply(); changed = true } }
+        head.getOrNull(5)?.takeIf { it != "-" && !stale }?.let { raw ->
             val mine = badgeDates().toMutableMap()
             var more = false
             parseBadgeDates(raw).forEach { (d, date) ->
@@ -315,8 +324,17 @@ class ScrollStore private constructor(context: Context) {
         val editor = stats.edit()
         stats.all.keys.filter { it.split('|').getOrNull(1) != today }.forEach { editor.remove(it) }
         editor.apply()
-        settings.edit().putString(KEY_FIRST_DAY, today).apply()
+        // A fresh start: streak, best streak and badges begin again from today. (Today's numbers
+        // stay, so deleting history can't be used to reset the daily limit.)
+        settings.edit()
+            .putString(KEY_FIRST_DAY, today)
+            .putString(KEY_RESET_DAY, today)
+            .putInt(KEY_BEST, 0)
+            .remove(KEY_BADGES)
+            .apply()
         bump()
+        // Overwrite the backup copies right away, so the deleted days can't come back from them.
+        DurableStore.saveNow(appContext, durableSnapshot())
     }
 
     /** Keep only the last [days] days of history. */
@@ -496,6 +514,7 @@ class ScrollStore private constructor(context: Context) {
         private const val KEY_SQUAT_UNLOCK = "squat_unlock_day"
         private const val KEY_SQUATS_TOTAL = "squats_total"
         private const val KEY_SQUAT_USED = "squat_used_day"
+        private const val KEY_RESET_DAY = "history_reset_day"
         private const val KEY_BADGES = "badge_dates"
         const val MAX_LIMIT = 500
 

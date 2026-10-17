@@ -386,7 +386,7 @@ fun DeleteHistoryDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     title: String = tr("Delete all history?"),
-    body: String = tr("This permanently removes from this phone:\n• Every past day's reel count and distance (today's count stays)\n• Your hourly activity and app breakdown\n• Your streak (it starts again from zero)\n\nThis can't be undone."),
+    body: String = tr("This permanently removes from this phone:\n• Every past day: reels, watch time, distance, hours and apps\n• Your streak, best streak and streak badges (they start again from zero)\n\nToday's numbers stay, so deleting can't reset your daily limit.\n\nThis can't be undone."),
     confirmLabel: String = tr("Delete everything"),
     dismissLabel: String = tr("Keep my history"),
 ) {

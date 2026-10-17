@@ -367,5 +367,6 @@
 "60 days in a row under your limit": "60日連続で上限以内",
 "Legend": "レジェンド",
 "100 days in a row under your limit": "100日連続で上限以内",
-"You": "あなた"
+"You": "あなた",
+"This permanently removes from this phone:\n• Every past day: reels, watch time, distance, hours and apps\n• Your streak, best streak and streak badges (they start again from zero)\n\nToday's numbers stay, so deleting can't reset your daily limit.\n\nThis can't be undone.": "このスマホから完全に削除されます：\n• 過去の毎日：リール、視聴時間、距離、時間帯、アプリ\n• 連続記録、最高記録、連続記録バッジ（ゼロから再スタート）\n\n今日の数字は残るので、削除しても1日の上限はリセットできません。\n\n元に戻すことはできません。"
 }
