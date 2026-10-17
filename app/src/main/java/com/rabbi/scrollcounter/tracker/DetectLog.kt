@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter
  * be seen and fixed. Nothing here is saved; it never contains text from the screen.
  */
 object DetectLog {
-    private const val MAX = 60
+    private const val MAX = 200
     private val lines = ArrayDeque<String>()
     private val fmt = DateTimeFormatter.ofPattern("HH:mm:ss")
     private var lastLine = ""
