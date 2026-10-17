@@ -45,8 +45,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import java.util.Locale
 
 /**
- * One part of the spoken guide: the video holds on [atMs] while the line is said, then plays the
- * action up to [untilMs]. A [whilePlaying] line is said while its part plays (the ending).
+ * One part of the spoken guide. Normally the video shows the step's first frame ([atMs]) while
+ * the line is said, then plays the action up to [untilMs]. A [whilePlaying] line is said while its
+ * part plays (scrolling, the ending); the video then waits at [untilMs] until the line is done.
  */
 private class Cue(val atMs: Int, val untilMs: Int, val en: String, val whilePlaying: Boolean = false) {
     /** The line in the app's language (falls back to English). */
@@ -55,11 +56,11 @@ private class Cue(val atMs: Int, val untilMs: Int, val en: String, val whilePlay
 
 /**
  * The guide for res/raw/accessibility_tutorial.mp4. The times are where the captions burnt into
- * the video change (0, 0.95, 4.6, 5.85, 7.9 s): each step is explained first, then shown.
+ * the video change (0, 0.95, 4.6, 5.85, 7.9 s): each tap is explained first, then shown; the
+ * scrolling at the start and the ending play while they're described.
  */
 private val ACCESSIBILITY_GUIDE = listOf(
-    Cue(0, 0, "To count your reels, Scroll Counter needs one permission: Accessibility. Let me show you how to turn it on. It only takes a few seconds."),
-    Cue(0, 950, "First, tap the button below to open your phone's Accessibility settings. Then scroll down to Downloaded services."),
+    Cue(0, 900, "First, tap the button below to open your phone's Accessibility settings. Then scroll down to Downloaded services.", whilePlaying = true),
     Cue(950, 4600, "Find Scroll Counter in the list, and tap it."),
     Cue(4600, 5850, "Now turn on the switch next to Scroll Counter."),
     Cue(5850, 7900, "Your phone will show a warning and ask for permission. Tap Allow."),
@@ -110,11 +111,18 @@ fun TutorialVideo(rawRes: Int, aspect: Float, modifier: Modifier = Modifier, nar
                 TextureView(ctx).apply {
                     surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                         override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                            // Prepared in the background, so opening this screen never stutters.
                             runCatching {
-                                val mp = MediaPlayer.create(context, rawRes) ?: return
+                                val mp = MediaPlayer()
+                                context.resources.openRawResourceFd(rawRes).use { afd ->
+                                    mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                                }
                                 mp.setSurface(Surface(st))
-                                mp.setVolume(0f, 0f)
-                                guide.attach(mp, voiceOn)
+                                mp.setOnPreparedListener { ready ->
+                                    ready.setVolume(0f, 0f)
+                                    guide.attach(ready, voiceOn)
+                                }
+                                mp.prepareAsync()
                             }
                         }
                         override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = Unit
@@ -156,8 +164,10 @@ fun TutorialVideo(rawRes: Int, aspect: Float, modifier: Modifier = Modifier, nar
  */
 private class NarratedVideo(private val context: Context, private val cues: List<Cue>) {
     private val main = Handler(Looper.getMainLooper())
+    /** The phone's voice engine is slow to set up (loading a language can take seconds): never on the UI thread. */
+    private val bg = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var mp: MediaPlayer? = null
-    private var tts: TextToSpeech? = null
+    @Volatile private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var ttsFailed = cues.isEmpty()
     private var wantVoice = false
@@ -170,8 +180,9 @@ private class NarratedVideo(private val context: Context, private val cues: List
     private var released = false
 
     init {
+        // Creating the engine is quick; setting it up (language, voice) happens off the UI thread.
         if (cues.isNotEmpty()) runCatching {
-            tts = TextToSpeech(context) { status -> main.post { onTtsReady(status) } }
+            tts = TextToSpeech(context) { status -> runCatching { bg.execute { setUpVoice(status) } } }
         }.onFailure { ttsFailed = true }
     }
 
@@ -185,10 +196,11 @@ private class NarratedVideo(private val context: Context, private val cues: List
         showFirstFrame(player)
         main.postDelayed({
             delayDone = true
-            if (released || mp == null) return@postDelayed
+            if (released || mp == null || !wantVoice) return@postDelayed
             if (ttsReady) playGuide()
-            // The phone's voice still not ready after a while: just show the video.
-            else main.postDelayed({ if (!ttsReady && !narrating && mp != null) { ttsFailed = true; loopQuietly() } }, 2500)
+            // The phone's voice still getting ready: show the video meanwhile; the guide starts
+            // from the beginning as soon as the voice is ready.
+            else main.postDelayed({ if (!ttsReady && !narrating && mp != null) loopQuietly() }, 1500)
         }, GUIDE_DELAY_MS)
     }
 
@@ -203,7 +215,7 @@ private class NarratedVideo(private val context: Context, private val cues: List
 
     fun detach() {
         main.removeCallbacksAndMessages(null)
-        runCatching { tts?.stop() }
+        stopVoice()
         narrating = false
         runCatching { mp?.release() }
         mp = null
@@ -212,8 +224,10 @@ private class NarratedVideo(private val context: Context, private val cues: List
     fun release() {
         released = true
         detach()
-        runCatching { tts?.shutdown() }
+        val engine = tts
         tts = null
+        bg.execute { runCatching { engine?.shutdown() } }
+        bg.shutdown()
     }
 
     /** Start the spoken guide from the beginning. */
@@ -223,7 +237,7 @@ private class NarratedVideo(private val context: Context, private val cues: List
         if (ttsFailed) { loopQuietly(); return }
         if (!ttsReady || !delayDone) return // starts as soon as both are ready
         main.removeCallbacks(ticker)
-        runCatching { tts?.stop() }
+        stopVoice()
         narrating = true
         completed = false
         spokenCue = -1
@@ -233,14 +247,14 @@ private class NarratedVideo(private val context: Context, private val cues: List
 
     fun mute() {
         wantVoice = false
-        runCatching { tts?.stop() }
+        stopVoice()
         if (narrating) { narrating = false; main.removeCallbacks(ticker) }
         loopQuietly()
     }
 
     fun pause() {
         main.removeCallbacks(ticker)
-        runCatching { tts?.stop() }
+        stopVoice()
         narrating = false
         runCatching { if (mp?.isPlaying == true) mp?.pause() }
     }
@@ -262,17 +276,32 @@ private class NarratedVideo(private val context: Context, private val cues: List
             runCatching { if (!p.isPlaying) p.start() }
         } else {
             playing = false
-            runCatching { if (p.isPlaying) p.pause() }
+            runCatching {
+                if (p.isPlaying) p.pause()
+                // Show the step's own first frame (its caption) while it's explained.
+                if (p.currentPosition < c.atMs) p.seekTo(c.atMs.toLong(), MediaPlayer.SEEK_CLOSEST)
+            }
             speak(i)
         }
         main.removeCallbacks(ticker)
         main.post(ticker)
     }
 
-    private fun onTtsReady(status: Int) {
-        if (released) return
-        val engine = tts ?: return
-        if (status != TextToSpeech.SUCCESS) { ttsFailed = true; if (mp != null && delayDone) loopQuietly(); return }
+    /** Runs on [bg]: picks the language and the clearest voice, then tells the UI thread. */
+    private fun setUpVoice(status: Int) {
+        val ok = runCatching { configure(status) }.getOrDefault(false)
+        main.post {
+            if (released) return@post
+            if (!ok) { ttsFailed = true; if (mp != null && delayDone) loopQuietly(); return@post }
+            ttsReady = true
+            if (wantVoice && mp != null && delayDone && !narrating) playGuide()
+        }
+    }
+
+    private fun configure(status: Int): Boolean {
+        if (released) return false
+        val engine = tts ?: return false
+        if (status != TextToSpeech.SUCCESS) return false
         val lang = I18n.lang
         val wanted = Locale.forLanguageTag(when (lang) {
             Lang.BN -> "bn-BD"; Lang.ZH -> "zh-CN"; Lang.PT -> "pt-BR"; Lang.ES -> "es-ES"; Lang.EN -> "en-US"
@@ -280,7 +309,7 @@ private class NarratedVideo(private val context: Context, private val cues: List
         })
         var ok = runCatching { engine.setLanguage(wanted) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED) >= TextToSpeech.LANG_AVAILABLE
         if (!ok && lang == Lang.BN) ok = runCatching { engine.setLanguage(Locale.forLanguageTag("bn-IN")) }.getOrDefault(-2) >= TextToSpeech.LANG_AVAILABLE
-        if (!ok) { ttsFailed = true; if (mp != null && delayDone) loopQuietly(); return } // no voice for this language
+        if (!ok) return false // no voice for this language on the phone
         // The clearest installed voice for the language (offline first).
         runCatching {
             engine.voices?.filter {
@@ -299,12 +328,18 @@ private class NarratedVideo(private val context: Context, private val cues: List
             @Deprecated("Deprecated in Java")
             override fun onError(id: String?) { main.post { onSpoken(id) } }
         })
-        ttsReady = true
-        if (wantVoice && mp != null && delayDone && !narrating) playGuide()
+        return true
+    }
+
+    private fun stopVoice() {
+        val engine = tts ?: return
+        runCatching { bg.execute { runCatching { engine.stop() } } }
     }
 
     private fun speak(i: Int) {
-        tts?.speak(cues[i].text, TextToSpeech.QUEUE_FLUSH, null, i.toString())
+        val engine = tts ?: return
+        val line = cues[i].text
+        runCatching { bg.execute { runCatching { engine.speak(line, TextToSpeech.QUEUE_FLUSH, null, i.toString()) } } }
     }
 
     /** A line has been said: show its action (or go straight on if it has none). */
@@ -313,7 +348,7 @@ private class NarratedVideo(private val context: Context, private val cues: List
         if (!narrating || i != cue) return
         spokenCue = i
         val c = cues[i]
-        if (c.whilePlaying) return // the ticker finishes once the video has played to the end
+        if (c.whilePlaying) return // the ticker moves on once the video has reached the step's end
         if (c.untilMs <= c.atMs) { next(); return }
         playing = true
         runCatching { mp?.start() }
@@ -338,7 +373,14 @@ private class NarratedVideo(private val context: Context, private val cues: List
             if (playing) {
                 val pos = runCatching { p.currentPosition }.getOrDefault(0)
                 if (c.whilePlaying) {
-                    if (completed && spokenCue == cue) { finish(); return }
+                    val reached = completed || pos >= c.untilMs
+                    // Wait here (on this step's last frame) until the line has been said.
+                    if (reached && !completed) runCatching { if (p.isPlaying) p.pause() }
+                    if (reached && spokenCue == cue) {
+                        playing = false
+                        if (cue + 1 < cues.size) next() else finish()
+                        return
+                    }
                 } else if (completed || pos >= c.untilMs) {
                     runCatching { if (p.isPlaying) p.pause() }
                     playing = false
