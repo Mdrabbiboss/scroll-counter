@@ -52,6 +52,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var pagerNode = 0                // identity of the pager view (changes when the app rebuilds it)
         var candStreak = 0               // exact one-screen swipes on a not-yet-proven pager
         var opaqueOdd = 0                // self-drawn apps: feed-like (not one-screen) moves in a row
+        var needsRebase = false          // a new screen / list was opened: nothing counts as "seen"
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
         var sigKey: String? = null
         var sigMax = Int.MIN_VALUE
@@ -164,7 +165,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         // The app rebuilt its feed (back from another screen or app, refreshed…): numbers and
         // distances from before don't apply any more, so start a fresh baseline from here.
         val node = lastPager?.hashCode() ?: 0
-        if (st.pagerNode != 0 && node != 0 && node != st.pagerNode) {
+        if (st.needsRebase || (st.pagerNode != 0 && node != 0 && node != st.pagerNode)) {
+            st.needsRebase = false
             st.maxIndex = if (from >= 0) from else Int.MIN_VALUE
             st.lastIdx = Int.MIN_VALUE
             st.eventIndex = Int.MIN_VALUE
@@ -415,22 +417,24 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (index != null && prev != Int.MIN_VALUE) {
             if (index > prev) {
                 st.indexReliable = true
-                // Only reels past the furthest one reached count: going back and forward again
-                // over reels you've already seen never counts them twice.
-                val frontier = maxOf(prev, st.maxIndex)
-                st.maxIndex = maxOf(st.maxIndex, index)
-                st.behind = 0
-                if (index <= frontier) { DetectLog.add(appKey, "forward to #$index, already seen → not counted"); return 0 }
-                lastMoveExact = index - prev == 1
-                return mark(st, (index - frontier).coerceAtMost(3))
+                val step = index - prev
+                // A jump of many reels at once = a different list (another profile's videos, a
+                // channel's shorts…) shown in the same player: count from here, nothing "seen".
+                if (step > JUMP) { st.behind = 0; lastMoveExact = false; return mark(st, 1) }
+                // Only the reels you went back over and are now passing again are skipped.
+                var n = step
+                val again = minOf(n, st.behind)
+                st.behind -= again; n -= again
+                if (n == 0) { DetectLog.add(appKey, "forward to #$index, seen a moment ago → not counted"); return 0 }
+                lastMoveExact = step == 1
+                return mark(st, n)
             }
             if (index < prev) {
                 st.indexReliable = true
-                // A jump back of many reels at once is the app refreshing its feed, not you swiping
-                // back: start counting from here again.
-                if (prev - index > 3) { st.maxIndex = index; st.behind = 0; DetectLog.add(appKey, "feed restarted at #$index"); return 0 }
-                st.maxIndex = maxOf(st.maxIndex, prev)
-                st.behind = (st.maxIndex - index).coerceIn(0, 30); return 0       // went back
+                val step = prev - index
+                // A big jump back is a new list starting at its top, not you swiping back.
+                if (step > JUMP) { st.behind = 0; DetectLog.add(appKey, "new list at #$index"); return 0 }
+                st.behind = (st.behind + step).coerceAtMost(MAX_BEHIND); return 0          // went back
             }
             // Same number: trust it if it has proven reliable, otherwise fall through to distance.
             if (st.indexReliable && !(hadDelta && pages >= 0.6f)) return 0
@@ -438,7 +442,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (hadDelta) {
             if (pages <= -0.35f) {                                                              // went back
                 val k = (-pages).roundToInt().coerceIn(1, 3)
-                st.behind = (st.behind + k).coerceAtMost(30)
+                st.behind = (st.behind + k).coerceAtMost(MAX_BEHIND)
                 if (index == null && st.lastIdx != Int.MIN_VALUE) st.lastIdx -= k
                 return 0
             }
@@ -859,6 +863,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     fun forgetPager() {
         lastPager = null
+        states.values.forEach { it.needsRebase = true }
+    }
+
+    /** A new screen opened inside the app (a profile, a channel…): the next list starts fresh. */
+    fun screenChanged(appKey: String) {
+        states[appKey]?.needsRebase = true
     }
 
     // ------------------------------------------------------------------ signature apps
@@ -946,9 +956,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         pager.getBoundsInScreen(rect)
         lastPagerHeight = rect.height().coerceAtLeast(1)
         val pagerId = pager.hashCode()
-        if (st.sigPager != pagerId) {
-            // A different Shorts player (opened from a channel, search…): new baseline.
-            st.sigPager = pagerId; st.sigKey = null; st.sigMax = Int.MIN_VALUE
+        if (st.sigPager != pagerId || st.needsRebase) {
+            // A different Shorts player (opened from a channel, search…), or a new screen: new baseline.
+            st.sigPager = pagerId; st.sigKey = null; st.sigMax = Int.MIN_VALUE; st.behind = 0; st.needsRebase = false
         }
         if (!isSnapped()) {
             if (st.retries < MAX_RETRIES) { st.retries++; return RETRY }
@@ -973,8 +983,17 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (key == prevKey) return 0
         st.sigKey = key
         if (idx != null) {
-            if (st.sigMax != Int.MIN_VALUE && idx <= st.sigMax) { DetectLog.add(appKey, "shorts: back to #$idx → not counted"); return 0 }
+            val last = st.sigMax                          // the short on screen before this swipe
             st.sigMax = idx
+            if (last != Int.MIN_VALUE) {
+                val step = idx - last
+                when {
+                    // Big jump either way: another list (a channel's shorts…) in the same player.
+                    step > JUMP || step < -JUMP -> { st.behind = 0; if (step < 0) { DetectLog.add(appKey, "shorts: new list at #$idx"); return 0 } }
+                    step < 0 -> { st.behind = (st.behind - step).coerceAtMost(MAX_BEHIND); DetectLog.add(appKey, "shorts: back to #$idx → not counted"); return 0 }
+                    st.behind > 0 -> { st.behind -= 1; DetectLog.add(appKey, "shorts: #$idx seen a moment ago → not counted"); return 0 }
+                }
+            }
         } else if (hadDelta && pages < 0f) {
             DetectLog.add(appKey, "shorts: swiped back → not counted"); return 0
         }
@@ -1015,6 +1034,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private val NATIVE_LISTS = listOf("RecyclerView", "ListView", "ScrollView", "ViewPager", "ViewPager2", "GridView")
         private const val MAX_RETRIES = 3
         private const val MIN_COUNT_GAP_MS = 200L
+        /** More reels than this at once (either way) = a different list in the same player. */
+        private const val JUMP = 3
+        /** At most this many reels you went back over are remembered as "seen". */
+        private const val MAX_BEHIND = 10
         /** YouTube (and its common variants). */
         private val YOUTUBE_PKGS = setOf(
             "com.google.android.youtube", "com.google.android.apps.youtube.mango",
