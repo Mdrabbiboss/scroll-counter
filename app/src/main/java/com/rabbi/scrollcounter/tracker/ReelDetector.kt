@@ -568,16 +568,20 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val id = src.viewIdResourceName ?: ""
         val cls = src.className?.toString() ?: ""
         val cacheKey = "${src.packageName}|$id|$cls|${rect.height()}"
-        pagerCache[cacheKey]?.let { if (!it) lastReason = "excluded"; return it }
+        if ((src.packageName?.toString() ?: "") !in ALL_REELS_APPS) pagerCache[cacheKey]?.let { if (!it) lastReason = "excluded"; return it }
 
         val lower = id.lowercase()
         // 2. Never a reel: comments, replies, chats, sheets, menus, search results, grids.
         if (EXCLUDE_HINTS.any { lower.contains(it) }) { lastReason = "comments/chat id"; return remember(cacheKey, false) }
         if (cls.contains("WebView") || cls.endsWith("HorizontalScrollView") || cls.contains("GridView"))
             { lastReason = "web/grid"; return remember(cacheKey, false) }
-        if (scrollsOnlySideways(src)) { lastReason = "sideways"; return remember(cacheKey, false) }
+        // Short-video apps build some video viewers (profile / repost / liked videos in TikTok) from a
+        // turned-around sideways pager, which then calls itself "sideways". There the pages' real
+        // positions on screen decide (below), and nothing is remembered as "not reels".
+        val videoApp = (src.packageName?.toString() ?: "") in ALL_REELS_APPS
+        if (!videoApp && scrollsOnlySideways(src)) { lastReason = "sideways"; return remember(cacheKey, false) }
         val ci = src.collectionInfo
-        if (ci != null && ci.columnCount > 1 && ci.rowCount <= 1) { lastReason = "horizontal list"; return remember(cacheKey, false) }
+        if (!videoApp && ci != null && ci.columnCount > 1 && ci.rowCount <= 1) { lastReason = "horizontal list"; return remember(cacheKey, false) }
 
         val named = ID_HINTS.any { lower.contains(it) }
         val n = minOf(src.childCount, 6)
@@ -811,7 +815,12 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      * Going back to one of the 2 pages you just came from is not a new reel. Returns 1 (new reel),
      * 0, or [RETRY] (mid-swipe or not settled yet — look again shortly).
      */
-    fun pageCheck(appKey: String): Int {
+    fun pageCheck(appKey: String, root: AccessibilityNodeInfo? = null): Int {
+        // Follow the video viewer that's on screen NOW (a profile's viewer is a different one from
+        // the For You feed), not one left behind.
+        if (!stillInReels()) {
+            if (!reelsStillOnScreen(root) && !findReelPager(root)) return 0
+        }
         val pager = lastPager ?: return 0
         if (!runCatching { pager.refresh() }.getOrDefault(false)) return 0
         if (!isConfident(pager) && pager.hashCode() !in provenNodes) return 0

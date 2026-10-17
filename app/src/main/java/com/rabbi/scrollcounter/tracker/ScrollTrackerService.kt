@@ -119,7 +119,7 @@ class ScrollTrackerService : AccessibilityService() {
         val s = store ?: run { pageCheckQueued = false; return }
         if (pill?.isShowing != true || pkg != pillPkg) { pageCheckQueued = false; return }
         val app = TrackedApps.forPackage(pkg)
-        val n = detector?.pageCheck(app.key) ?: 0
+        val n = detector?.pageCheck(app.key, runCatching { rootInActiveWindow }.getOrNull()) ?: 0
         if (n == ReelDetector.RETRY && ++pageCheckTries <= 6) {
             handler.postDelayed(pageCheckRunnable, 250)
             return
