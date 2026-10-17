@@ -109,10 +109,10 @@ class ScrollStore private constructor(context: Context) {
 
     /** Merge a durable copy back in, never lowering anything that's already here. */
     @Synchronized
-    fun mergeDurable(text: String) {
+    fun mergeDurable(text: String): Boolean {
         val lines = text.lines()
-        val head = lines.firstOrNull()?.split('|') ?: return
-        if (head.firstOrNull() != "v1") return
+        val head = lines.firstOrNull()?.split('|') ?: return false
+        if (head.firstOrNull() != "v1") return false
         // "Delete all history" sets a reset day. A copy made before that reset must never bring the
         // deleted days, the old start day, streak or badges back — only its newer days count.
         val savedReset = head.getOrNull(7)?.takeIf { it != "-" }
@@ -175,6 +175,19 @@ class ScrollStore private constructor(context: Context) {
             }
         }
         if (changed) bump()
+        return true
+    }
+
+    /**
+     * "Restore from backup file": merge an old backup the user picked (never lowering anything),
+     * then keep saving into that same file. Returns false if the file isn't a Scroll Counter backup.
+     */
+    fun restoreFromFile(uri: android.net.Uri): Boolean {
+        val text = DurableStore.readPicked(appContext, uri) ?: return false
+        if (!runCatching { mergeDurable(text) }.getOrDefault(false)) return false
+        DurableStore.Vault.adopt(appContext, uri)
+        DurableStore.saveNow(appContext, durableSnapshot())
+        return true
     }
 
     // ---------------- Stats ----------------

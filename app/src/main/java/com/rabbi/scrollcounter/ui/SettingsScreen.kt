@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessibilityNew
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Flag
@@ -80,6 +81,7 @@ fun SettingsScreen(
     onEditLimit: () -> Unit,
     onRequestNotifications: () -> Unit,
     onRequestStorage: () -> Unit = {},
+    onRestoreBackup: () -> Unit = {},
     onPickLanguage: () -> Unit = {},
     onAddWidget: () -> Unit = {},
 ) {
@@ -299,13 +301,15 @@ fun SettingsScreen(
             PremiumCard {
                 SettingRow(
                     Icons.Rounded.Lock, tr("History backup"),
-                    if (status.historySafe) tr("On — clear data or reinstall can't wipe your counts")
-                    else tr("Off — tap to allow, or clearing data will erase your history"),
+                    if (status.historySafe) tr("On — saved in Download/ScrollCounter and your Google backup")
+                    else tr("Off — tap to allow, or reinstalling will erase your history"),
                     iconTint = if (status.historySafe) Brand.Good else MaterialTheme.colorScheme.error,
-                    onClick = onRequestStorage
+                    onClick = if (status.historySafe) null else onRequestStorage
                 ) {
                     if (!status.historySafe) PillButton(tr("Allow"), gold = true, onClick = onRequestStorage)
                 }
+                SettingRow(Icons.Rounded.Restore, tr("Restore from backup file"), tr("Bring back your counts after reinstalling"),
+                    iconTint = Brand.Good, onClick = onRestoreBackup)
                 SettingRow(Icons.Rounded.DeleteForever, tr("Delete all history"), tr("Removes every stored day"), iconTint = MaterialTheme.colorScheme.error,
                     onClick = { confirm = Confirm.DELETE_ALL })
             }

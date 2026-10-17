@@ -50,7 +50,7 @@ import com.rabbi.scrollcounter.tracker.DeviceStatus
 import com.rabbi.scrollcounter.ui.theme.Brand
 
 /**
- * First-run setup: welcome → accessibility (with disclosure) → notifications → history backup → battery.
+ * First-run setup: welcome → accessibility (with disclosure) → notifications → history backup (and restore) → battery.
  * Each step advances automatically once the user has granted it in system settings.
  */
 @Composable
@@ -59,6 +59,7 @@ fun OnboardingScreen(
     onOpenAccessibility: () -> Unit,
     onRequestNotifications: () -> Unit,
     onOpenStorage: () -> Unit,
+    onRestoreBackup: () -> Unit = {},
     language: Lang = Lang.EN,
     onPickLanguage: () -> Unit = {},
     onOpenBattery: () -> Unit,
@@ -73,7 +74,9 @@ fun OnboardingScreen(
     LaunchedEffect(status, step) {
         if (step == 1 && status.trackerOn) { kotlinx.coroutines.delay(500); step = 2; return@LaunchedEffect }
         if (step == 2 && status.notificationsOn) { kotlinx.coroutines.delay(500); step = 3; return@LaunchedEffect }
-        if (step == 3 && status.historySafe) { kotlinx.coroutines.delay(500); step = 4; return@LaunchedEffect }
+        // Android 10+ needs no permission here, so the step stays to offer "Restore from backup file";
+        // it only moves on by itself right after an older phone grants storage access.
+        if (step == 3 && status.historySafe && autoAsked == 3) { kotlinx.coroutines.delay(500); step = 4; return@LaunchedEffect }
         if (step == 4 && status.batteryUnrestricted) return@LaunchedEffect // wait for the user to tap Finish
         if (autoAsked != step) {
             when (step) {
@@ -124,7 +127,8 @@ fun OnboardingScreen(
                     3 -> StepBody(
                         Icons.Rounded.Lock, Brand.Gold,
                         tr("Keep your history safe"),
-                        tr("Turn on \"Allow access to manage all files\" for Scroll Counter. It saves a small backup of your reel counts on your phone, so clearing the app's data or reinstalling it never wipes today's count or your last 60 days. Only numbers are saved."),
+                        if (status.historySafe) tr("Your reel counts are backed up automatically. A small file is kept in your phone's Download/ScrollCounter folder and in your Google backup, so clearing data or reinstalling never wipes today's count or your last 60 days. Only numbers are saved.\n\nUsed Scroll Counter before? Restore your old history now.")
+                        else tr("Allow storage access so Scroll Counter can keep a small backup file of your reel counts in Download/ScrollCounter. Then reinstalling never wipes today's count or your last 60 days. Only numbers are saved."),
                         done = status.historySafe,
                         badge = tr("REQUIRED")
                     )
@@ -157,8 +161,10 @@ fun OnboardingScreen(
                 }
             }
             3 -> {
-                if (status.historySafe) PrimaryButton(tr("Continue")) { step = 4 }
-                else {
+                if (status.historySafe) {
+                    PrimaryButton(tr("Continue")) { step = 4 }
+                    SecondaryButton(tr("Restore from backup file"), onRestoreBackup)
+                } else {
                     PrimaryButton(tr("Allow history backup"), onOpenStorage)
                     RequiredNote()
                 }

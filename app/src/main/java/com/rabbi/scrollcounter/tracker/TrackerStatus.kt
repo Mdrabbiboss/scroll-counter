@@ -30,16 +30,6 @@ object TrackerStatus {
         historySafe = com.rabbi.scrollcounter.data.DurableStore.Vault.hasAccess(context),
     )
 
-    /** Android 11+: the "All files access" switch for this app (used for the history backup file). */
-    fun openStorageAccessSettings(context: Context) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val direct = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
-            if (start(context, direct)) return
-            if (start(context, Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))) return
-        }
-        openAppDetails(context)
-    }
-
     fun isEnabled(context: Context): Boolean {
         val enabled = Settings.Secure.getString(
             context.contentResolver,

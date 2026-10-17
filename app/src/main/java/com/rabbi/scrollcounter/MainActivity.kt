@@ -116,7 +116,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     var status by remember { mutableStateOf(TrackerStatus.read(context)) }
     LifecycleResumeEffect(Unit) {
         status = TrackerStatus.read(context)
-        // Coming back from "All files access" (or after a reinstall): bring the saved history back.
+        // Back in the app (e.g. after allowing storage on an older phone): bring the saved history back.
         if (status.historySafe) store.restoreDurable()
         onPauseOrDispose { }
     }
@@ -127,9 +127,22 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
         if (status.historySafe) store.restoreDurable()
     }
     val requestStorage: () -> Unit = {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) TrackerStatus.openStorageAccessSettings(context)
-        else storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        // Android 10+ needs no permission for the backup file in Download/ScrollCounter.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
+
+    // "Restore from backup file": after a reinstall Android hides the old backup from the app,
+    // so the user picks it once in the system file picker (opened right in Download/ScrollCounter).
+    val restoreLauncher = rememberLauncherForActivityResult(PickBackupFile()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val ok = store.restoreFromFile(uri)
+        android.widget.Toast.makeText(
+            context,
+            if (ok) tr("History restored") else tr("That file isn't a Scroll Counter backup"),
+            android.widget.Toast.LENGTH_LONG
+        ).show()
+    }
+    val restoreBackup: () -> Unit = { runCatching { restoreLauncher.launch(Unit) } }
 
     // Notifications: ask once with the system dialog (Android 13+); after that, open app settings.
     var askedNotifications by rememberSaveable { mutableStateOf(false) }
@@ -242,6 +255,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                     onOpenAccessibility = { TrackerStatus.openAccessibilitySettings(context) },
                     onRequestNotifications = requestNotifications,
                     onOpenStorage = requestStorage,
+                    onRestoreBackup = restoreBackup,
                     language = store.language,
                     onPickLanguage = openLanguages,
                     onOpenBattery = { TrackerStatus.openBatterySettings(context) },
@@ -326,6 +340,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                                 onEditLimit = { showLimit = true },
                                 onRequestNotifications = requestNotifications,
                                 onRequestStorage = requestStorage,
+                                onRestoreBackup = restoreBackup,
                                 onPickLanguage = openLanguages,
                                 onAddWidget = addWidget
                             )
@@ -414,4 +429,23 @@ private fun BannerAd() {
             onRelease = { it.destroy() }
         )
     }
+}
+
+/** System file picker for a backup file, opening in Download/ScrollCounter where the app saves it. */
+private class PickBackupFile : androidx.activity.result.contract.ActivityResultContract<Unit, android.net.Uri?>() {
+    override fun createIntent(context: android.content.Context, input: Unit) =
+        android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT)
+            .addCategory(android.content.Intent.CATEGORY_OPENABLE)
+            .setType("*/*")
+            .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION or android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            .putExtra(
+                android.provider.DocumentsContract.EXTRA_INITIAL_URI,
+                android.provider.DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:${android.os.Environment.DIRECTORY_DOWNLOADS}/${com.rabbi.scrollcounter.data.DurableStore.Vault.FOLDER}"
+                )
+            )
+
+    override fun parseResult(resultCode: Int, intent: android.content.Intent?): android.net.Uri? =
+        if (resultCode == android.app.Activity.RESULT_OK) intent?.data else null
 }
