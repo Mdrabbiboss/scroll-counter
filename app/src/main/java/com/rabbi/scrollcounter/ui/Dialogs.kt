@@ -5,6 +5,7 @@ import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -77,8 +78,8 @@ private const val MAX_LIMIT = com.rabbi.scrollcounter.data.ScrollStore.MAX_LIMIT
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
-    if (locked) { LockedLimitSheet(current, onDismiss); return }
+fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, onSquatUnlock: (() -> Unit)? = null, onSave: (Int) -> Unit) {
+    if (locked) { LockedLimitSheet(current, onDismiss, onSquatUnlock); return }
     var text by remember { mutableStateOf(current.toString()) }
     val value = text.toIntOrNull()
     val valid = value != null && value in MIN_LIMIT..MAX_LIMIT
@@ -253,7 +254,7 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
 /** Shown when the limit was already changed today: read-only, unlocks tomorrow. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
+private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit, onSquatUnlock: (() -> Unit)?) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -305,11 +306,29 @@ private fun LockedLimitSheet(current: Int, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                tr("You already set your limit today. Stick with it! It unlocks at midnight."),
+                if (onSquatUnlock != null) tr("You already set your limit today. Stick with it! It unlocks at midnight — or earn one more change with 10 squats.")
+                else tr("You already set your limit today. Stick with it! It unlocks at midnight."),
                 style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(20.dp))
-            Box(
+            if (onSquatUnlock != null) {
+                // Earn it: 10 real squats in front of the camera unlock one more change today.
+                Row(
+                    Modifier.fillMaxWidth().height(58.dp).clip(RoundedCornerShape(18.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43))))
+                        .clickable(onClick = onSquatUnlock),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.FitnessCenter, null, tint = Color(0xFF4A2A00), modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(tr("Do 10 squats to unlock"), color = Color(0xFF4A2A00), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(tr("Uses the camera to count — nothing is recorded"), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text(tr("Got it"), color = Color.White.copy(alpha = 0.8f))
+                }
+            } else Box(
                 Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(18.dp))
                     .background(Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43))))
                     .clickable(onClick = onDismiss),
@@ -488,7 +507,7 @@ fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
         title = { Text(tr("Privacy policy")) },
         text = {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                Text(PRIVACY_POLICY_TEXT, style = MaterialTheme.typography.bodyMedium)
+                Text(PRIVACY_POLICY_TEXT + "\n\n" + tr("Camera\nUsed only when you choose \"Do 10 squats to unlock\", to count your squats with on-device pose detection. No photo or video is recorded, saved or sent."), style = MaterialTheme.typography.bodyMedium)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Close")) } }

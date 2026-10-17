@@ -12,8 +12,8 @@ android {
         applicationId = "com.rabbi.scrollcounter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 60
-        versionName = "6.4"
+        versionCode = 61
+        versionName = "6.5"
     }
 
     // Release signing comes from environment variables (set by GitHub Actions secrets or your PC).
@@ -91,4 +91,12 @@ dependencies {
     // Block Store: keeps the reel history on the phone even if the app is uninstalled
     implementation("com.google.android.gms:play-services-auth-blockstore:16.4.0")
     implementation("com.google.android.ump:user-messaging-platform:3.0.0")
+
+    // "10 squats to unlock": camera + on-device pose detection (no internet, nothing stored)
+    val camerax = "1.3.4"
+    implementation("androidx.camera:camera-core:$camerax")
+    implementation("androidx.camera:camera-camera2:$camerax")
+    implementation("androidx.camera:camera-lifecycle:$camerax")
+    implementation("androidx.camera:camera-view:$camerax")
+    implementation("com.google.mlkit:pose-detection:18.0.0-beta5")
 }

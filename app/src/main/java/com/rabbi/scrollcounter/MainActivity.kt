@@ -146,6 +146,11 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     }
 
     var showDisclosure by remember { mutableStateOf(false) }
+    // 10 squats done → reopen the limit editor, now unlocked for one more change.
+    var showLimitAfterSquats by remember { mutableStateOf(false) }
+    val squatLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == android.app.Activity.RESULT_OK) showLimitAfterSquats = true
+    }
 
     // ---- Language: pick on the first screen or in Settings; the app redraws in it ----
     var showLanguages by remember { mutableStateOf(false) }
@@ -369,11 +374,16 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
             BadgeCelebration(b, onShare = { celebrate = null; shareBadge(b) }, onDismiss = { celebrate = null })
         }
         sharing?.let { (bmp, msg) -> SharePreviewSheet(bmp, msg) { sharing = null } }
+        LaunchedEffect(showLimitAfterSquats) { if (showLimitAfterSquats) { showLimitAfterSquats = false; kotlinx.coroutines.delay(250); showLimit = true } }
         if (showLimit) {
             LimitDialog(
                 current = store.dailyLimit,
                 locked = store.limitLockedToday,
                 onDismiss = { showLimit = false },
+                onSquatUnlock = {
+                    showLimit = false
+                    squatLauncher.launch(android.content.Intent(context, com.rabbi.scrollcounter.squat.SquatUnlockActivity::class.java))
+                },
                 onSave = {
                     store.dailyLimit = it
                     // A new, higher limit means today's alerts may fire again.

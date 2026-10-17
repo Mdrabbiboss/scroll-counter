@@ -348,13 +348,27 @@ class ScrollStore private constructor(context: Context) {
             settings.edit()
                 .putInt("daily_limit", value.coerceIn(10, MAX_LIMIT))
                 .putString(KEY_LIMIT_DAY, LocalDate.now().toString())
+                .remove(KEY_SQUAT_UNLOCK)            // a squat unlock is good for one change
                 .apply()
             bump()
         }
 
-    /** True once the limit was changed today: it can only be changed again tomorrow. */
+    /**
+     * True once the limit was changed today: it can only be changed again tomorrow — or right
+     * now after earning one extra change with 10 squats ([grantSquatUnlock]).
+     */
     val limitLockedToday: Boolean
-        get() = settings.getString(KEY_LIMIT_DAY, null) == LocalDate.now().toString()
+        get() {
+            val today = LocalDate.now().toString()
+            return settings.getString(KEY_LIMIT_DAY, null) == today && settings.getString(KEY_SQUAT_UNLOCK, null) != today
+        }
+
+    /** 10 squats done: the locked limit may be changed once more today. */
+    fun grantSquatUnlock() {
+        settings.edit().putString(KEY_SQUAT_UNLOCK, LocalDate.now().toString())
+            .putInt(KEY_SQUATS_TOTAL, settings.getInt(KEY_SQUATS_TOTAL, 0) + 10).apply()
+        bump()
+    }
 
     /** Pausing was removed: tracking is always on while the Accessibility service is enabled. */
     var paused: Boolean
@@ -469,6 +483,8 @@ class ScrollStore private constructor(context: Context) {
         private const val KEY_FIRST_DAY = "first_day"
         private const val KEY_LIMIT_DAY = "limit_set_day"
         private const val KEY_BEST = "best_streak"
+        private const val KEY_SQUAT_UNLOCK = "squat_unlock_day"
+        private const val KEY_SQUATS_TOTAL = "squats_total"
         private const val KEY_BADGES = "badge_dates"
         const val MAX_LIMIT = 500
 
