@@ -295,26 +295,6 @@ fun SettingsScreen(
             }
         }
 
-        // ---- Data ----
-        item { SectionLabel(tr("Your data")) }
-        item {
-            PremiumCard {
-                SettingRow(
-                    Icons.Rounded.Lock, tr("History backup"),
-                    if (status.historySafe) tr("On — saved in Download/ScrollCounter and your Google backup")
-                    else tr("Off — tap to allow, or reinstalling will erase your history"),
-                    iconTint = if (status.historySafe) Brand.Good else MaterialTheme.colorScheme.error,
-                    onClick = if (status.historySafe) null else onRequestStorage
-                ) {
-                    if (!status.historySafe) PillButton(tr("Allow"), gold = true, onClick = onRequestStorage)
-                }
-                SettingRow(Icons.Rounded.Restore, tr("Restore from backup file"), tr("Bring back your counts after reinstalling"),
-                    iconTint = Brand.Good, onClick = onRestoreBackup)
-                SettingRow(Icons.Rounded.DeleteForever, tr("Delete all history"), tr("Removes every stored day"), iconTint = MaterialTheme.colorScheme.error,
-                    onClick = { confirm = Confirm.DELETE_ALL })
-            }
-        }
-
         // ---- About ----
         item { SectionLabel(tr("About")) }
         item {

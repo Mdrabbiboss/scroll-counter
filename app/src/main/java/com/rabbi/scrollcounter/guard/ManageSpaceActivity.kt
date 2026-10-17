@@ -45,8 +45,7 @@ import java.io.File
  * Android opens this screen instead of wiping everything when the user taps "Clear data" /
  * "Clear storage" / "Manage space" for Scroll Counter in the phone's Settings
  * (android:manageSpaceActivity). The reel history and today's limit stay, so clearing data
- * can't be used to reset the daily limit. Only the cache can be cleared here; past days are
- * deleted from inside the app (Settings → Delete all history).
+ * can't be used to reset the daily limit. Only the cache can be cleared here.
  */
 class ManageSpaceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +71,7 @@ class ManageSpaceActivity : ComponentActivity() {
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            tr("Scroll Counter's reel counts can't be wiped from here, so your daily limit stays fair.\n\nYou can free up space by clearing the cache. To delete past days, open the app and go to Settings → Delete all history."),
+                            tr("Scroll Counter's reel counts can't be wiped from here, so your daily limit stays fair.\n\nYou can free up space by clearing the cache."),
                             style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(32.dp))

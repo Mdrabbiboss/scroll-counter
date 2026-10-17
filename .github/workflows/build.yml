@@ -43,6 +43,15 @@ jobs:
           MSG=$(grep -E -A4 "^e: |What went wrong|error:|ERROR:|Missing class" build.log | grep -v "^> Task" | head -30 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
           echo "::error title=Build failed::${MSG}"
 
+      - name: Check app icon resources
+        continue-on-error: true
+        run: |
+          AAPT2=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)aapt2
+          APK=app/build/outputs/apk/release/app-release.apk
+          $AAPT2 dump badging $APK | grep -E "application-icon|application:" || true
+          $AAPT2 dump resources $APK | grep -E -A8 "mipmap/ic_app|drawable/sc_app_icon" || true
+          $AAPT2 dump xmltree --file AndroidManifest.xml $APK | grep -E "icon|roundIcon" || true
+
       - name: Upload debug APK (install on your phone to test)
         uses: actions/upload-artifact@v4
         with:
