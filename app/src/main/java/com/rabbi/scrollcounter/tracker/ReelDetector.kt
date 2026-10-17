@@ -51,6 +51,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var eventFresh = false           // this swipe ended on an exact item number (from == to)
         var pagerNode = 0                // identity of the pager view (changes when the app rebuilds it)
         var candStreak = 0               // exact one-screen swipes on a not-yet-proven pager
+        var opaqueOdd = 0                // self-drawn apps: feed-like (not one-screen) moves in a row
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
         var sigKey: String? = null
         var sigMax = Int.MIN_VALUE
@@ -101,6 +102,16 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (trustedPagers.size > 20) trustedPagers.clear()
             trustedPagers.add(nodeId)
         }
+        // A different full-page scroller that is clearly a list (feed, profile, inbox) is being
+        // scrolled: the user has left the reels. (Comment sheets start lower and never count.)
+        leftReels = false
+        if (!accepted) {
+            src.getBoundsInScreen(rect)
+            val fullPage = rect.width() >= screenW * 0.85f && rect.height() >= screenH * 0.6f && rect.top <= screenH * 0.22f
+            val listy = lastReason.startsWith("list shows") || lastReason == "page is a list" || lastReason == "holds a list"
+            val isReelsNode = lastPager?.let { it.hashCode() == nodeId || runCatching { innerPager(src) }.getOrNull()?.hashCode() == it.hashCode() } == true
+            if (fullPage && listy && !isReelsNode) leftReels = true
+        }
         val cn = src.className?.toString() ?: ""
         lastSourceNativeList = NATIVE_LISTS.any { cn.endsWith(it) }
         DetectLog.add(
@@ -115,6 +126,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         )
         if (!accepted) return false
         val opaque = lastWasOpaque
+        if (sure) rememberShape(innerPager(src) ?: src)
         // ViewPager2: the real pager of videos is the single inner list — track that one.
         lastPager = innerPager(src) ?: src
         lastPagerHeight = rect.height().coerceAtLeast(1)
@@ -179,8 +191,15 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val pager = lastPager
         val confident = st.opaque || isConfident(pager)
         lastMoveExact = false
+        leftReels = false
+        atRestNotReels = false
         val n = settleInner(appKey, st, root)
-        if (n <= 0 || confident) return n
+        if (n > 0 && confident) rememberShape(lastPager)
+        if (n <= 0 || confident) {
+            // An unconfirmed page that, at rest, isn't a reel page at all: not in reels.
+            if (n == 0 && atRestNotReels && (!confident || st.opaque)) leftReels = true
+            return n
+        }
         // Not proven to be reels yet (no reels view name, not a short-video-only app): a profile,
         // photo viewer or post can look like a full-screen page too. Only a run of exact one-screen
         // swipes onto new pages proves it — profiles and feeds never move like that. Until then
@@ -189,6 +208,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             st.candStreak++
             if (st.candStreak >= 2) {
                 pager?.let { provenNodes.add(it.hashCode()) }
+                rememberShape(pager)
                 st.candStreak = 0
                 DetectLog.add(appKey, "2 exact reel swipes → reels confirmed")
                 return 2
@@ -197,8 +217,69 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             return 0
         }
         st.candStreak = 0
+        leftReels = true
         DetectLog.add(appKey, "not an exact reel swipe on an unconfirmed page → not counted")
         return 0
+    }
+
+    /**
+     * Set after [onScroll] / [settle] when what just happened clearly is NOT reels: a feed,
+     * profile or inbox list was scrolled, or a page moved like a normal feed. The counter hides
+     * right away then; otherwise it stays up as long as the reels container is on screen.
+     */
+    var leftReels = false
+        private set
+    private var atRestNotReels = false
+
+    // The reels container last confirmed, so a redrawn copy of it (apps rebuild their views when
+    // a new video loads) is still recognised and the counter doesn't blink off while in reels.
+    private var shapePkg = ""
+    private var shapeId = ""
+    private var shapeCls = ""
+
+    private fun rememberShape(n: AccessibilityNodeInfo?) {
+        n ?: return
+        shapePkg = n.packageName?.toString() ?: return
+        shapeId = n.viewIdResourceName ?: ""
+        shapeCls = n.className?.toString() ?: ""
+    }
+
+    private fun fillsScreen(n: AccessibilityNodeInfo): Boolean = runCatching {
+        n.isVisibleToUser && run {
+            n.getBoundsInScreen(tmp)
+            tmp.width() >= screenW * 0.85f && tmp.height() >= screenH * 0.6f && tmp.top <= screenH * 0.22f
+        }
+    }.getOrDefault(false)
+
+    /**
+     * Is the confirmed reels feed still on screen? True while the same container — or a fresh copy
+     * of it (same view name, or same kind of view when it has no name) — still fills the screen.
+     * Used to keep the counter up the whole time you're in reels, even while a video loads.
+     */
+    fun reelsStillOnScreen(root: AccessibilityNodeInfo?): Boolean {
+        if (stillInReels()) return true
+        root ?: return false
+        val pkg = root.packageName?.toString() ?: return false
+        if (pkg != shapePkg || (shapeId.isEmpty() && shapeCls.isEmpty())) return false
+        if (shapeId.isNotEmpty()) {
+            val hits = runCatching { root.findAccessibilityNodeInfosByViewId(shapeId) }.getOrNull().orEmpty()
+            hits.firstOrNull { fillsScreen(it) }?.let { lastPager = it; return true }
+        }
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var visited = 0
+        while (queue.isNotEmpty() && visited < 220) {
+            val n = queue.removeFirst()
+            visited++
+            val idOk = shapeId.isEmpty() || n.viewIdResourceName == shapeId
+            // Same kind of container, filling the screen, and still laid out like a reels pager
+            // (a profile grid or feed list of the same view type is not).
+            if (idOk && n.className?.toString() == shapeCls && fillsScreen(n) && !scrollsOnlySideways(n) &&
+                runCatching { isReelPager(n) }.getOrDefault(false)) { lastPager = n; return true }
+            n.getBoundsInScreen(tmp)
+            if (tmp.height() >= screenH * 0.4f) for (i in 0 until minOf(n.childCount, 14)) runCatching { n.getChild(i) }.getOrNull()?.let { queue.add(it) }
+        }
+        return false
     }
 
     /** Set by [settleInner]: the swipe moved exactly one whole page onto a new one. */
@@ -246,6 +327,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 st.retries = 0
                 st.pending = false
                 st.hadIndex = false; st.hadDelta = false; st.accum = 0f
+                atRestNotReels = true
                 DetectLog.add(appKey, "at rest: not a reel page ($lastReason)")
                 return 0
             }
@@ -268,6 +350,11 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             if (!hadDelta) return 0
             val whole = pages.roundToInt()
             val exact = accum > 0 && whole == 1 && abs(pages - whole) <= 0.05f
+            // A real move that isn't one exact screen is a normal feed being scrolled (same view as
+            // the reels in these apps): that's leaving the reels.
+            // Two such moves in a row, so one odd swipe (or a comment list) never hides the counter.
+            if (!exact && abs(pages) >= 0.35f) { st.opaqueOdd++; if (st.opaqueOdd >= 2) atRestNotReels = true }
+            if (exact) st.opaqueOdd = 0
             if (!exact) { st.opaqueStreak = 0; DetectLog.add(appKey, "self-drawn: swipe ${"%.2f".format(pages)} screens → not reels"); return 0 }
             st.opaqueStreak++
             DetectLog.add(appKey, "self-drawn: exact snap #${st.opaqueStreak}")
@@ -656,6 +743,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     private fun found(pkg: String, n: AccessibilityNodeInfo) {
         lastPager = innerPager(n) ?: n
+        rememberShape(lastPager)
         n.getBoundsInScreen(rect)
         lastPagerHeight = rect.height().coerceAtLeast(1)
         n.viewIdResourceName?.let { if (pkg.isNotEmpty()) knownPagerIds[pkg] = it }
@@ -856,6 +944,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     fun findSignature(root: AccessibilityNodeInfo?): Boolean {
         val n = findSignaturePager(root) ?: return false
         lastPager = n
+        rememberShape(n)
         n.getBoundsInScreen(rect)
         lastPagerHeight = rect.height().coerceAtLeast(1)
         return true

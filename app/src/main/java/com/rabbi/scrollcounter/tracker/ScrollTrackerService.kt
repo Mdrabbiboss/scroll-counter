@@ -37,6 +37,9 @@ class ScrollTrackerService : AccessibilityService() {
 
     /** Packages that never contain reels: this app, system UI, home screens, keyboards, settings. */
     private val ignored = HashSet<String>()
+    /** Shown over an app without leaving it: notification shade, keyboards, permission dialogs. */
+    private val transientPkgs = HashSet<String>()
+    private val launchers = HashSet<String>()
     /** Packages we've decided are social/video apps (for blocking and the quick reels scan). */
     private val socialCache = HashMap<String, Boolean>()
     private val countedKeys = HashSet<String>()
@@ -53,6 +56,7 @@ class ScrollTrackerService : AccessibilityService() {
             return@Runnable
         }
         DetectLog.add(app.packages.first(), if (n > 0) "swipe settled → +$n reel" else "swipe settled → same reel")
+        if (n == 0 && detector?.leftReels == true && pill?.isShowing == true) { leaveReels(); return@Runnable }
         if (n > 0) {
             detector?.noteCurrent(app.key)
             onNewReels(app, n, detector?.lastPagerHeight ?: 0)
@@ -98,27 +102,37 @@ class ScrollTrackerService : AccessibilityService() {
         if (n > 0) onNewReels(app, n, resources.displayMetrics.heightPixels)
     }
 
-    /** While the counter is up, check every so often whether the user is still in a reels feed. */
+    /**
+     * While the counter is up, check every so often whether the user is still in a reels feed.
+     * The counter stays up the whole time the reels feed is on screen — also while a video loads,
+     * the app redraws, or a comment sheet / the notification shade is over it — and hides only
+     * when you really leave: another app or the home screen, or the reels feed has been gone
+     * from the screen for a few checks in a row.
+     */
     private val watcher = object : Runnable {
         override fun run() {
             val p = pill ?: return
             if (!p.isShowing) return
             val s = store
-            val activePkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
-            val inReels = when {
-                activePkg == null || activePkg in ignored -> false
-                TrackedApps.isBrowser(activePkg) -> web?.inReels(TrackedApps.forPackage(activePkg).key) == true
-                else -> detector?.stillInReels() == true || snap?.inReels(TrackedApps.forPackage(activePkg).key) == true
+            val root = runCatching { rootInActiveWindow }.getOrNull()
+            val activePkg = root?.packageName?.toString()
+            // The shade, a keyboard or a permission dialog over the reel: not leaving — just wait.
+            val transient = activePkg == null || activePkg in transientPkgs
+            // Any other app, the home screen or Scroll Counter itself in front: you left the reels.
+            val left = !transient && (activePkg in launchers || (pillPkg != null && activePkg != pillPkg))
+            val stillThere = when {
+                left -> false
+                transient -> true
+                TrackedApps.isBrowser(activePkg!!) -> web?.inReels(TrackedApps.forPackage(activePkg).key) == true
+                else -> detector?.reelsStillOnScreen(root) == true ||
+                    detector?.findReelPager(root) == true ||
+                    snap?.inReels(TrackedApps.forPackage(activePkg).key) == true
             }
-            // Before hiding, look again on the current screen (the old pager node can go stale
-            // after the app redraws), and only hide after two misses in a row — no flicker.
-            val stillThere = inReels || (activePkg != null && activePkg !in ignored && !TrackedApps.isBrowser(activePkg) &&
-                detector?.findReelPager(runCatching { rootInActiveWindow }.getOrNull()) == true)
             if (stillThere) misses = 0 else misses++
             // Watch time: while the reels feed is on screen (and the screen is on), the clock runs.
             val now = SystemClock.uptimeMillis()
             val interactive = runCatching { getSystemService(android.os.PowerManager::class.java)?.isInteractive }.getOrNull() != false
-            if (stillThere && interactive && activePkg != null) {
+            if (stillThere && !transient && interactive && activePkg != null) {
                 val key = TrackedApps.forPackage(activePkg).key
                 if (watchKey != null && watchKey != key) flushWatchTime()
                 watchKey = key
@@ -128,18 +142,25 @@ class ScrollTrackerService : AccessibilityService() {
             } else {
                 lastWatchTick = 0L
             }
-            if (misses >= 2 || s?.bubbleOn != true || s.paused) {
-                misses = 0
-                flushWatchTime()
-                lastWatchTick = 0L
-                p.hide()
-                Notifier.clearLive(this@ScrollTrackerService)
-                detector?.forgetPager()
-                startPresenceScan()
-            } else {
-                handler.postDelayed(this, WATCH_MS)
-            }
+            if (left || misses >= HIDE_AFTER_MISSES || s?.bubbleOn != true || s.paused) leaveReels()
+            else handler.postDelayed(this, WATCH_MS)
         }
+    }
+
+    /** The app the counter is showing for (set when it appears). */
+    private var pillPkg: String? = null
+
+    /** You left the reels: hide the counter, save watch time, and look for reels again. */
+    private fun leaveReels() {
+        misses = 0
+        flushWatchTime()
+        lastWatchTick = 0L
+        pill?.hide()
+        pillPkg = null
+        handler.removeCallbacks(watcher)
+        Notifier.clearLive(this@ScrollTrackerService)
+        detector?.forgetPager()
+        startPresenceScan()
     }
 
     private var misses = 0
@@ -216,14 +237,18 @@ class ScrollTrackerService : AccessibilityService() {
         ignored += setOf(packageName, "com.android.systemui", "android", "com.android.settings",
             "com.google.android.permissioncontroller", "com.android.permissioncontroller",
             "com.google.android.packageinstaller", "com.android.packageinstaller")
+        transientPkgs.clear()
+        transientPkgs += setOf("com.android.systemui", "android",
+            "com.google.android.permissioncontroller", "com.android.permissioncontroller")
+        launchers.clear()
         runCatching {
             val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             packageManager.queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY)
-                .forEach { ignored += it.activityInfo.packageName }
+                .forEach { ignored += it.activityInfo.packageName; launchers += it.activityInfo.packageName }
         }
         runCatching {
             val imm = getSystemService(InputMethodManager::class.java)
-            imm?.enabledInputMethodList?.forEach { ignored += it.packageName }
+            imm?.enabledInputMethodList?.forEach { ignored += it.packageName; transientPkgs += it.packageName }
         }
     }
 
@@ -247,6 +272,10 @@ class ScrollTrackerService : AccessibilityService() {
             }
         }
 
+        // Home screen (or another app's window) in front: the reels are left — hide at once.
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && pill?.isShowing == true &&
+            pkg !in transientPkgs && pillPkg != null && pkg != pillPkg &&
+            runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull().let { it == null || it != pillPkg }) leaveReels()
         if (pkg in ignored || store.paused) return
 
         val isBrowser = TrackedApps.isBrowser(pkg)
@@ -266,7 +295,6 @@ class ScrollTrackerService : AccessibilityService() {
                 // Shorts closes it, which the reels checks below take care of.
                 // Back in a social app: look for the reels feed straight away.
                 if (!isBrowser && store.isAppEnabled(app.key) && isSocial(pkg, app)) startPresenceScan(80L)
-                else if (!isBrowser && pill?.isShowing == true) { pill?.hide(); detector?.forgetPager() }
             }
 
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
@@ -310,6 +338,8 @@ class ScrollTrackerService : AccessibilityService() {
             return
         }
         if (!det.onScroll(app.key, event)) {
+            // A feed / profile / inbox list is being scrolled: you're out of the reels.
+            if (det.leftReels && pill?.isShowing == true) { DetectLog.add(app.packages.first(), "list scrolled → left reels"); leaveReels() }
             // Not a recognisable pager (web-based, Flutter, React Native or custom apps):
             // fall back to how the feed moves — exact one-screen snaps, twice in a row = reels.
             // Standard Android lists are read reliably by their layout, so a "no" there is final.
@@ -397,6 +427,10 @@ class ScrollTrackerService : AccessibilityService() {
         if (!store.bubbleOn) return
         val p = pill ?: return
         val wasShowing = p.isShowing
+        if (!wasShowing) {
+            pillPkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()?.takeIf { it !in ignored } ?: currentPkg
+            misses = 0
+        }
         p.show(total, limit, bump, store.pillSize)
         if (!wasShowing) {
             handler.removeCallbacks(watcher)
@@ -495,6 +529,8 @@ class ScrollTrackerService : AccessibilityService() {
 
     companion object {
         private const val WATCH_MS = 800L
+        /** Reels feed missing from the screen this many checks in a row (~3 s) = you left. */
+        private const val HIDE_AFTER_MISSES = 4
         private const val SCAN_GAP_MS = 300L
         private const val PRESENCE_MS = 450L
         private const val PRESENCE_MAX_TRIES = 24
