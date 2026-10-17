@@ -290,7 +290,7 @@ class ScrollTrackerService : AccessibilityService() {
                     detector?.reset(app.key)
                     web?.reset(app.key)
                     snap?.reset(app.key)
-                } else detector?.screenChanged(app.key)
+                }
                 // Limit reached: the app itself stays usable (posts, chats…) — only opening Reels /
                 // Shorts closes it, which the reels checks below take care of.
                 // Back in a social app: look for the reels feed straight away.

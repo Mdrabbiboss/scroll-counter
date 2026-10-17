@@ -58,8 +58,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.border
@@ -128,12 +126,7 @@ fun SettingsScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Long-press the logo: "Detection check" (what the tracker saw), for fixing a specific app.
-        item {
-            ScreenHeader(tr("Settings"), "Scroll Counter") {
-                Box(Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { showLog = true }) }) { AppLogo(48.dp) }
-            }
-        }
+        item { ScreenHeader(tr("Settings"), "Scroll Counter") { AppLogo(48.dp) } }
 
         // ---- Tracking ----
         item { SectionLabel(tr("Tracking")) }
