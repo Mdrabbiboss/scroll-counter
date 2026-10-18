@@ -847,7 +847,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
                 if (st.watchCandidate != print) { st.watchCandidate = print; return RETRY }
                 st.watchCandidate = null
                 st.firstPendingAt = 0L
-                if (print == base || print == st.countedPage || print in st.seenPrints) { st.watchKey = print; return 0 }
+                // Not new: the same video as before, or one of the few just seen (comments closed,
+                // back from a profile…). Nothing older is compared — prints of different videos can
+                // look alike, so a long memory would wrongly skip new ones.
+                if (print == base || print == st.countedPage || print in st.recentPages) { st.watchKey = print; return 0 }
                 return movePage(appKey, st, print, "video print: opened video")
             }
         }
