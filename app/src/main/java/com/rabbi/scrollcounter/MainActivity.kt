@@ -252,7 +252,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
             ScrollCounterTheme(true) {
                 OnboardingScreen(
                     status = status,
-                    onOpenAccessibility = { TrackerStatus.openAccessibilitySettings(context) },
+                    onOpenAccessibility = { com.rabbi.scrollcounter.guide.SetupGuide.launch(context) },
                     onRequestNotifications = requestNotifications,
                     onOpenStorage = requestStorage,
                     onRestoreBackup = restoreBackup,
@@ -380,7 +380,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
 
         if (showDisclosure) {
             DisclosureDialog(
-                onAgree = { showDisclosure = false; TrackerStatus.openAccessibilitySettings(context) },
+                onAgree = { showDisclosure = false; com.rabbi.scrollcounter.guide.SetupGuide.launch(context) },
                 onDismiss = { showDisclosure = false }
             )
         }

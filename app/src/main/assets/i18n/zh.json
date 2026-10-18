@@ -390,5 +390,16 @@
 "Your phone will show a warning and ask for permission. Tap Allow.": "手机会显示一条警告并请求权限。点按允许。",
 "That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "就这样！Scroll Counter 已经开启。回到这个应用，它就会开始计数你的短视频。",
 "Save & start again from 0": "保存并从 0 重新开始",
-"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "已完成 10 个深蹲！今天的计数将按此上限从 0 重新开始。已看过的短视频仍保留在历史记录中。"
+"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "已完成 10 个深蹲！今天的计数将按此上限从 0 重新开始。已看过的短视频仍保留在历史记录中。",
+"Find and tap “%1$s”": "找到并点按“%1$s”",
+"Tap “%1$s”": "点按“%1$s”",
+"Tap “%1$s” (it looks grey)": "点按“%1$s”（显示为灰色）",
+"Tap “%1$s”. App info opens next.": "点按“%1$s”，接着会打开应用信息。",
+"Tap ⋮ at the top right": "点按右上角的 ⋮",
+"Confirm with your fingerprint or PIN": "用指纹或 PIN 确认",
+"Find “%1$s” and tap “%2$s”": "找到“%1$s”并点按“%2$s”",
+"Turn on the switch": "打开开关",
+"How to turn on Scroll Counter": "如何开启 Scroll Counter",
+"Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "对于不是从 Play 商店安装的应用，手机会阻止此操作。允许一次后再开启 Scroll Counter。",
+"Close guide": "关闭指南"
 }

@@ -390,5 +390,16 @@
 "Your phone will show a warning and ask for permission. Tap Allow.": "โทรศัพท์จะแสดงคำเตือนและขออนุญาต แตะอนุญาต",
 "That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "เรียบร้อย! Scroll Counter เปิดแล้ว กลับมาที่แอปนี้ แล้วแอปจะเริ่มนับรีลของคุณ",
 "Save & start again from 0": "บันทึกและเริ่มใหม่จาก 0",
-"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "สควอตครบ 10 ครั้งแล้ว! การนับของวันนี้จะเริ่มใหม่จาก 0 ด้วยลิมิตนี้ รีลที่ดูไปแล้วยังอยู่ในประวัติ"
+"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "สควอตครบ 10 ครั้งแล้ว! การนับของวันนี้จะเริ่มใหม่จาก 0 ด้วยลิมิตนี้ รีลที่ดูไปแล้วยังอยู่ในประวัติ",
+"Find and tap “%1$s”": "หาแล้วแตะ “%1$s”",
+"Tap “%1$s”": "แตะ “%1$s”",
+"Tap “%1$s” (it looks grey)": "แตะ “%1$s” (จะเป็นสีเทา)",
+"Tap “%1$s”. App info opens next.": "แตะ “%1$s” จากนั้นข้อมูลแอปจะเปิดขึ้น",
+"Tap ⋮ at the top right": "แตะ ⋮ ที่มุมขวาบน",
+"Confirm with your fingerprint or PIN": "ยืนยันด้วยลายนิ้วมือหรือ PIN",
+"Find “%1$s” and tap “%2$s”": "หา “%1$s” แล้วแตะ “%2$s”",
+"Turn on the switch": "เปิดสวิตช์",
+"How to turn on Scroll Counter": "วิธีเปิด Scroll Counter",
+"Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "โทรศัพท์บล็อกสิ่งนี้สำหรับแอปที่ติดตั้งจากนอก Play Store อนุญาตครั้งเดียว แล้วเปิด Scroll Counter",
+"Close guide": "ปิดคำแนะนำ"
 }

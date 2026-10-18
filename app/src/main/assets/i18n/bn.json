@@ -391,5 +391,16 @@
 "Your phone will show a warning and ask for permission. Tap Allow.": "ফোন একটা সতর্কবার্তা দেখিয়ে অনুমতি চাইবে। অ্যালাউ চাপুন।",
 "That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "ব্যস, হয়ে গেছে! স্ক্রল কাউন্টার এখন চালু। এই অ্যাপে ফিরে আসুন, তাহলেই আপনার রিল গোনা শুরু হবে।",
 "Save & start again from 0": "সেভ করুন ও ০ থেকে আবার শুরু",
-"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "১০টি স্কোয়াট শেষ! এই লিমিটে আজকের গণনা আবার ০ থেকে শুরু হবে। যে রিলগুলো আগে দেখেছেন সেগুলো History-তে থাকবে।"
+"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "১০টি স্কোয়াট শেষ! এই লিমিটে আজকের গণনা আবার ০ থেকে শুরু হবে। যে রিলগুলো আগে দেখেছেন সেগুলো History-তে থাকবে।",
+"Find and tap “%1$s”": "“%1$s” খুঁজে ট্যাপ করুন",
+"Tap “%1$s”": "“%1$s”-এ ট্যাপ করুন",
+"Tap “%1$s” (it looks grey)": "“%1$s”-এ ট্যাপ করুন (ধূসর দেখাবে)",
+"Tap “%1$s”. App info opens next.": "“%1$s”-এ ট্যাপ করুন। এরপর App info খুলবে।",
+"Tap ⋮ at the top right": "উপরে ডানে ⋮-এ ট্যাপ করুন",
+"Confirm with your fingerprint or PIN": "ফিঙ্গারপ্রিন্ট বা পিন দিয়ে নিশ্চিত করুন",
+"Find “%1$s” and tap “%2$s”": "“%1$s” খুঁজে “%2$s”-এ ট্যাপ করুন",
+"Turn on the switch": "সুইচটি চালু করুন",
+"How to turn on Scroll Counter": "Scroll Counter যেভাবে চালু করবেন",
+"Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Play Store-এর বাইরে থেকে ইনস্টল করা অ্যাপের জন্য আপনার ফোন এটা আটকে রাখে। একবার অনুমতি দিন, তারপর Scroll Counter চালু করুন।",
+"Close guide": "গাইড বন্ধ করুন"
 }

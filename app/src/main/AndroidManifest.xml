@@ -80,6 +80,19 @@
             android:launchMode="singleTask"
             android:taskAffinity="com.rabbi.scrollcounter.block" />
 
+        <!-- Floating (picture-in-picture) how-to shown over the phone's Settings while turning Accessibility on -->
+        <activity
+            android:name=".guide.SetupGuideActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.rabbi.scrollcounter.guide"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden"
+            android:theme="@style/Theme.ScrollCounter" />
+
         <!-- 10 squats to unlock the daily limit once more -->
         <activity
             android:name=".squat.SquatUnlockActivity"

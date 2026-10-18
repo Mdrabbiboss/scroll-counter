@@ -390,5 +390,16 @@
 "Your phone will show a warning and ask for permission. Tap Allow.": "휴대폰이 경고를 보여 주며 권한을 요청해요. 허용을 누르세요.",
 "That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "끝났어요! Scroll Counter가 켜졌어요. 이 앱으로 돌아오면 릴스를 세기 시작해요.",
 "Save & start again from 0": "저장하고 0부터 다시 시작",
-"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "스쿼트 10회 완료! 이 한도로 오늘의 카운트가 0부터 다시 시작돼요. 이미 본 릴스는 기록에 남아요."
+"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "스쿼트 10회 완료! 이 한도로 오늘의 카운트가 0부터 다시 시작돼요. 이미 본 릴스는 기록에 남아요.",
+"Find and tap “%1$s”": "“%1$s” 찾아서 탭하기",
+"Tap “%1$s”": "“%1$s” 탭하기",
+"Tap “%1$s” (it looks grey)": "“%1$s” 탭하기 (회색으로 보여요)",
+"Tap “%1$s”. App info opens next.": "“%1$s” 탭하기. 다음에 앱 정보가 열려요.",
+"Tap ⋮ at the top right": "오른쪽 위 ⋮ 탭하기",
+"Confirm with your fingerprint or PIN": "지문 또는 PIN으로 확인하기",
+"Find “%1$s” and tap “%2$s”": "“%1$s” 찾아서 “%2$s” 탭하기",
+"Turn on the switch": "스위치 켜기",
+"How to turn on Scroll Counter": "Scroll Counter 켜는 방법",
+"Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Play 스토어 밖에서 설치한 앱은 휴대폰이 이를 막아요. 한 번 허용한 뒤 Scroll Counter를 켜세요.",
+"Close guide": "가이드 닫기"
 }

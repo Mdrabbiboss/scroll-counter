@@ -390,5 +390,16 @@
 "Your phone will show a warning and ask for permission. Tap Allow.": "Dein Handy zeigt eine Warnung und fragt nach der Erlaubnis. Tippe auf Zulassen.",
 "That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "Das war's! Scroll Counter ist jetzt an. Komm zurück in diese App, dann beginnt sie, deine Reels zu zählen.",
 "Save & start again from 0": "Speichern & wieder bei 0 starten",
-"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "10 Kniebeugen geschafft! Die heutige Zählung beginnt mit diesem Limit wieder bei 0. Bereits gesehene Reels bleiben im Verlauf."
+"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "10 Kniebeugen geschafft! Die heutige Zählung beginnt mit diesem Limit wieder bei 0. Bereits gesehene Reels bleiben im Verlauf.",
+"Find and tap “%1$s”": "„%1$s“ suchen und antippen",
+"Tap “%1$s”": "„%1$s“ antippen",
+"Tap “%1$s” (it looks grey)": "„%1$s“ antippen (es ist grau)",
+"Tap “%1$s”. App info opens next.": "„%1$s“ antippen. Danach öffnet sich App-Info.",
+"Tap ⋮ at the top right": "Oben rechts auf ⋮ tippen",
+"Confirm with your fingerprint or PIN": "Mit Fingerabdruck oder PIN bestätigen",
+"Find “%1$s” and tap “%2$s”": "„%1$s“ suchen und „%2$s“ antippen",
+"Turn on the switch": "Den Schalter einschalten",
+"How to turn on Scroll Counter": "So schaltest du Scroll Counter ein",
+"Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Dein Handy sperrt das für Apps, die nicht aus dem Play Store kommen. Erlaube es einmal, dann schalte Scroll Counter ein.",
+"Close guide": "Anleitung schließen"
 }
