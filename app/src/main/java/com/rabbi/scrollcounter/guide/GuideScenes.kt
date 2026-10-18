@@ -10,7 +10,7 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.RecordVoiceOver as Voice
+import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Visibility
@@ -91,12 +91,12 @@ internal fun scenesFor(skin: Skin, stage: SetupGuide.Stage): List<Scene> {
 
     fun main(appRow: MRow): MScreen = when (skin.os) {
         Os.SAMSUNG -> MScreen("Accessibility", listOf(
-            MGroup(listOf(MRow("Vision enhancements", icon = Icons.Rounded.ZoomIn, iconColor = violet), MRow("TalkBack", icon = Voice, iconColor = blue))),
+            MGroup(listOf(MRow("Vision enhancements", icon = Icons.Rounded.ZoomIn, iconColor = violet), MRow("TalkBack", icon = Icons.Rounded.RecordVoiceOver, iconColor = blue))),
             MGroup(listOf(MRow("Interaction and dexterity", icon = Icons.Rounded.TouchApp, iconColor = orange))),
             MGroup(listOf(MRow("Advanced settings", icon = Icons.Rounded.Settings, iconColor = blue), MRow("Installed apps", "3 apps", icon = Icons.Rounded.Download, iconColor = blue))),
         ))
         Os.XIAOMI -> MScreen("Accessibility", listOf(
-            MGroup(listOf(MRow("TalkBack", icon = Voice, iconColor = blue), MRow("Select to Speak", icon = Icons.Rounded.VolumeUp, iconColor = green), MRow("Text-to-speech output", icon = Icons.Rounded.ClosedCaption, iconColor = orange))),
+            MGroup(listOf(MRow("TalkBack", icon = Icons.Rounded.RecordVoiceOver, iconColor = blue), MRow("Select to Speak", icon = Icons.Rounded.VolumeUp, iconColor = green), MRow("Text-to-speech output", icon = Icons.Rounded.ClosedCaption, iconColor = orange))),
             MGroup(listOf(MRow("Downloaded apps", icon = Icons.Rounded.Download, iconColor = blue))),
         ))
         Os.COLOROS -> MScreen("Accessibility", listOf(
@@ -105,7 +105,7 @@ internal fun scenesFor(skin: Skin, stage: SetupGuide.Stage): List<Scene> {
         ))
         Os.STOCK -> MScreen("Accessibility", listOf(
             MGroup(listOf(appRow, MRow("Live Transcribe", "Off", icon = Icons.Rounded.ClosedCaption, iconColor = blue)), header = "Downloaded apps"),
-            MGroup(listOf(MRow("TalkBack", "Off", icon = Voice, iconColor = blue), MRow("Select to Speak", "Off", icon = Icons.Rounded.VolumeUp, iconColor = green)), header = "Screen readers"),
+            MGroup(listOf(MRow("TalkBack", "Off", icon = Icons.Rounded.RecordVoiceOver, iconColor = blue), MRow("Select to Speak", "Off", icon = Icons.Rounded.VolumeUp, iconColor = green)), header = "Screen readers"),
             MGroup(listOf(MRow("Color and motion", icon = Icons.Rounded.Contrast, iconColor = violet)), header = "Display"),
         ))
     }
