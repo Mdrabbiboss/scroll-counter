@@ -81,7 +81,30 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private set
 
     fun reset(appKey: String) {
+        // A self-drawn app (Facebook Lite) whose reels were already confirmed stays confirmed for
+        // a while: coming back to it (e.g. from recent apps after being sent out at the limit), the
+        // very next reel swipe counts — and closes it again — instead of needing 3 swipes first.
+        states[appKey]?.let { if (it.opaqueStreak >= 3) warmOpaque[appKey] = SystemClock.uptimeMillis() }
         states.remove(appKey)
+    }
+
+    private val warmOpaque = HashMap<String, Long>()
+
+    private fun isWarm(appKey: String): Boolean =
+        warmOpaque[appKey]?.let { SystemClock.uptimeMillis() - it < WARM_MS } == true
+
+    /** This app was just closed at the daily limit: its reels count (and close it) on the first swipe back. */
+    fun noteBlocked(appKey: String) {
+        warmOpaque[appKey] = SystemClock.uptimeMillis()
+        states[appKey]?.let { if (it.opaqueStreak < 3) it.opaqueStreak = 3 }
+    }
+
+    /** The state for an app, created warm if its self-drawn reels were confirmed recently. */
+    private fun stateFor(appKey: String): AppState = states.getOrPut(appKey) {
+        AppState().also { st ->
+            val at = warmOpaque[appKey]
+            if (at != null && SystemClock.uptimeMillis() - at < WARM_MS) st.opaqueStreak = 3
+        }
     }
 
     /** Pager views confirmed as reels feeds (by view identity), see [onScroll]. */
@@ -152,7 +175,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         lastPagerHeight = rect.height().coerceAtLeast(1)
         src.viewIdResourceName?.let { id -> src.packageName?.toString()?.let { knownPagerIds[it] = id } }
 
-        val st = states.getOrPut(appKey) { AppState() }
+        val st = stateFor(appKey)
         val key = "${src.viewIdResourceName}|${src.className}"
         st.opaque = opaque
         st.allReels = (src.packageName?.toString() ?: "") in ALL_REELS_APPS
@@ -384,7 +407,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
             // Two such moves in a row, so one odd swipe (or a comment list) never hides the counter.
             if (!exact && abs(pages) >= 0.35f) { st.opaqueOdd++; if (st.opaqueOdd >= 2) atRestNotReels = true }
             if (exact) st.opaqueOdd = 0
-            if (!exact) { st.opaqueStreak = 0; DetectLog.add(appKey, "self-drawn: swipe ${"%.2f".format(pages)} screens → not reels"); return 0 }
+            if (!exact) { st.opaqueStreak = if (isWarm(appKey)) 3 else 0; DetectLog.add(appKey, "self-drawn: swipe ${"%.2f".format(pages)} screens → not reels"); return 0 }
             st.opaqueStreak++
             DetectLog.add(appKey, "self-drawn: exact snap #${st.opaqueStreak}")
             // Three exact one-screen snaps in a row before believing it's a reels feed — comment
@@ -827,7 +850,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val pager = lastPager ?: return 0
         if (!runCatching { pager.refresh() }.getOrDefault(false)) return 0
         if (!isConfident(pager) && pager.hashCode() !in provenNodes) return 0
-        val st = states.getOrPut(appKey) { AppState() }
+        val st = stateFor(appKey)
         if (st.opaque) return 0
         // Comments / share sheet over the video: the video hasn't changed — wait.
         if (root != null && runCatching { sheetOpen(root) }.getOrDefault(false)) { st.watchCandidate = null; return 0 }
@@ -943,7 +966,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     /** The app reported scrolling (from any of its views): a swipe may be under way. */
     fun noteMotion(appKey: String) {
-        states.getOrPut(appKey) { AppState() }.lastMotionAt = SystemClock.uptimeMillis()
+        stateFor(appKey).lastMotionAt = SystemClock.uptimeMillis()
     }
 
     /** Record that [key] is now the page on screen; 1 if it's a reel not counted yet. */
@@ -989,7 +1012,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     fun prime(appKey: String): Boolean {
         val pager = lastPager ?: return false
-        val st = states.getOrPut(appKey) { AppState() }
+        val st = stateFor(appKey)
         if (hasSignature(pager.packageName?.toString() ?: "")) primeSignature(st)
         st.primedKey = "${pager.viewIdResourceName}|${pager.className}"
         val idx = currentItemIndex()
@@ -1058,7 +1081,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     /** A new screen opened inside the app (a profile, a channel…): the next list starts fresh. */
     fun screenChanged(appKey: String) {
-        val st = states.getOrPut(appKey) { AppState() }
+        val st = stateFor(appKey)
         st.needsRebase = true
         // Maybe a video was just opened from a profile / Liked / Saved: count it once it settles.
         st.firstPendingAt = SystemClock.uptimeMillis()
@@ -1120,7 +1143,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             event.scrollDeltaX != 0 && abs(event.scrollDeltaX) > abs(event.scrollDeltaY)) return false
         if (!runCatching { isSignaturePager(src) }.getOrDefault(false)) return false
-        val st = states.getOrPut(appKey) { AppState() }
+        val st = stateFor(appKey)
         lastPager = src
         lastPagerHeight = rect.height().coerceAtLeast(1)
         if (event.fromIndex >= 0 && event.fromIndex == event.toIndex) { st.eventIndex = event.fromIndex; st.hadIndex = true }
@@ -1141,7 +1164,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      * [RETRY] while the player is still moving between two shorts.
      */
     fun signatureSettle(appKey: String, root: AccessibilityNodeInfo?): Int {
-        val st = states.getOrPut(appKey) { AppState() }
+        val st = stateFor(appKey)
         val pager = lastPager?.takeIf { runCatching { it.refresh() && isSignaturePager(it) }.getOrDefault(false) }
             ?: findSignaturePager(root)
         if (pager == null) { st.pending = false; return 0 }
@@ -1227,6 +1250,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private val NATIVE_LISTS = listOf("RecyclerView", "ListView", "ScrollView", "ViewPager", "ViewPager2", "GridView")
         private const val MAX_RETRIES = 3
         private const val MIN_COUNT_GAP_MS = 200L
+        /** How long a self-drawn app's confirmed reels stay confirmed after leaving it. */
+        private const val WARM_MS = 30 * 60 * 1000L
         /** Video print: at most one new video per this long (labels settling after a swipe). */
         private const val PRINT_GAP_MS = 800L
         /** A video change only counts this soon after the screen moved. */

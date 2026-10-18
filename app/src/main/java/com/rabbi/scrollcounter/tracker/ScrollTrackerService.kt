@@ -493,6 +493,8 @@ class ScrollTrackerService : AccessibilityService() {
         Notifier.clearLive(this)
         detector?.forgetPager()
         val blockedPkg = currentPkg
+        // Coming back to it (recent apps) must close it again on the very first reel.
+        blockedPkg?.let { detector?.noteBlocked(TrackedApps.forPackage(it).key) }
         // Open the limit screen straight over the app instead of pressing Home first: pressing Home
         // makes video apps (YouTube…) shrink into a floating picture-in-picture window and keep
         // playing. Covered by our screen, the app just stops.
@@ -505,7 +507,11 @@ class ScrollTrackerService : AccessibilityService() {
         }
         // If a floating video window still appears, close it; then end the app in the background.
         handler.postDelayed({ closeFloatingVideo(4) }, 450)
-        if (blockedPkg != null && !TrackedApps.isBrowser(blockedPkg)) handler.postDelayed({ endApp(blockedPkg) }, 2500)
+        // End it in the background — tried a few times, as some phones keep it alive at first — so
+        // going back to it from recent apps restarts it on its home screen, not on the Reels.
+        if (blockedPkg != null && !TrackedApps.isBrowser(blockedPkg)) {
+            for (delay in longArrayOf(1500L, 3500L, 7000L)) handler.postDelayed({ endApp(blockedPkg) }, delay)
+        }
     }
 
     /** Closes any picture-in-picture window by dragging it onto the system's dismiss target. */
