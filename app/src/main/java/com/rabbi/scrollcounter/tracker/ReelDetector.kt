@@ -59,6 +59,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         var adoptAt = 0L                 // a swipe was counted before its page could be read
         var lastMotionAt = 0L            // the app reported any scrolling (a swipe in progress)
         var lastPageSeen: Int? = null    // the page view filling the screen at the last look
+        var firstPendingAt = 0L          // a video was just opened (new screen): count it once it settles
+        val seenPrints = LinkedHashSet<Int>() // videos counted lately (so re-opening one isn't new)
         var opaqueOdd = 0                // self-drawn apps: feed-like (not one-screen) moves in a row
         var needsRebase = false          // a new screen / list was opened: nothing counts as "seen"
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
@@ -837,6 +839,18 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (pk != null) st.lastPageSeen = pk
         val print = videoPrint(pager) ?: return RETRY
         val base = st.watchKey
+        // A video was just opened (tapped in a profile, Liked, Saved…): count it as soon as it has
+        // settled on screen — unless it's the same video as before or one counted a moment ago.
+        if (st.firstPendingAt != 0L) {
+            if (now - st.firstPendingAt > FIRST_WINDOW_MS) st.firstPendingAt = 0L
+            else {
+                if (st.watchCandidate != print) { st.watchCandidate = print; return RETRY }
+                st.watchCandidate = null
+                st.firstPendingAt = 0L
+                if (print == base || print == st.countedPage || print in st.seenPrints) { st.watchKey = print; return 0 }
+                return movePage(appKey, st, print, "video print: opened video")
+            }
+        }
         if (base == null) { st.watchKey = print; return 0 }
         if (print == base) { st.watchCandidate = null; return 0 }
         if (st.watchCandidate != print) { st.watchCandidate = print; return RETRY } // must hold still
@@ -942,6 +956,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (back) { DetectLog.add(appKey, "$why: a page you just saw → not counted"); return 0 }
         if (key == st.countedPage) return 0
         st.countedPage = key
+        st.seenPrints.remove(key); st.seenPrints.add(key)
+        while (st.seenPrints.size > 40) st.seenPrints.remove(st.seenPrints.first())
         st.lastCountAt = SystemClock.uptimeMillis()
         DetectLog.add(appKey, "$why → +1")
         return 1
@@ -962,6 +978,9 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         st.watchKey = key
         st.watchCandidate = null
         st.countedPage = key
+        st.firstPendingAt = 0L
+        st.seenPrints.remove(key); st.seenPrints.add(key)
+        while (st.seenPrints.size > 40) st.seenPrints.remove(st.seenPrints.first())
         return n
     }
 
@@ -976,7 +995,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val child = snappedChildKey()
         st.currentChild = child
         lastPager?.let { videoPrint(it) }?.let { st.watchKey = it; st.watchCandidate = null }
-        if (!isSnapped()) return false
+        // Still opening (animation): don't decide now — the page watch counts it once it settles.
+        if (!isSnapped()) { st.firstPendingAt = SystemClock.uptimeMillis(); st.watchKey = null; return false }
         val key = "${pager.hashCode()}|${child ?: 0}|${idx ?: -1}"
         val now = SystemClock.uptimeMillis()
         val last = lastEntry[appKey]
@@ -984,7 +1004,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (last != null && now - last.second < 1500) return false
         lastEntry[appKey] = key to now
         st.lastCountAt = now
-        lastPager?.let { videoPrint(it) }?.let { st.countedPage = it }
+        lastPager?.let { videoPrint(it) }?.let { p -> st.countedPage = p; st.seenPrints.remove(p); st.seenPrints.add(p) }
+        st.firstPendingAt = 0L
         return true
     }
 
@@ -1034,7 +1055,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
 
     /** A new screen opened inside the app (a profile, a channel…): the next list starts fresh. */
     fun screenChanged(appKey: String) {
-        states[appKey]?.needsRebase = true
+        val st = states.getOrPut(appKey) { AppState() }
+        st.needsRebase = true
+        // Maybe a video was just opened from a profile / Liked / Saved: count it once it settles.
+        st.firstPendingAt = SystemClock.uptimeMillis()
     }
 
     // ------------------------------------------------------------------ signature apps
@@ -1204,6 +1228,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private const val PRINT_GAP_MS = 800L
         /** A video change only counts this soon after the screen moved. */
         private const val MOTION_WINDOW_MS = 2500L
+        /** How long after opening a screen its first video may still be counted as "opened". */
+        private const val FIRST_WINDOW_MS = 5000L
         /** More reels than this at once (either way) = a different list in the same player. */
         private const val JUMP = 3
         /** At most this many reels you went back over are remembered as "seen". */
