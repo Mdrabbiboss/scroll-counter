@@ -363,6 +363,7 @@ class ScrollTrackerService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 val app = TrackedApps.forPackage(pkg)
                 if (!store.isAppEnabled(app.key)) return
+                if (!isBrowser) detector?.noteMotion(app.key)
                 if (!isBrowser && pill?.isShowing == true && pkg == pillPkg && detector?.hasSignature(pkg) != true) queuePageCheck(pkg)
                 if (isBrowser) onBrowserScroll(store, app, event) else onAppScroll(store, app, event)
             }

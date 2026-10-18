@@ -57,6 +57,8 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         val recentPages = ArrayDeque<Int>() // the 2 pages before it (going back to them isn't new)
         var countedPage: Int? = null     // the last page that was counted (by either method)
         var adoptAt = 0L                 // a swipe was counted before its page could be read
+        var lastMotionAt = 0L            // the app reported any scrolling (a swipe in progress)
+        var lastPageSeen: Int? = null    // the page view filling the screen at the last look
         var opaqueOdd = 0                // self-drawn apps: feed-like (not one-screen) moves in a row
         var needsRebase = false          // a new screen / list was opened: nothing counts as "seen"
         // Signature apps (YouTube Shorts…): which short is on screen, and the furthest one reached.
@@ -816,31 +818,83 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
      * 0, or [RETRY] (mid-swipe or not settled yet — look again shortly).
      */
     fun pageCheck(appKey: String, root: AccessibilityNodeInfo? = null): Int {
-        // Follow the video viewer that's on screen NOW (a profile's viewer is a different one from
-        // the For You feed), not one left behind.
-        if (!stillInReels()) {
-            if (!reelsStillOnScreen(root) && !findReelPager(root)) return 0
-        }
+        // The video viewer on screen NOW (a profile's viewer is a different one from the For You
+        // feed): look for it fresh in the window in front, then fall back to the one we know.
+        val found = root != null && runCatching { findReelPager(root) }.getOrDefault(false)
+        if (!found && !stillInReels() && !reelsStillOnScreen(root)) return 0
         val pager = lastPager ?: return 0
         if (!runCatching { pager.refresh() }.getOrDefault(false)) return 0
         if (!isConfident(pager) && pager.hashCode() !in provenNodes) return 0
         val st = states.getOrPut(appKey) { AppState() }
         if (st.opaque) return 0
-        val key = pageKey() ?: return RETRY
+        // Comments / share sheet over the video: the video hasn't changed — wait.
+        if (root != null && runCatching { sheetOpen(root) }.getOrDefault(false)) { st.watchCandidate = null; return 0 }
+        // The page filling the screen changed (or is half-way, mid-swipe): that's motion too —
+        // for viewers that send no scroll events at all.
+        val pk = pageKey()
+        val now = SystemClock.uptimeMillis()
+        if ((pk == null && st.lastPageSeen != null) || (pk != null && st.lastPageSeen != null && pk != st.lastPageSeen)) st.lastMotionAt = now
+        if (pk != null) st.lastPageSeen = pk
+        val print = videoPrint(pager) ?: return RETRY
         val base = st.watchKey
-        if (base == null) { st.watchKey = key; return 0 }
-        if (key == base) { st.watchCandidate = null; return 0 }
-        if (st.watchCandidate != key) { st.watchCandidate = key; return RETRY } // must hold still
+        if (base == null) { st.watchKey = print; return 0 }
+        if (print == base) { st.watchCandidate = null; return 0 }
+        if (st.watchCandidate != print) { st.watchCandidate = print; return RETRY } // must hold still
         st.watchCandidate = null
-        // That swipe was already counted from its scroll events: just take the page over.
+        // Only after the screen actually moved (a swipe): text changing on a playing video — like
+        // auto-captions — never counts.
+        if (SystemClock.uptimeMillis() - st.lastMotionAt > MOTION_WINDOW_MS) { st.watchKey = print; return 0 }
+        // That swipe was already counted from its scroll events: just take the new video over.
         if (st.adoptAt != 0L && SystemClock.uptimeMillis() - st.adoptAt < 3000) {
             st.adoptAt = 0L
-            movePage(appKey, st, key, "page watch")
-            st.countedPage = key
+            movePage(appKey, st, print, "video print")
+            st.countedPage = print
             return 0
         }
-        return movePage(appKey, st, key, "page watch: new video page")
+        // A new video's labels sometimes settle a moment after it appears: never two in one go.
+        if (SystemClock.uptimeMillis() - st.lastCountAt < PRINT_GAP_MS) { st.watchKey = print; return 0 }
+        return movePage(appKey, st, print, "video print: a different video")
     }
+
+    /**
+     * A "print" of the video on screen, from the SIZE and PLACE of its labels and buttons — the
+     * creator name, caption, music line and the like / comment / share counts are laid out a little
+     * differently for every video. Nothing written on screen is read: only boxes. Works however
+     * the app builds its viewer (with or without scroll events). Null while nothing is laid out.
+     */
+    private fun videoPrint(pager: AccessibilityNodeInfo): Int? = runCatching {
+        val area = Rect(); pager.getBoundsInScreen(area)
+        if (area.height() <= 0) return null
+        val boxes = ArrayList<Long>()
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(pager)
+        val r = Rect()
+        var visited = 0
+        while (queue.isNotEmpty() && visited < 260) {
+            val n = queue.removeFirst()
+            visited++
+            if (!n.isVisibleToUser) continue
+            n.getBoundsInScreen(r)
+            if (r.isEmpty || !Rect.intersects(r, area)) continue
+            // Leaves only (labels, counts, icons); skip the video picture itself and the top bar.
+            if (n.childCount == 0) {
+                val big = r.width() >= area.width() * 0.8f && r.height() >= area.height() * 0.5f
+                // Label-shaped boxes only (wider than tall). Round / square things — icons, the
+                // spinning music disc, avatars — change their box as they animate, so they're left out.
+                val labelShaped = r.width() >= r.height() * 1.4f
+                if (!big && labelShaped && r.top >= screenH * 0.10f && r.width() >= 8 && r.height() >= 8) {
+                    val q = 10
+                    boxes += ((r.left / q).toLong() shl 48) or ((r.top / q).toLong() shl 32) or
+                        ((r.width() / q).toLong() shl 16) or (r.height() / q).toLong()
+                }
+            } else {
+                for (i in 0 until minOf(n.childCount, 24)) n.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        if (boxes.size < 3) return null
+        boxes.sort()
+        boxes.hashCode()
+    }.getOrNull()
 
     /**
      * Identity of the video page filling the reels container now, looking through wrappers: if the
@@ -870,6 +924,11 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         return null
     }
 
+    /** The app reported scrolling (from any of its views): a swipe may be under way. */
+    fun noteMotion(appKey: String) {
+        states.getOrPut(appKey) { AppState() }.lastMotionAt = SystemClock.uptimeMillis()
+    }
+
     /** Record that [key] is now the page on screen; 1 if it's a reel not counted yet. */
     private fun movePage(appKey: String, st: AppState, key: Int, why: String): Int {
         val old = st.watchKey
@@ -877,7 +936,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         st.watchKey = key
         if (old != null && old != key) {
             st.recentPages.remove(old); st.recentPages.addLast(old)
-            while (st.recentPages.size > 2) st.recentPages.removeFirst()
+            while (st.recentPages.size > 3) st.recentPages.removeFirst()
         }
         st.recentPages.remove(key)
         if (back) { DetectLog.add(appKey, "$why: a page you just saw → not counted"); return 0 }
@@ -891,13 +950,13 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
     /** A swipe was counted by its scroll events: keep the page watch in step (never count twice). */
     private fun settledOnPage(appKey: String, st: AppState, n: Int): Int {
         if (st.opaque) return n
-        val key = pageKey() ?: run { st.adoptAt = SystemClock.uptimeMillis(); return n }
+        val key = lastPager?.let { videoPrint(it) } ?: run { st.adoptAt = SystemClock.uptimeMillis(); return n }
         st.adoptAt = 0L
         if (key == st.countedPage) { st.watchKey = key; DetectLog.add(appKey, "swipe: page already counted"); return 0 }
         val old = st.watchKey
         if (old != null && old != key) {
             st.recentPages.remove(old); st.recentPages.addLast(old)
-            while (st.recentPages.size > 2) st.recentPages.removeFirst()
+            while (st.recentPages.size > 3) st.recentPages.removeFirst()
         }
         st.recentPages.remove(key)
         st.watchKey = key
@@ -916,7 +975,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (idx != null) st.lastIdx = idx
         val child = snappedChildKey()
         st.currentChild = child
-        pageKey()?.let { st.watchKey = it; st.watchCandidate = null }
+        lastPager?.let { videoPrint(it) }?.let { st.watchKey = it; st.watchCandidate = null }
         if (!isSnapped()) return false
         val key = "${pager.hashCode()}|${child ?: 0}|${idx ?: -1}"
         val now = SystemClock.uptimeMillis()
@@ -925,7 +984,7 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         if (last != null && now - last.second < 1500) return false
         lastEntry[appKey] = key to now
         st.lastCountAt = now
-        pageKey()?.let { st.countedPage = it }
+        lastPager?.let { videoPrint(it) }?.let { st.countedPage = it }
         return true
     }
 
@@ -1141,6 +1200,10 @@ class ReelDetector(private val screenW: Int, private val screenH: Int) {
         private val NATIVE_LISTS = listOf("RecyclerView", "ListView", "ScrollView", "ViewPager", "ViewPager2", "GridView")
         private const val MAX_RETRIES = 3
         private const val MIN_COUNT_GAP_MS = 200L
+        /** Video print: at most one new video per this long (labels settling after a swipe). */
+        private const val PRINT_GAP_MS = 800L
+        /** A video change only counts this soon after the screen moved. */
+        private const val MOTION_WINDOW_MS = 2500L
         /** More reels than this at once (either way) = a different list in the same player. */
         private const val JUMP = 3
         /** At most this many reels you went back over are remembered as "seen". */
