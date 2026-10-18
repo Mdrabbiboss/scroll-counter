@@ -61,7 +61,7 @@ class BlockActivity : ComponentActivity() {
             ScrollCounterTheme(dark = true) {
                 BlockScreen(
                     appName = appName,
-                    total = store.todayTotal(),
+                    total = store.todayUsed(),
                     limit = store.dailyLimit,
                     graceAvailable = store.graceAvailableToday,
                     onGoHome = { goHome() },

@@ -239,7 +239,7 @@ class ScrollTrackerService : AccessibilityService() {
                 if (shouldBlock(s)) { DetectLog.add(pkg, "limit reached + reels opened → closed"); block(app.name); return }
                 // The reel you open on counts too.
                 if (det.prime(app.key)) { DetectLog.add(pkg, "reels opened → +1 (first reel)"); onNewReels(app, 1, det.lastPagerHeight) }
-                else showPill(s, s.todayTotal(), s.dailyLimit, bump = false)
+                else showPill(s, s.todayUsed(), s.dailyLimit, bump = false)
             } else if (++presenceTries < PRESENCE_MAX_TRIES) {
                 // Keep looking for a little while; after that, screen-change events take over.
                 handler.postDelayed(this, PRESENCE_MS)
@@ -356,7 +356,7 @@ class ScrollTrackerService : AccessibilityService() {
                 if (det.findReelPager(runCatching { rootInActiveWindow }.getOrNull())) {
                     if (shouldBlock(store)) { DetectLog.add(pkg, "limit reached + reels opened → closed"); block(app.name); return }
                     if (det.prime(app.key)) { DetectLog.add(pkg, "reels opened → +1 (first reel)"); onNewReels(app, 1, det.lastPagerHeight) }
-                    else showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+                    else showPill(store, store.todayUsed(), store.dailyLimit, bump = false)
                 }
             }
 
@@ -377,7 +377,7 @@ class ScrollTrackerService : AccessibilityService() {
             if (!det.signatureScroll(app.key, event)) return
             if (shouldBlock(store)) { block(app.name); return }
             queueSignatureCheck(app, ReelDetector.SETTLE_MS, restart = true)
-            if (pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+            if (pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayUsed(), store.dailyLimit, bump = false)
             return
         }
         if (!det.onScroll(app.key, event)) {
@@ -406,7 +406,7 @@ class ScrollTrackerService : AccessibilityService() {
         settleApp = app
         handler.removeCallbacks(settleRunnable)
         handler.postDelayed(settleRunnable, ReelDetector.SETTLE_MS)
-        if (det.lastAcceptedConfident && pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayTotal(), store.dailyLimit, bump = false)
+        if (det.lastAcceptedConfident && pill?.isShowing != true && store.bubbleOn) showPill(store, store.todayUsed(), store.dailyLimit, bump = false)
     }
 
     private fun onBrowserScroll(store: ScrollStore, app: TrackedApp, event: AccessibilityEvent) {
@@ -449,7 +449,7 @@ class ScrollTrackerService : AccessibilityService() {
         repeat(n) { store.addScroll(app.key) }
         store.addDistance(app.key, n * pageHeightPx * metersPerPx)
         countedKeys += app.key
-        val total = store.todayTotal()
+        val total = store.todayUsed()
         val limit = store.dailyLimit
         Notifier.live(this, total, limit)
         checkAlerts(store, total, limit)
@@ -482,7 +482,7 @@ class ScrollTrackerService : AccessibilityService() {
     }
 
     private fun shouldBlock(store: ScrollStore): Boolean =
-        store.blockOn && !store.inGrace && store.todayTotal() >= store.dailyLimit
+        store.blockOn && !store.inGrace && store.todayUsed() >= store.dailyLimit
 
     private fun block(appName: String) {
         val now = SystemClock.uptimeMillis()

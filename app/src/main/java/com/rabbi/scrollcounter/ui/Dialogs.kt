@@ -78,7 +78,7 @@ private const val MAX_LIMIT = com.rabbi.scrollcounter.data.ScrollStore.MAX_LIMIT
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, onSquatUnlock: (() -> Unit)? = null, onSave: (Int) -> Unit) {
+fun LimitDialog(current: Int, locked: Boolean = false, freshStart: Boolean = false, onDismiss: () -> Unit, onSquatUnlock: (() -> Unit)? = null, onSave: (Int) -> Unit) {
     if (locked) { LockedLimitSheet(current, onDismiss, onSquatUnlock); return }
     var text by remember { mutableStateOf(current.toString()) }
     val value = text.toIntOrNull()
@@ -225,21 +225,22 @@ fun LimitDialog(current: Int, locked: Boolean = false, onDismiss: () -> Unit, on
                             if (valid) Brush.linearGradient(listOf(Color(0xFFFFE6A3), Color(0xFFFFC857), Color(0xFFFF9F43)))
                             else SolidColor(Color.White.copy(alpha = 0.12f))
                         )
-                        .clickable(enabled = valid) { if (value == current) onDismiss() else onSave(value!!) },
+                        .clickable(enabled = valid) { if (value == current && !freshStart) onDismiss() else onSave(value!!) },
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Check, null, tint = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (valid && value != current) tr("Save & lock for today") else tr("Save limit"),
+                            if (freshStart) tr("Save & start again from 0") else if (valid && value != current) tr("Save & lock for today") else tr("Save limit"),
                             color = if (valid) Color(0xFF4A2A00) else Color.White.copy(alpha = 0.5f),
                             style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black
                         )
                     }
                 }
                 Text(
-                    tr("You can change your limit only once a day. After saving, it stays until tomorrow."),
+                    if (freshStart) tr("10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.")
+                    else tr("You can change your limit only once a day. After saving, it stays until tomorrow."),
                     style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
                 )

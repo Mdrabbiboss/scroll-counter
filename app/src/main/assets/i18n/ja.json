@@ -388,5 +388,7 @@
 "Find Scroll Counter in the list, and tap it.": "一覧から Scroll Counter を見つけて、タップします。",
 "Now turn on the switch next to Scroll Counter.": "次に、Scroll Counter の横のスイッチをオンにします。",
 "Your phone will show a warning and ask for permission. Tap Allow.": "スマホに警告が表示され、許可を求められます。許可をタップします。",
-"That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "これで完了です！Scroll Counter がオンになりました。このアプリに戻ると、リールのカウントが始まります。"
+"That's it! Scroll Counter is now on. Come back to this app, and it will start counting your reels.": "これで完了です！Scroll Counter がオンになりました。このアプリに戻ると、リールのカウントが始まります。",
+"Save & start again from 0": "保存して0からやり直す",
+"10 squats done! Today's count starts again from 0 with this limit. The reels you already watched stay in History.": "スクワット10回達成！この上限で今日のカウントが0から再スタートします。すでに見たリールは履歴に残ります。"
 }

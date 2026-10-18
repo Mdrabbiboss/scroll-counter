@@ -54,7 +54,7 @@ class ScrollWidget : AppWidgetProvider() {
 
         fun currentState(context: Context): WidgetState {
             val store = ScrollStore.get(context)
-            return WidgetState(store.todayTotal(), store.dailyLimit, runCatching { store.streak() }.getOrDefault(0), store.paused)
+            return WidgetState(store.todayUsed(), store.dailyLimit, runCatching { store.streak() }.getOrDefault(0), store.paused)
         }
 
         private fun build(context: Context, manager: AppWidgetManager, id: Int, state: WidgetState): RemoteViews {

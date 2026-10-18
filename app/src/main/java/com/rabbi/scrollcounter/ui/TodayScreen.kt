@@ -83,6 +83,9 @@ fun TodayScreen(
     val now = LocalDate.now()
     val today = remember(tick) { store.dayStats(now) }
     val hours = remember(tick) { store.hourly(now) }
+    // Counted against the limit: after a squat fresh start only the reels since then.
+    val usedTotal = remember(tick) { store.todayUsed() }
+    val usedApps = remember(tick) { store.todayUsedApps(today.apps) }
     val limit = remember(tick) { store.dailyLimit }
     val todayDate = rememberToday()
     val limitLocked = remember(tick, todayDate) { store.limitLockedToday }
@@ -109,8 +112,8 @@ fun TodayScreen(
         if (!status.trackerOn) item { SetupBanner(onEnableTracking) }
         else if (paused) item { PausedBanner { store.paused = false } }
 
-        item { HeroCard(today.totalScrolls, limit, streak, today.apps, onEditLimit, limitLocked, buddySounds) }
-        if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(today.totalScrolls, limit, onAddWidget) }
+        item { HeroCard(usedTotal, limit, streak, usedApps, onEditLimit, limitLocked, buddySounds) }
+        if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(usedTotal, limit, onAddWidget) }
         item { BadgesCard(store, tick, onOpen = { showBadges = true }, onShare = onShareDay) }
 
         item {

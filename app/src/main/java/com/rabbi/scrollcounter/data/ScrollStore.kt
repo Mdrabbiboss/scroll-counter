@@ -57,6 +57,14 @@ class ScrollStore private constructor(context: Context) {
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     init {
+        // v9.6 fix: before it, a backup copy from earlier the same day could undo a limit change
+        // earned with squats. Whoever lost today's squat change that way gets it back once.
+        if (!local.getBoolean("mig96_squat", false)) {
+            val today = LocalDate.now().toString()
+            if (settings.getString(KEY_SQUAT_USED, null) == today && !settings.contains(KEY_LIMIT_AT))
+                settings.edit().putString(KEY_SQUAT_UNLOCK, today).apply()
+            local.edit().putBoolean("mig96_squat", true).apply()
+        }
         // Bring back counts from the durable copy (after a reinstall or "clear data").
         restoreDurable()
         com.rabbi.scrollcounter.ui.I18n.apply(appContext, language)
@@ -102,7 +110,7 @@ class ScrollStore private constructor(context: Context) {
             val value = when (v) { is Int -> v.toString(); is Float -> String.format(Locale.US, "%.1f", v); else -> return@mapNotNull null }
             Triple(date, k, value)
         }.sortedBy { it.first }
-        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}|${settings.getString(KEY_SQUAT_USED, null) ?: "-"}|${settings.getString(KEY_RESET_DAY, null) ?: "-"}")
+        val sb = StringBuilder("v1|${firstDay}|${dailyLimit}|${settings.getString(KEY_LIMIT_DAY, null) ?: "-"}|$bestStreak|${badgeDatesRaw() ?: "-"}|${settings.getString(KEY_SQUAT_USED, null) ?: "-"}|${settings.getString(KEY_RESET_DAY, null) ?: "-"}|${settings.getLong(KEY_LIMIT_AT, 0L)}|${settings.getString(KEY_LIMIT_BASE, null) ?: "-"}")
         rows.forEach { sb.append('\n').append(it.second).append('|').append(it.third) }
         return sb.toString()
     }
@@ -162,15 +170,29 @@ class ScrollStore private constructor(context: Context) {
         }
         // The limit (and the day it was last changed) follow the newest copy, so clearing data
         // can't unlock a limit that was already changed today.
+        // Only a copy saved AFTER the last change here may replace it (exact time, not just the day):
+        // an older copy of today — saved before a squat-unlocked change — must never undo that change.
         val savedLimit = head.getOrNull(2)?.toIntOrNull()
         val savedDay = head.getOrNull(3)?.takeIf { it != "-" }
+        val savedAt = head.getOrNull(8)?.toLongOrNull() ?: 0L
+        val savedBase = head.getOrNull(9)?.takeIf { it != "-" }
         val localDay = settings.getString(KEY_LIMIT_DAY, null)
+        val localAt = settings.getLong(KEY_LIMIT_AT, 0L)
         if (savedLimit != null) {
-            val takeIt = if (savedDay != null) localDay == null || savedDay >= localDay
-                         else !settings.contains("daily_limit")
-            if (takeIt && (savedLimit != settings.getInt("daily_limit", -1) || savedDay != localDay)) {
+            val takeIt = when {
+                savedDay == null -> !settings.contains("daily_limit")
+                localDay == null -> true
+                savedAt > 0L && localAt > 0L -> savedAt > localAt
+                savedAt > 0L -> savedDay >= localDay
+                else -> savedDay > localDay
+            }
+            if (takeIt && (savedLimit != settings.getInt("daily_limit", -1) || savedDay != localDay || savedAt != localAt)) {
                 settings.edit().putInt("daily_limit", savedLimit.coerceIn(10, MAX_LIMIT))
-                    .apply { if (savedDay != null) putString(KEY_LIMIT_DAY, savedDay) }.apply()
+                    .apply {
+                        if (savedDay != null) putString(KEY_LIMIT_DAY, savedDay)
+                        if (savedAt > 0L) putLong(KEY_LIMIT_AT, savedAt)
+                        if (savedBase != null) putString(KEY_LIMIT_BASE, savedBase) else remove(KEY_LIMIT_BASE)
+                    }.apply()
                 changed = true
             }
         }
@@ -381,13 +403,51 @@ class ScrollStore private constructor(context: Context) {
     var dailyLimit: Int
         get() = settings.getInt("daily_limit", MAX_LIMIT).coerceIn(10, MAX_LIMIT)
         set(value) {
-            settings.edit()
+            val today = LocalDate.now().toString()
+            val e = settings.edit()
                 .putInt("daily_limit", value.coerceIn(10, MAX_LIMIT))
-                .putString(KEY_LIMIT_DAY, LocalDate.now().toString())
-                .remove(KEY_SQUAT_UNLOCK)            // a squat unlock is good for one change
+                .putString(KEY_LIMIT_DAY, today)
+                .putLong(KEY_LIMIT_AT, System.currentTimeMillis())
+            // Earned with 10 squats: today's count starts again from 0 against the new limit
+            // (the reels already watched stay in History).
+            if (squatUnlockedNow) e.putString(KEY_LIMIT_BASE, baseSnapshot(today))
+            e.remove(KEY_SQUAT_UNLOCK)            // a squat unlock is good for one change
                 .apply()
             bump()
+            DurableStore.saveNow(appContext, durableSnapshot())
         }
+
+    /** 10 squats were just done today and the extra change hasn't been used yet. */
+    val squatUnlockedNow: Boolean
+        get() = settings.getString(KEY_SQUAT_UNLOCK, null) == LocalDate.now().toString()
+
+    /** "day~total~app=n,app=n": today's counts at the moment of the squat fresh start. */
+    private fun baseSnapshot(day: String): String {
+        val apps = dayStats(LocalDate.parse(day)).apps.joinToString(",") { "${it.key}=${it.scrolls}" }
+        return "$day~${todayTotal()}~$apps"
+    }
+
+    private fun todayBase(): Pair<Int, Map<String, Int>>? {
+        val raw = settings.getString(KEY_LIMIT_BASE, null) ?: return null
+        val p = raw.split('~')
+        if (p.getOrNull(0) != LocalDate.now().toString()) return null
+        val total = p.getOrNull(1)?.toIntOrNull() ?: return null
+        val apps = p.getOrNull(2).orEmpty().split(',').mapNotNull {
+            val kv = it.split('='); val n = kv.getOrNull(1)?.toIntOrNull() ?: return@mapNotNull null
+            kv[0] to n
+        }.toMap()
+        return total to apps
+    }
+
+    /** Today's reels that count against the limit (after a squat fresh start, only the new ones). */
+    fun todayUsed(): Int = (todayTotal() - (todayBase()?.first ?: 0)).coerceAtLeast(0)
+
+    /** Today's per-app numbers that count against the limit. */
+    fun todayUsedApps(apps: List<AppStat>): List<AppStat> {
+        val base = todayBase()?.second ?: return apps
+        return apps.map { it.copy(scrolls = (it.scrolls - (base[it.key] ?: 0)).coerceAtLeast(0)) }
+            .filter { it.scrolls > 0 }.sortedByDescending { it.scrolls }
+    }
 
     /**
      * True once the limit was changed today: it can only be changed again tomorrow — or right
@@ -529,6 +589,8 @@ class ScrollStore private constructor(context: Context) {
         private const val KEY_SQUAT_UNLOCK = "squat_unlock_day"
         private const val KEY_SQUATS_TOTAL = "squats_total"
         private const val KEY_SQUAT_USED = "squat_used_day"
+        private const val KEY_LIMIT_AT = "limit_set_at"
+        private const val KEY_LIMIT_BASE = "limit_base"
         private const val KEY_RESET_DAY = "history_reset_day"
         private const val KEY_BADGES = "badge_dates"
         const val MAX_LIMIT = 500

@@ -238,7 +238,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
     }
 
     // The whole app takes on today's mood colour, like the widget.
-    val todayTotal = remember(tick) { store.todayTotal() }
+    val todayTotal = remember(tick) { store.todayUsed() }
     val limitNow = remember(tick) { store.dailyLimit }
     val accent by androidx.compose.animation.animateColorAsState(
         androidx.compose.ui.graphics.Color(
@@ -394,6 +394,7 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
             LimitDialog(
                 current = store.dailyLimit,
                 locked = store.limitLockedToday,
+                freshStart = store.squatUnlockedNow,
                 onDismiss = { showLimit = false },
                 onSquatUnlock = if (!store.squatUnlockAvailable) null else ({
                     showLimit = false
