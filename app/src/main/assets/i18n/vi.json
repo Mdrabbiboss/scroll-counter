@@ -401,5 +401,14 @@
 "Turn on the switch": "Bật công tắc",
 "How to turn on Scroll Counter": "Cách bật Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Điện thoại chặn điều này với ứng dụng cài ngoài Play Store. Cho phép một lần, rồi bật Scroll Counter.",
-"Close guide": "Đóng hướng dẫn"
+"Close guide": "Đóng hướng dẫn",
+"Counts each reel you swipe. Takes 10 seconds.": "Đếm từng reel bạn vuốt. Chỉ mất 10 giây.",
+"A nudge at 80% and when you hit your limit.": "Nhắc khi đạt 80% và khi chạm giới hạn.",
+"Your counts survive reinstalls and Clear data.": "Số đếm vẫn còn sau khi cài lại hoặc xóa dữ liệu.",
+"Allow storage so your counts survive reinstalls.": "Cho phép bộ nhớ để số đếm còn sau khi cài lại.",
+"Set battery to Unrestricted so counting never stops.": "Đặt pin ở Không hạn chế để việc đếm không bao giờ dừng.",
+"Uses Accessibility only to spot reel swipes and count them": "Chỉ dùng Hỗ trợ tiếp cận để nhận biết lượt vuốt reel và đếm",
+"In browsers, checks only whether a short-video page is open": "Trên trình duyệt chỉ kiểm tra trang video ngắn có mở hay không",
+"Never reads messages, passwords or what you type": "Không bao giờ đọc tin nhắn, mật khẩu hay những gì bạn gõ",
+"Nothing ever leaves your phone": "Không có gì rời khỏi điện thoại của bạn"
 }

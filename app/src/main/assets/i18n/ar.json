@@ -402,5 +402,14 @@
 "Turn on the switch": "شغّل المفتاح",
 "How to turn on Scroll Counter": "كيفية تشغيل Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "يمنع هاتفك هذا للتطبيقات المثبّتة من خارج متجر Play. اسمح به مرة واحدة، ثم شغّل Scroll Counter.",
-"Close guide": "إغلاق الدليل"
+"Close guide": "إغلاق الدليل",
+"Counts each reel you swipe. Takes 10 seconds.": "يعدّ كل مقطع تمرّره. يستغرق 10 ثوانٍ.",
+"A nudge at 80% and when you hit your limit.": "تنبيه عند 80% وعند بلوغ حدّك.",
+"Your counts survive reinstalls and Clear data.": "تبقى أعدادك بعد إعادة التثبيت ومسح البيانات.",
+"Allow storage so your counts survive reinstalls.": "اسمح بالتخزين لتبقى أعدادك بعد إعادة التثبيت.",
+"Set battery to Unrestricted so counting never stops.": "اضبط البطارية على غير مقيّد حتى لا يتوقف العدّ.",
+"Uses Accessibility only to spot reel swipes and count them": "يستخدم إمكانية الوصول فقط لرصد تمرير المقاطع وعدّها",
+"In browsers, checks only whether a short-video page is open": "في المتصفح يتحقق فقط مما إذا كانت صفحة فيديو قصير مفتوحة",
+"Never reads messages, passwords or what you type": "لا يقرأ الرسائل أو كلمات المرور أو ما تكتبه أبدًا",
+"Nothing ever leaves your phone": "لا شيء يغادر هاتفك أبدًا"
 }

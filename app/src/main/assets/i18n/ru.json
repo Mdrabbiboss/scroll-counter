@@ -401,5 +401,14 @@
 "Turn on the switch": "Включите переключатель",
 "How to turn on Scroll Counter": "Как включить Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Телефон блокирует это для приложений, установленных не из Play Маркета. Разрешите один раз, затем включите Scroll Counter.",
-"Close guide": "Закрыть подсказку"
+"Close guide": "Закрыть подсказку",
+"Counts each reel you swipe. Takes 10 seconds.": "Считает каждый пролистанный ролик. Займёт 10 секунд.",
+"A nudge at 80% and when you hit your limit.": "Напоминание на 80% и при достижении лимита.",
+"Your counts survive reinstalls and Clear data.": "Счётчики сохраняются после переустановки и очистки данных.",
+"Allow storage so your counts survive reinstalls.": "Разрешите хранилище, чтобы счётчики пережили переустановку.",
+"Set battery to Unrestricted so counting never stops.": "Поставьте батарею в «Без ограничений», чтобы подсчёт не останавливался.",
+"Uses Accessibility only to spot reel swipes and count them": "Спец. возможности нужны только чтобы замечать и считать пролистывания роликов",
+"In browsers, checks only whether a short-video page is open": "В браузере проверяет только, открыта ли страница коротких видео",
+"Never reads messages, passwords or what you type": "Никогда не читает сообщения, пароли и то, что вы печатаете",
+"Nothing ever leaves your phone": "Ничто не покидает ваш телефон"
 }

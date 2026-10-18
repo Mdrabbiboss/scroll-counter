@@ -402,5 +402,14 @@
 "Turn on the switch": "Nyalakan tombolnya",
 "How to turn on Scroll Counter": "Cara menyalakan Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Ponselmu memblokir ini untuk aplikasi yang dipasang di luar Play Store. Izinkan sekali, lalu nyalakan Scroll Counter.",
-"Close guide": "Tutup panduan"
+"Close guide": "Tutup panduan",
+"Counts each reel you swipe. Takes 10 seconds.": "Menghitung setiap reel yang kamu geser. Hanya 10 detik.",
+"A nudge at 80% and when you hit your limit.": "Pengingat di 80% dan saat batasmu tercapai.",
+"Your counts survive reinstalls and Clear data.": "Hitunganmu tetap ada setelah instal ulang dan Hapus data.",
+"Allow storage so your counts survive reinstalls.": "Izinkan penyimpanan agar hitunganmu tetap ada setelah instal ulang.",
+"Set battery to Unrestricted so counting never stops.": "Atur baterai ke Tidak dibatasi agar penghitungan tak pernah berhenti.",
+"Uses Accessibility only to spot reel swipes and count them": "Memakai Aksesibilitas hanya untuk mengenali geseran reel dan menghitungnya",
+"In browsers, checks only whether a short-video page is open": "Di browser hanya memeriksa apakah halaman video pendek terbuka",
+"Never reads messages, passwords or what you type": "Tidak pernah membaca pesan, kata sandi, atau ketikanmu",
+"Nothing ever leaves your phone": "Tidak ada yang keluar dari ponselmu"
 }

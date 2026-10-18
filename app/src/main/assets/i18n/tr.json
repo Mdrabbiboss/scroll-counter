@@ -401,5 +401,14 @@
 "Turn on the switch": "Anahtarı açın",
 "How to turn on Scroll Counter": "Scroll Counter nasıl açılır",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Telefonunuz Play Store dışından yüklenen uygulamalarda bunu engeller. Bir kez izin verin, sonra Scroll Counter'ı açın.",
-"Close guide": "Rehberi kapat"
+"Close guide": "Rehberi kapat",
+"Counts each reel you swipe. Takes 10 seconds.": "Kaydırdığın her reels'i sayar. 10 saniye sürer.",
+"A nudge at 80% and when you hit your limit.": "%80'de ve limitine ulaşınca bir uyarı.",
+"Your counts survive reinstalls and Clear data.": "Sayıların yeniden yükleme ve veri silmeden sonra da kalır.",
+"Allow storage so your counts survive reinstalls.": "Depolamaya izin ver ki sayıların yeniden yüklemede kaybolmasın.",
+"Set battery to Unrestricted so counting never stops.": "Pili Kısıtlamasız yap ki sayım hiç durmasın.",
+"Uses Accessibility only to spot reel swipes and count them": "Erişilebilirliği yalnızca reels kaydırmalarını görüp saymak için kullanır",
+"In browsers, checks only whether a short-video page is open": "Tarayıcıda yalnızca kısa video sayfası açık mı diye bakar",
+"Never reads messages, passwords or what you type": "Mesajları, şifreleri veya yazdıklarını asla okumaz",
+"Nothing ever leaves your phone": "Hiçbir şey telefonundan çıkmaz"
 }

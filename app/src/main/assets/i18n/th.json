@@ -401,5 +401,14 @@
 "Turn on the switch": "เปิดสวิตช์",
 "How to turn on Scroll Counter": "วิธีเปิด Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "โทรศัพท์บล็อกสิ่งนี้สำหรับแอปที่ติดตั้งจากนอก Play Store อนุญาตครั้งเดียว แล้วเปิด Scroll Counter",
-"Close guide": "ปิดคำแนะนำ"
+"Close guide": "ปิดคำแนะนำ",
+"Counts each reel you swipe. Takes 10 seconds.": "นับทุกรีลที่คุณปัด ใช้เวลาแค่ 10 วินาที",
+"A nudge at 80% and when you hit your limit.": "แจ้งเตือนที่ 80% และเมื่อถึงลิมิต",
+"Your counts survive reinstalls and Clear data.": "ยอดนับยังอยู่แม้ติดตั้งใหม่หรือล้างข้อมูล",
+"Allow storage so your counts survive reinstalls.": "อนุญาตพื้นที่เก็บข้อมูลเพื่อให้ยอดนับอยู่หลังติดตั้งใหม่",
+"Set battery to Unrestricted so counting never stops.": "ตั้งแบตเตอรี่เป็นไม่จำกัด เพื่อให้การนับไม่หยุด",
+"Uses Accessibility only to spot reel swipes and count them": "ใช้การช่วยเหลือพิเศษเพื่อจับการปัดรีลและนับเท่านั้น",
+"In browsers, checks only whether a short-video page is open": "ในเบราว์เซอร์ตรวจแค่ว่าเปิดหน้าวิดีโอสั้นอยู่หรือไม่",
+"Never reads messages, passwords or what you type": "ไม่อ่านข้อความ รหัสผ่าน หรือสิ่งที่คุณพิมพ์เลย",
+"Nothing ever leaves your phone": "ไม่มีข้อมูลใดออกจากโทรศัพท์ของคุณ"
 }

@@ -401,5 +401,14 @@
 "Turn on the switch": "打开开关",
 "How to turn on Scroll Counter": "如何开启 Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "对于不是从 Play 商店安装的应用，手机会阻止此操作。允许一次后再开启 Scroll Counter。",
-"Close guide": "关闭指南"
+"Close guide": "关闭指南",
+"Counts each reel you swipe. Takes 10 seconds.": "统计你划过的每一个短视频。只需 10 秒。",
+"A nudge at 80% and when you hit your limit.": "达到 80% 和到达上限时提醒你。",
+"Your counts survive reinstalls and Clear data.": "重新安装或清除数据后，计数依然保留。",
+"Allow storage so your counts survive reinstalls.": "允许存储权限，重新安装后计数也不会丢失。",
+"Set battery to Unrestricted so counting never stops.": "将电池设为“无限制”，计数永不中断。",
+"Uses Accessibility only to spot reel swipes and count them": "无障碍功能仅用于识别并统计短视频滑动",
+"In browsers, checks only whether a short-video page is open": "在浏览器中仅检查是否打开了短视频页面",
+"Never reads messages, passwords or what you type": "从不读取消息、密码或你输入的内容",
+"Nothing ever leaves your phone": "任何数据都不会离开你的手机"
 }

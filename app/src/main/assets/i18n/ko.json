@@ -401,5 +401,14 @@
 "Turn on the switch": "스위치 켜기",
 "How to turn on Scroll Counter": "Scroll Counter 켜는 방법",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Play 스토어 밖에서 설치한 앱은 휴대폰이 이를 막아요. 한 번 허용한 뒤 Scroll Counter를 켜세요.",
-"Close guide": "가이드 닫기"
+"Close guide": "가이드 닫기",
+"Counts each reel you swipe. Takes 10 seconds.": "스와이프한 릴스를 하나하나 세요. 10초면 끝나요.",
+"A nudge at 80% and when you hit your limit.": "80%일 때와 한도에 도달했을 때 알려 드려요.",
+"Your counts survive reinstalls and Clear data.": "재설치하거나 데이터를 지워도 기록이 남아요.",
+"Allow storage so your counts survive reinstalls.": "저장소를 허용하면 재설치 후에도 기록이 남아요.",
+"Set battery to Unrestricted so counting never stops.": "배터리를 '제한 없음'으로 설정하면 카운트가 멈추지 않아요.",
+"Uses Accessibility only to spot reel swipes and count them": "접근성은 릴스 스와이프를 감지해 세는 데만 사용해요",
+"In browsers, checks only whether a short-video page is open": "브라우저에서는 짧은 동영상 페이지가 열렸는지만 확인해요",
+"Never reads messages, passwords or what you type": "메시지, 비밀번호, 입력 내용은 절대 읽지 않아요",
+"Nothing ever leaves your phone": "어떤 정보도 휴대폰 밖으로 나가지 않아요"
 }

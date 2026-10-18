@@ -1,6 +1,10 @@
 package com.rabbi.scrollcounter.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.rounded.SwipeVertical
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.PhonelinkLock
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -464,7 +468,33 @@ fun DeleteHistoryDialog(
 val DISCLOSURE_TEXT: String get() =
     tr("Scroll Counter uses Android's Accessibility Service to count the Reels, Shorts and short videos you watch in any social or video app (Facebook, Instagram, TikTok, YouTube, Snapchat and others) and on short-video websites in your browser.\n\n• To recognise a Reels feed it looks only at the screen's layout — the size of the video player, its view names and how it scrolls\n• In browsers it checks the address bar only to tell when a short-video page (TikTok, Shorts, Reels) is open — never stored\n• It does NOT read or store messages, captions, comments or anything you type\n• It shows a small counter at the top while you watch, counts your watch time, and closes Reels when your daily limit is reached\n• Chats, comments, normal feeds and reading are ignored, and your data never leaves your phone\n\nOn the next screen, tap \"Scroll Counter\" and switch it on.")
 
-/** Prominent disclosure + animated how-to, shown before sending the user to Accessibility settings (Google Play policy). */
+/**
+ * Google Play's prominent disclosure for the Accessibility Service, kept short: what it looks at,
+ * what it never reads, and that nothing leaves the phone. Agreeing is the button under it.
+ */
+@Composable
+fun TrackingDisclosure(modifier: Modifier = Modifier) {
+    val primary = MaterialTheme.colorScheme.primary
+    PremiumCard(modifier) {
+        listOf(
+            Icons.Rounded.SwipeVertical to tr("Uses Accessibility only to spot reel swipes and count them"),
+            Icons.Rounded.Language to tr("In browsers, checks only whether a short-video page is open"),
+            Icons.Rounded.VisibilityOff to tr("Never reads messages, passwords or what you type"),
+            Icons.Rounded.PhonelinkLock to tr("Nothing ever leaves your phone"),
+        ).forEach { (icon, text) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) { Icon(icon, null, tint = primary, modifier = Modifier.size(18.dp)) }
+                Spacer(Modifier.width(12.dp))
+                Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+/** Prominent disclosure, shown before sending the user to Accessibility settings (Google Play policy). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
@@ -479,14 +509,10 @@ fun DisclosureDialog(onAgree: () -> Unit, onDismiss: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(tr("Turn on scroll tracking"), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(4.dp))
-            Text(tr("Watch how — it takes 10 seconds:"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(6.dp))
+            Text(tr("Counts each reel you swipe. Takes 10 seconds."), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(16.dp))
-            TutorialVideo(com.rabbi.scrollcounter.R.raw.accessibility_tutorial, aspect = 480f / 1104f, modifier = Modifier.fillMaxWidth(0.55f))
-            Spacer(Modifier.height(16.dp))
-            Text(tr("How tracking works"), style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(4.dp))
-            Text(DISCLOSURE_TEXT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TrackingDisclosure()
             Spacer(Modifier.height(18.dp))
             Button(
                 onClick = onAgree,

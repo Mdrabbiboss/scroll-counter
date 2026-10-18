@@ -401,5 +401,14 @@
 "Turn on the switch": "スイッチをオンにする",
 "How to turn on Scroll Counter": "Scroll Counter をオンにする方法",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Play ストア以外からインストールしたアプリでは、スマホがこれをブロックします。一度許可してから Scroll Counter をオンにしてください。",
-"Close guide": "ガイドを閉じる"
+"Close guide": "ガイドを閉じる",
+"Counts each reel you swipe. Takes 10 seconds.": "スワイプしたリールを1本ずつ数えます。10秒で完了。",
+"A nudge at 80% and when you hit your limit.": "上限の80%と上限到達時にお知らせ。",
+"Your counts survive reinstalls and Clear data.": "再インストールやデータ削除でも記録は消えません。",
+"Allow storage so your counts survive reinstalls.": "ストレージを許可すると再インストール後も記録が残ります。",
+"Set battery to Unrestricted so counting never stops.": "バッテリーを「制限なし」にするとカウントが止まりません。",
+"Uses Accessibility only to spot reel swipes and count them": "ユーザー補助はリールのスワイプを見つけて数えるためだけに使用",
+"In browsers, checks only whether a short-video page is open": "ブラウザでは短い動画のページが開いているかだけを確認",
+"Never reads messages, passwords or what you type": "メッセージ・パスワード・入力内容は一切読みません",
+"Nothing ever leaves your phone": "データがスマホの外に出ることはありません"
 }

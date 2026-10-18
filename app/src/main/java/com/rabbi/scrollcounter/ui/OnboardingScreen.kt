@@ -1,6 +1,23 @@
 package com.rabbi.scrollcounter.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -110,35 +127,19 @@ fun OnboardingScreen(
             ) {
                 when (s) {
                     0 -> Welcome()
-                    1 -> if (status.trackerOn) StepBody(
-                        Icons.Rounded.AccessibilityNew, MaterialTheme.colorScheme.primary,
-                        tr("Allow scroll tracking"),
-                        tr("Scroll tracking is on. Scroll Counter can now count your reels in the apps you chose."),
-                        done = true,
-                        badge = tr("REQUIRED")
-                    ) else AccessibilityStep()
-                    2 -> StepBody(
-                        Icons.Rounded.NotificationsActive, Brand.Warn,
-                        tr("Get a heads-up"),
-                        tr("Scroll Counter can tell you when you've used 80% of your daily limit, and again when you pass it. Nothing else."),
-                        done = status.notificationsOn,
-                        badge = tr("REQUIRED")
-                    )
-                    3 -> StepBody(
-                        Icons.Rounded.Lock, Brand.Gold,
+                    1 -> {
+                        StepHero(Icons.Rounded.AccessibilityNew, MaterialTheme.colorScheme.primary,
+                            tr("Allow scroll tracking"), tr("Counts each reel you swipe. Takes 10 seconds."), status.trackerOn)
+                        if (!status.trackerOn) { Spacer(Modifier.height(22.dp)); TrackingDisclosure() }
+                    }
+                    2 -> StepHero(Icons.Rounded.NotificationsActive, Brand.Warn,
+                        tr("Get a heads-up"), tr("A nudge at 80% and when you hit your limit."), status.notificationsOn)
+                    3 -> StepHero(Icons.Rounded.Lock, Brand.Gold,
                         tr("Keep your history safe"),
-                        if (status.historySafe) tr("Your reel counts are backed up automatically. A small file is kept in your phone's Download/ScrollCounter folder and in your Google backup, so clearing data or reinstalling never wipes today's count or your last 60 days. Only numbers are saved.\n\nUsed Scroll Counter before? Restore your old history now.")
-                        else tr("Allow storage access so Scroll Counter can keep a small backup file of your reel counts in Download/ScrollCounter. Then reinstalling never wipes today's count or your last 60 days. Only numbers are saved."),
-                        done = status.historySafe,
-                        badge = tr("REQUIRED")
-                    )
-                    else -> StepBody(
-                        Icons.Rounded.BatteryChargingFull, Brand.Good,
-                        tr("Keep counting reliably"),
-                        tr("Some phones (Xiaomi, Oppo, Vivo, Samsung and others) stop background services to save battery. Set Scroll Counter to \"Unrestricted\" / \"Don't optimize\" so your count stays accurate. It uses almost no battery."),
-                        done = status.batteryUnrestricted,
-                        badge = tr("REQUIRED")
-                    )
+                        if (status.historySafe) tr("Your counts survive reinstalls and Clear data.") else tr("Allow storage so your counts survive reinstalls."),
+                        status.historySafe)
+                    else -> StepHero(Icons.Rounded.BatteryChargingFull, Brand.Good,
+                        tr("Keep counting reliably"), tr("Set battery to Unrestricted so counting never stops."), status.batteryUnrestricted)
                 }
             }
         }
@@ -197,41 +198,6 @@ private fun Welcome() {
 }
 
 @Composable
-private fun AccessibilityStep() {
-    Text(
-        tr("REQUIRED"),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
-            .padding(horizontal = 12.dp, vertical = 5.dp)
-    )
-    Spacer(Modifier.height(10.dp))
-    Text(tr("Allow scroll tracking"), style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(4.dp))
-    Text(tr("Watch how — it takes 10 seconds:"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Spacer(Modifier.height(16.dp))
-    // Real walkthrough of the phone's Accessibility screen (other apps hidden).
-    TutorialVideo(
-        com.rabbi.scrollcounter.R.raw.accessibility_tutorial, aspect = 480f / 1104f,
-        modifier = Modifier.fillMaxWidth(0.62f)
-    )
-    Spacer(Modifier.height(18.dp))
-    PremiumCard {
-        Text(tr("How tracking works"), style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(6.dp))
-        Text(DISCLOSURE_TEXT, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    Spacer(Modifier.height(10.dp))
-    Text(
-        tr("Scroll Counter greyed out or says \"Restricted setting\"? Open phone Settings → Apps → Scroll Counter → ⋮ → Allow restricted settings, then try again."),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center
-    )
-}
-
-@Composable
 private fun Feature(icon: ImageVector, title: String, text: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
@@ -246,34 +212,52 @@ private fun Feature(icon: ImageVector, title: String, text: String) {
     }
 }
 
+/** The step's picture: a glowing, gently floating tile with pulsing rings; turns into a green tick when done. */
 @Composable
-private fun StepBody(icon: ImageVector, tint: Color, title: String, text: String, done: Boolean, badge: String) {
-    Box(
-        Modifier.size(96.dp).clip(CircleShape).background(tint.copy(alpha = 0.14f)),
-        contentAlignment = Alignment.Center
-    ) { Icon(if (done) Icons.Rounded.CheckCircle else icon, null, tint = if (done) Brand.Good else tint, modifier = Modifier.size(46.dp)) }
-    Spacer(Modifier.height(20.dp))
-    val required = badge == tr("REQUIRED")
-    Text(
-        badge,
-        style = MaterialTheme.typography.labelMedium,
-        color = if (required) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-        modifier = Modifier.clip(RoundedCornerShape(50))
-            .background((if (required) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary).copy(alpha = 0.12f))
-            .padding(horizontal = 12.dp, vertical = 5.dp)
-    )
-    Spacer(Modifier.height(10.dp))
-    Text(title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(12.dp))
-    if (done) {
-        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-            AppGlyph(com.rabbi.scrollcounter.face.GlyphArt.Glyph.CHECK, 20.dp)
-            Spacer(Modifier.width(8.dp))
-            Text(tr("Done"), style = MaterialTheme.typography.titleMedium, color = Brand.Good)
+private fun StepHero(icon: ImageVector, accent: Color, title: String, subtitle: String, done: Boolean) {
+    val inf = rememberInfiniteTransition(label = "hero")
+    val pulse by inf.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "pulse")
+    val float by inf.animateFloat(-5f, 5f, infiniteRepeatable(tween(2300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "float")
+    val tint by animateColorAsState(if (done) Brand.Good else accent, tween(500), label = "tint")
+    val shape = RoundedCornerShape(34.dp)
+    Box(Modifier.size(210.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val r = size.minDimension / 2f
+            drawCircle(Brush.radialGradient(listOf(tint.copy(alpha = 0.34f), Color.Transparent), center, r), r, center)
+            for (k in 0..1) {
+                val p = (pulse + k * 0.5f) % 1f
+                drawCircle(tint.copy(alpha = 0.45f * (1f - p)), r * (0.40f + 0.55f * p), center, style = Stroke(1.5.dp.toPx()))
+            }
         }
-        Spacer(Modifier.height(12.dp))
+        Box(
+            Modifier.offset(y = float.dp).size(108.dp)
+                .shadow(28.dp, shape, ambientColor = tint, spotColor = tint)
+                .clip(shape)
+                .background(Brush.linearGradient(listOf(lerp(tint, Color.White, 0.28f), tint, lerp(tint, Color.Black, 0.30f))))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.05f))), shape),
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedContent(done, label = "icon") { d ->
+                Icon(if (d) Icons.Rounded.Check else icon, null, tint = Color.White, modifier = Modifier.size(52.dp))
+            }
+        }
     }
-    Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(14.dp))
+    Text(title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+    Spacer(Modifier.height(10.dp))
+    if (done) {
+        Row(
+            Modifier.clip(RoundedCornerShape(50)).background(Brand.Good.copy(alpha = 0.16f)).padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Rounded.CheckCircle, null, tint = Brand.Good, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(tr("Done"), style = MaterialTheme.typography.titleSmall, color = Brand.Good)
+        }
+    } else Text(
+        subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 8.dp)
+    )
 }
 
 @Composable
@@ -291,9 +275,17 @@ private fun RequiredNote() {
 
 @Composable
 private fun PrimaryButton(text: String, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp)) {
-        Text(text, style = MaterialTheme.typography.titleMedium)
-    }
+    val primary = MaterialTheme.colorScheme.primary
+    val shape = RoundedCornerShape(20.dp)
+    Box(
+        Modifier.fillMaxWidth().height(56.dp)
+            .shadow(18.dp, shape, ambientColor = primary, spotColor = primary)
+            .clip(shape)
+            .background(Brush.horizontalGradient(listOf(lerp(primary, Color.White, 0.35f), primary)))
+            .border(1.dp, Color.White.copy(alpha = 0.35f), shape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { Text(text, style = MaterialTheme.typography.titleMedium, color = Color(0xFF032B28), fontWeight = FontWeight.Bold) }
 }
 
 @Composable

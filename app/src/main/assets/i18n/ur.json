@@ -402,5 +402,14 @@
 "Turn on the switch": "سوئچ آن کریں",
 "How to turn on Scroll Counter": "Scroll Counter کیسے آن کریں",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Play Store کے باہر سے انسٹال کی گئی ایپس کے لیے آپ کا فون اسے روکتا ہے۔ ایک بار اجازت دیں، پھر Scroll Counter آن کریں۔",
-"Close guide": "گائیڈ بند کریں"
+"Close guide": "گائیڈ بند کریں",
+"Counts each reel you swipe. Takes 10 seconds.": "آپ کی سوائپ کی گئی ہر ریل گنتا ہے۔ صرف 10 سیکنڈ لگیں گے۔",
+"A nudge at 80% and when you hit your limit.": "80% پر اور حد پوری ہونے پر اطلاع۔",
+"Your counts survive reinstalls and Clear data.": "دوبارہ انسٹال یا Clear data کے بعد بھی گنتی باقی رہتی ہے۔",
+"Allow storage so your counts survive reinstalls.": "اسٹوریج کی اجازت دیں تاکہ دوبارہ انسٹال پر گنتی باقی رہے۔",
+"Set battery to Unrestricted so counting never stops.": "بیٹری کو Unrestricted کریں تاکہ گنتی کبھی نہ رکے۔",
+"Uses Accessibility only to spot reel swipes and count them": "Accessibility صرف ریل سوائپ پہچاننے اور گننے کے لیے",
+"In browsers, checks only whether a short-video page is open": "براؤزر میں صرف دیکھتا ہے کہ شارٹ ویڈیو صفحہ کھلا ہے یا نہیں",
+"Never reads messages, passwords or what you type": "پیغامات، پاس ورڈ یا آپ کا لکھا کبھی نہیں پڑھتا",
+"Nothing ever leaves your phone": "کچھ بھی آپ کے فون سے باہر نہیں جاتا"
 }

@@ -401,5 +401,14 @@
 "Turn on the switch": "Attiva l'interruttore",
 "How to turn on Scroll Counter": "Come attivare Scroll Counter",
 "Your phone blocks this for apps installed outside the Play Store. Allow it once, then turn Scroll Counter on.": "Il telefono lo blocca per le app installate fuori dal Play Store. Consentilo una volta, poi attiva Scroll Counter.",
-"Close guide": "Chiudi guida"
+"Close guide": "Chiudi guida",
+"Counts each reel you swipe. Takes 10 seconds.": "Conta ogni reel che scorri. Bastano 10 secondi.",
+"A nudge at 80% and when you hit your limit.": "Un avviso all'80% e quando raggiungi il limite.",
+"Your counts survive reinstalls and Clear data.": "I tuoi conteggi restano anche dopo reinstallazione e Cancella dati.",
+"Allow storage so your counts survive reinstalls.": "Consenti l'archiviazione così i conteggi restano dopo una reinstallazione.",
+"Set battery to Unrestricted so counting never stops.": "Imposta la batteria su Senza restrizioni così il conteggio non si ferma mai.",
+"Uses Accessibility only to spot reel swipes and count them": "Usa l'accessibilità solo per riconoscere e contare gli swipe dei reel",
+"In browsers, checks only whether a short-video page is open": "Nel browser controlla solo se è aperta una pagina di video brevi",
+"Never reads messages, passwords or what you type": "Non legge mai messaggi, password o ciò che scrivi",
+"Nothing ever leaves your phone": "Niente lascia mai il tuo telefono"
 }
