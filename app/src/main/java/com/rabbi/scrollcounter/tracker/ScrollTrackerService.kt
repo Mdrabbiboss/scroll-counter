@@ -501,10 +501,17 @@ class ScrollTrackerService : AccessibilityService() {
         val i = Intent(this, BlockActivity::class.java)
             .putExtra(BlockActivity.EXTRA_APP, appName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        if (runCatching { startActivity(i) }.isFailure) {
-            performGlobalAction(GLOBAL_ACTION_HOME)
-            handler.postDelayed({ runCatching { startActivity(i) } }, 250)
-        }
+        // First step back out of the Reels inside the app (to its feed / home), THEN cover it with
+        // the limit screen. So when you return to the app — from recent apps or its icon — it
+        // shows its feed, never the reel you were sent away from.
+        val inApp = blockedPkg != null && !TrackedApps.isBrowser(blockedPkg)
+        if (inApp) runCatching { performGlobalAction(GLOBAL_ACTION_BACK) }
+        handler.postDelayed({
+            if (runCatching { startActivity(i) }.isFailure) {
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                handler.postDelayed({ runCatching { startActivity(i) } }, 250)
+            }
+        }, if (inApp) BACK_SETTLE_MS else 0L)
         // If a floating video window still appears, close it; then end the app in the background.
         handler.postDelayed({ closeFloatingVideo(4) }, 450)
         // End it in the background — tried a few times, as some phones keep it alive at first — so
@@ -578,6 +585,8 @@ class ScrollTrackerService : AccessibilityService() {
 
     companion object {
         private const val WATCH_MS = 800L
+        /** After stepping back out of the Reels, wait this long before covering the app. */
+        private const val BACK_SETTLE_MS = 260L
         /** Page watch: look this long after the screen last changed (the swipe has settled). */
         private const val PAGE_CHECK_MS = 420L
         /** Reels feed missing from the screen this many checks in a row (~3 s) = you left. */
