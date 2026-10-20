@@ -4,9 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Check
 import kotlinx.coroutines.launch
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -103,7 +102,7 @@ fun TodayScreen(
     val greeting = when (LocalTime.now().hour) { in 5..11 -> tr("Good morning"); in 12..16 -> tr("Good afternoon"); else -> tr("Good evening") }
 
     // Pull down to reload: re-reads everything (counts, backup copies, tracking status, widget).
-    PullToReload(onRefresh) {
+    PullToReload(com.rabbi.scrollcounter.face.Mood.of(usedTotal, limit), onRefresh) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 20.dp),
@@ -428,17 +427,18 @@ private fun PausedBanner(onResume: () -> Unit) {
 }
 
 /**
- * Pull-to-reload with its own animated badge: a frosted gold-rimmed disc whose arc fills and whose
- * arrow winds round as you pull, clicks (haptic) when it's ready, spins with a sweeping comet arc
- * while reloading, then pops a green tick and glides away.
+ * Pull-to-reload, Foodpanda-style: the buddy rolls down in a white bubble as you pull, bounces
+ * while the whole page turns into shimmering placeholders, then pops happily and the page slides
+ * back in fresh. A light click when the pull is far enough, and another when it's done.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun PullToReload(onRefresh: () -> Unit, content: @Composable () -> Unit) {
+private fun PullToReload(mood: com.rabbi.scrollcounter.face.Mood, onRefresh: () -> Unit, content: @Composable () -> Unit) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var refreshing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var done by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var loading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var pop by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val state = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = refreshing,
@@ -446,95 +446,141 @@ private fun PullToReload(onRefresh: () -> Unit, content: @Composable () -> Unit)
             if (refreshing) return@PullToRefreshBox
             refreshing = true
             scope.launch {
+                kotlinx.coroutines.delay(180)
+                loading = true                      // the page turns into placeholders
                 runCatching { onRefresh() }
-                kotlinx.coroutines.delay(950)       // long enough to see it working
-                done = true
+                kotlinx.coroutines.delay(1350)
+                pop++                               // buddy pops: done
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                kotlinx.coroutines.delay(550)
+                kotlinx.coroutines.delay(380)
+                loading = false                     // fresh page slides in
+                kotlinx.coroutines.delay(320)
                 refreshing = false
-                kotlinx.coroutines.delay(300)
-                done = false
             }
         },
         state = state,
         modifier = Modifier.fillMaxSize(),
-        indicator = { ReloadBadge(state.distanceFraction, refreshing, done, Modifier.align(Alignment.TopCenter)) }
-    ) { content() }
+        indicator = { BuddyBubble(state.distanceFraction, refreshing, mood, pop, Modifier.align(Alignment.TopCenter)) }
+    ) {
+        androidx.compose.animation.AnimatedContent(
+            targetState = loading,
+            transitionSpec = {
+                if (targetState) androidx.compose.animation.fadeIn(tween(260)) togetherWith androidx.compose.animation.fadeOut(tween(200))
+                else (androidx.compose.animation.fadeIn(tween(420)) +
+                    androidx.compose.animation.slideInVertically(androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 260f)) { it / 12 }) togetherWith
+                    androidx.compose.animation.fadeOut(tween(220))
+            },
+            label = "reload"
+        ) { l -> if (l) SkeletonPage() else content() }
+    }
 
-    // A light click the moment the pull is far enough to reload.
     val armed = state.distanceFraction >= 1f && !refreshing
     androidx.compose.runtime.LaunchedEffect(armed) {
         if (armed) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
     }
 }
 
+/** The buddy in a white bubble: rolls in with the pull, bounces while reloading, pops when done. */
 @Composable
-private fun ReloadBadge(pull: Float, refreshing: Boolean, done: Boolean, modifier: Modifier) {
+private fun BuddyBubble(pull: Float, refreshing: Boolean, mood: com.rabbi.scrollcounter.face.Mood, pop: Int, modifier: Modifier) {
     val pos by animateFloatAsState(
         if (refreshing) 1f else pull.coerceIn(0f, 1.6f),
-        androidx.compose.animation.core.spring(dampingRatio = 0.72f, stiffness = 900f), label = "pos"
+        androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 700f), label = "pos"
     )
     if (pos <= 0.01f && !refreshing) return
-    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "reload")
-    val spin by inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(850, easing = androidx.compose.animation.core.LinearEasing)), label = "spin")
-    val breathe by inf.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "breathe")
-    val tick by animateFloatAsState(if (done) 1f else 0f, androidx.compose.animation.core.spring(dampingRatio = 0.42f, stiffness = 420f), label = "tick")
-    val armed = pull >= 1f || refreshing
-    val armScale by animateFloatAsState(if (armed) 1.08f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 500f), label = "arm")
+    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "bubble")
+    val hop by inf.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(tween(560, easing = androidx.compose.animation.core.LinearEasing)), label = "hop")
+    val spin by inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(1000, easing = androidx.compose.animation.core.LinearEasing)), label = "spin")
+    val popScale = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(1f) }
+    androidx.compose.runtime.LaunchedEffect(pop) {
+        if (pop > 0) {
+            popScale.animateTo(1.22f, tween(140))
+            popScale.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.35f, stiffness = 380f))
+        }
+    }
+    val armed = pull >= 1f
+    val armScale by animateFloatAsState(if (armed && !refreshing) 1.1f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 500f), label = "arm")
     val gold = Color(0xFFF8C33A)
-    val orange = Color(0xFFFF9F43)
-    val green = Brand.Good
+    // Hop: up fast, down with gravity; squash a little on landing.
+    val h = kotlin.math.sin(hop * Math.PI).toFloat()
+    val squash = if (refreshing) (1f - h).let { if (it > 0.85f) (it - 0.85f) / 0.15f else 0f } else 0f
     Box(
-        modifier
-            .graphicsLayerCompat(pos, armScale)
-            .size(50.dp)
-            .androidxShadow()
-            .clip(androidx.compose.foundation.shape.CircleShape)
-            .background(Brush.verticalGradient(listOf(Color(0xFF1F2427), Color(0xFF0C0F11))))
-            .border(1.dp, Brush.verticalGradient(listOf(gold.copy(alpha = 0.75f), gold.copy(alpha = 0.12f))), androidx.compose.foundation.shape.CircleShape),
+        modifier.graphicsLayer {
+            val travel = 82.dp.toPx()
+            translationY = pos * travel - 58.dp.toPx()
+            alpha = (pos * 2.2f).coerceIn(0f, 1f)
+            val s = (0.5f + 0.5f * pos.coerceAtMost(1f)) * armScale * popScale.value
+            scaleX = s; scaleY = s
+        },
         contentAlignment = Alignment.Center
     ) {
-        Canvas(Modifier.size(38.dp)) {
-            val w = 3.dp.toPx()
-            val inset = w / 2
-            val arcSize = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
-            val tl = androidx.compose.ui.geometry.Offset(inset, inset)
-            drawCircle(Color.White.copy(alpha = 0.08f), radius = size.minDimension / 2 - inset, style = Stroke(w))
-            val brush = Brush.sweepGradient(listOf(gold, orange, gold))
-            when {
-                done -> drawArc(green, -90f, 360f * tick.coerceIn(0f, 1f), false, tl, arcSize, style = Stroke(w, cap = StrokeCap.Round))
-                refreshing -> rotate(spin) {
-                    drawArc(brush, 0f, 70f + 130f * breathe, false, tl, arcSize, style = Stroke(w, cap = StrokeCap.Round))
-                }
-                else -> drawArc(brush, -90f, 330f * pull.coerceIn(0f, 1f), false, tl, arcSize, style = Stroke(w, cap = StrokeCap.Round))
-            }
+        // Thin gold ring: fills with the pull, sweeps round while reloading.
+        Canvas(Modifier.size(66.dp)) {
+            val w = 2.5.dp.toPx()
+            val tl = androidx.compose.ui.geometry.Offset(w / 2, w / 2)
+            val sz = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+            val brush = Brush.sweepGradient(listOf(gold.copy(alpha = 0f), gold, Color(0xFFFF9F43)))
+            if (refreshing) rotate(spin) { drawArc(brush, 0f, 300f, false, tl, sz, style = Stroke(w, cap = StrokeCap.Round)) }
+            else drawArc(gold, -90f, 360f * pull.coerceIn(0f, 1f), false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
         }
-        val iconRot = if (refreshing) spin * 1.0f else pull.coerceIn(0f, 1.5f) * 300f
-        if (tick < 0.5f) Icon(
-            androidx.compose.material.icons.Icons.Rounded.Refresh, contentDescription = tr("Reload"),
-            tint = if (armed) gold else gold.copy(alpha = 0.7f),
-            modifier = Modifier.size(22.dp).rotate(iconRot)
-                .androidxScale(1f - tick * 1.6f)
-        )
-        else Icon(
-            androidx.compose.material.icons.Icons.Rounded.Check, contentDescription = null, tint = green,
-            modifier = Modifier.size(24.dp).androidxScale(tick)
-        )
+        Box(
+            Modifier.size(56.dp)
+                .shadow(12.dp, androidx.compose.foundation.shape.CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF3EEE4)))),
+            contentAlignment = Alignment.Center
+        ) {
+            com.rabbi.scrollcounter.ui.AnimatedFace(
+                mood, 42.dp, bounceKey = pop,
+                modifier = Modifier.graphicsLayer {
+                    // Rolls in as it comes down, then sits upright; hops while reloading.
+                    rotationZ = if (refreshing) 0f else (1f - pos.coerceAtMost(1f)) * -200f + (pos - 1f).coerceAtLeast(0f) * 40f
+                    translationY = if (refreshing) -h * 7.dp.toPx() else 0f
+                    scaleX = 1f + squash * 0.12f
+                    scaleY = 1f - squash * 0.12f
+                }
+            )
+        }
     }
 }
 
-private fun Modifier.graphicsLayerCompat(pos: Float, scale: Float): Modifier = this.then(
-    Modifier.graphicsLayer {
-        val travel = 78.dp.toPx()
-        translationY = pos * travel - 50.dp.toPx() + 8.dp.toPx() * pos
-        alpha = (pos * 2.2f).coerceIn(0f, 1f)
-        val s = (0.55f + 0.45f * pos.coerceAtMost(1f)) * scale
-        scaleX = s; scaleY = s
+/** Shimmering placeholders in the shape of the page, shown while it reloads. */
+@Composable
+private fun SkeletonPage() {
+    val dark = isDarkTheme()
+    val base = if (dark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.06f)
+    val shine = if (dark) Color.White.copy(alpha = 0.17f) else Color.White.copy(alpha = 0.85f)
+    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "shimmer")
+    val x by inf.animateFloat(-0.6f, 1.6f, androidx.compose.animation.core.infiniteRepeatable(tween(1150, easing = androidx.compose.animation.core.LinearEasing)), label = "x")
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val w = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+        val brush = Brush.linearGradient(
+            listOf(base, shine, base),
+            start = androidx.compose.ui.geometry.Offset(x * w - w * 0.35f, 0f),
+            end = androidx.compose.ui.geometry.Offset(x * w + w * 0.35f, w * 0.25f)
+        )
+        Column(
+            Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    ShimmerBlock(Modifier.width(150.dp).height(13.dp), 8, brush)
+                    Spacer(Modifier.height(10.dp))
+                    ShimmerBlock(Modifier.width(220.dp).height(30.dp), 10, brush)
+                }
+                ShimmerBlock(Modifier.width(110.dp).height(38.dp), 50, brush)
+            }
+            ShimmerBlock(Modifier.fillMaxWidth().height(430.dp), 30, brush)
+            ShimmerBlock(Modifier.fillMaxWidth().height(100.dp), 26, brush)
+            ShimmerBlock(Modifier.fillMaxWidth().height(210.dp), 26, brush)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ShimmerBlock(Modifier.weight(1f).height(120.dp), 24, brush)
+                ShimmerBlock(Modifier.weight(1f).height(120.dp), 24, brush)
+            }
+        }
     }
-)
+}
 
-private fun Modifier.androidxScale(s: Float): Modifier = this.then(Modifier.graphicsLayer { scaleX = s; scaleY = s })
-
-private fun Modifier.androidxShadow(): Modifier = this.then(
-    Modifier.shadow(10.dp, androidx.compose.foundation.shape.CircleShape, ambientColor = Color(0xFFF8C33A), spotColor = Color(0xFFF8C33A))
-)
+@Composable
+private fun ShimmerBlock(m: Modifier, r: Int, brush: Brush) = Box(m.clip(RoundedCornerShape(r.dp)).background(brush))
