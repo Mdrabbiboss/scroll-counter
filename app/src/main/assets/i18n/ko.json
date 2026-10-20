@@ -425,5 +425,9 @@
 "Hide": "숨기기",
 "Counter hidden": "카운터 숨김",
 "Back at %1$s. Reels are still counted.": "%1$s에 다시 표시돼요. 릴스는 계속 세고 있어요.",
-"Show now": "지금 보기"
+"Show now": "지금 보기",
+"How visible while hidden": "숨김 중 보이는 정도",
+"Fully hidden": "완전히 숨김",
+"Faint": "흐리게",
+"Show counter": "카운터 보이기"
 }

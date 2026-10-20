@@ -50,6 +50,9 @@ class ReelCounterPill(private val service: AccessibilityService) {
     /** The view is currently faded out because of a hide. */
     private var hiddenNow = false
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** How visible the counter stays while hidden: 0 = gone, up to 0.9 = a faint ghost (still tappable). */
+    val hideLevel: Float get() = prefs.getInt(KEY_HIDE_LEVEL, 0).coerceIn(0, 90) / 100f
+    val isHiddenNow: Boolean get() = visible && hiddenNow
     private val unhide = Runnable { if (visible && hiddenNow && !snoozed) reveal() }
     private val prefs = service.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
 
@@ -103,7 +106,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
 
         if (snoozed) {
             // Still counting, just out of sight; come back by itself when the time is up.
-            if (!hiddenNow) { hiddenNow = true; p.visibility = android.view.View.INVISIBLE; setTouchable(false) }
+            if (!hiddenNow) { hiddenNow = true; applyHidden(p, animate = false) }
             scheduleUnhide()
             return
         }
@@ -170,11 +173,52 @@ class ReelCounterPill(private val service: AccessibilityService) {
         panel.close()
         if (!visible) return
         hiddenNow = true
-        setTouchable(false)
-        p.animate().cancel()
-        p.animate().alpha(0f).scaleX(0.6f).scaleY(0.6f).setDuration(220).setInterpolator(DecelerateInterpolator())
-            .withEndAction { if (hiddenNow) p.visibility = android.view.View.INVISIBLE }.start()
+        applyHidden(p, animate = true)
         scheduleUnhide()
+    }
+
+    /** Fade to the chosen hide level: fully gone (and untouchable), or a faint ghost you can still tap. */
+    private fun applyHidden(p: android.view.View, animate: Boolean) {
+        val level = hideLevel
+        p.animate().cancel()
+        if (level <= 0f) {
+            setTouchable(false)
+            if (!animate) { p.visibility = android.view.View.INVISIBLE; return }
+            p.animate().alpha(0f).scaleX(0.6f).scaleY(0.6f).setDuration(220).setInterpolator(DecelerateInterpolator())
+                .withEndAction { if (hiddenNow && hideLevel <= 0f) p.visibility = android.view.View.INVISIBLE }.start()
+        } else {
+            setTouchable(true)
+            p.visibility = android.view.View.VISIBLE
+            if (!animate) { p.alpha = level; p.scaleX = 0.85f; p.scaleY = 0.85f; return }
+            p.animate().alpha(level).scaleX(0.85f).scaleY(0.85f).setDuration(240).setInterpolator(DecelerateInterpolator()).start()
+        }
+    }
+
+    /** "Show counter" from the card: end any hide now. */
+    fun unhideNow() {
+        sessionHidden = false
+        prefs.edit().remove(KEY_HIDE_UNTIL).apply()
+        handler.removeCallbacks(unhide)
+        panel.close()
+        if (visible && hiddenNow) reveal()
+    }
+
+    /** While the hide-level slider moves: show the counter at that level so you can see it. */
+    fun previewHideLevel(level: Float) {
+        val p = pill ?: return
+        if (!visible) return
+        p.animate().cancel()
+        p.visibility = android.view.View.VISIBLE
+        p.alpha = level.coerceAtLeast(0.06f)
+        p.scaleX = 0.85f + 0.15f * (if (hiddenNow) 0f else 1f); p.scaleY = p.scaleX
+    }
+
+    /** Slider let go: back to how it should look now. */
+    fun endPreview() {
+        val p = pill ?: return
+        if (!visible) return
+        if (hiddenNow) applyHidden(p, animate = true)
+        else { p.animate().cancel(); p.animate().alpha(REST_ALPHA).scaleX(1f).scaleY(1f).setDuration(200).start() }
     }
 
     /** Where the counter is on screen: x, y, width, height. */
@@ -233,7 +277,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
             val l = lp ?: return false
             val r = root ?: return false
             val p = pill ?: return false
-            if (!visible || snoozed) return false
+            if (!visible || (hiddenNow && hideLevel <= 0f)) return false
             when (e.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     downX = e.rawX; downY = e.rawY; startX = l.x; startY = l.y; dragging = false
@@ -258,7 +302,8 @@ class ReelCounterPill(private val service: AccessibilityService) {
                 }
                 android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
                     p.animate().cancel()
-                    p.animate().scaleX(1f).scaleY(1f).alpha(REST_ALPHA).setDuration(220)
+                    val restScale = if (hiddenNow) 0.85f else 1f
+                    p.animate().scaleX(restScale).scaleY(restScale).alpha(if (hiddenNow) hideLevel else REST_ALPHA).setDuration(220)
                         .setInterpolator(android.view.animation.OvershootInterpolator(2f)).start()
                     if (dragging) savePosition()
                     else if (e.actionMasked == android.view.MotionEvent.ACTION_UP &&
@@ -420,6 +465,7 @@ class ReelCounterPill(private val service: AccessibilityService) {
         private const val REST_ALPHA = 0.9f
         const val PREFS = "pill_position"
         const val KEY_HIDE_UNTIL = "hide_until"
+        const val KEY_HIDE_LEVEL = "hide_level"
     }
 
     private fun statusBarHeight(): Int {

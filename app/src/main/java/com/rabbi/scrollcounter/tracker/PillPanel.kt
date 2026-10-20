@@ -251,7 +251,8 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
         card.addView(LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(10f).toInt(), 0, 0)
-            addView(button(tr("Hide counter"), filled = false) { picking = true; reopen() }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f))
+            if (host.isHiddenNow) addView(button(tr("Show counter"), filled = false) { close(); host.unhideNow() }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f))
+            else addView(button(tr("Hide counter"), filled = false) { picking = true; reopen() }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f))
             addView(button(tr("Open app"), filled = true) { close(); host.onOpenApp?.invoke() },
                 LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f).apply { marginStart = dp(10f).toInt() })
         })
@@ -308,6 +309,47 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
                 }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (!first) marginStart = dp(8f).toInt() })
                 pick(tr("Until I leave Reels"), UNTIL_LEAVE, true)
                 pick(tr("Rest of today"), REST_OF_TODAY, false)
+            }, LinearLayout.LayoutParams(-1, -2))
+            // How much to hide: drag from a faint ghost to fully gone.
+            val prefs = service.getSharedPreferences(ReelCounterPill.PREFS, android.content.Context.MODE_PRIVATE)
+            val start = prefs.getInt(ReelCounterPill.KEY_HIDE_LEVEL, 0).coerceIn(0, 90)
+            fun levelLabel(v: Int) = if (v <= 0) tr("Fully hidden") else tr("Faint") + " · $v%"
+            val value = text(levelLabel(start), 12.5f, 0xFFF8C33A.toInt(), bold = true)
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(14f).toInt(), 0, 0)
+                addView(text(tr("How visible while hidden"), 12.5f, 0xCCFFFFFF.toInt()), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(value)
+            }, LinearLayout.LayoutParams(-1, -2))
+            addView(android.widget.SeekBar(ctx).apply {
+                max = 90
+                progress = start
+                val gold = android.content.res.ColorStateList.valueOf(0xFFF8C33A.toInt())
+                progressTintList = gold
+                thumbTintList = gold
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0x40FFFFFF)
+                setPadding(dp(10f).toInt(), dp(8f).toInt(), dp(10f).toInt(), dp(4f).toInt())
+                setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: android.widget.SeekBar, v: Int, fromUser: Boolean) {
+                        val snapped = if (v < 5) 0 else v
+                        value.text = levelLabel(snapped)
+                        if (fromUser) { restartTimer(); host.previewHideLevel(snapped / 100f) }
+                    }
+                    override fun onStartTrackingTouch(sb: android.widget.SeekBar) {}
+                    override fun onStopTrackingTouch(sb: android.widget.SeekBar) {
+                        val snapped = if (sb.progress < 5) 0 else sb.progress
+                        prefs.edit().putInt(ReelCounterPill.KEY_HIDE_LEVEL, snapped).apply()
+                        sb.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                        host.endPreview()
+                    }
+                })
+            }, LinearLayout.LayoutParams(-1, -2))
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(dp(4f).toInt(), 0, dp(4f).toInt(), 0)
+                addView(text(tr("Fully hidden"), 10.5f, 0x80FFFFFF.toInt()), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(text(tr("Faint"), 10.5f, 0x80FFFFFF.toInt()))
             }, LinearLayout.LayoutParams(-1, -2))
         }, LinearLayout.LayoutParams(-1, -2))
 

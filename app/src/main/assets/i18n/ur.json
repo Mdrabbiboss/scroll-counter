@@ -426,5 +426,9 @@
 "Hide": "چھپائیں",
 "Counter hidden": "کاؤنٹر چھپا ہے",
 "Back at %1$s. Reels are still counted.": "%1$s پر واپس آئے گا۔ ریلز گنی جا رہی ہیں۔",
-"Show now": "ابھی دکھائیں"
+"Show now": "ابھی دکھائیں",
+"How visible while hidden": "چھپے ہوئے کتنا نظر آئے",
+"Fully hidden": "مکمل چھپا",
+"Faint": "ہلکا",
+"Show counter": "کاؤنٹر دکھائیں"
 }

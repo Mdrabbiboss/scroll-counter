@@ -426,5 +426,9 @@
 "Hide": "छिपाएं",
 "Counter hidden": "काउंटर छिपा है",
 "Back at %1$s. Reels are still counted.": "%1$s पर लौटेगा। रील्स गिनी जा रही हैं।",
-"Show now": "अभी दिखाएं"
+"Show now": "अभी दिखाएं",
+"How visible while hidden": "छिपे रहने पर कितना दिखे",
+"Fully hidden": "पूरा छिपा",
+"Faint": "हल्का",
+"Show counter": "काउंटर दिखाएं"
 }

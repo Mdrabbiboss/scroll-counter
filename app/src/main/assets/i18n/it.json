@@ -425,5 +425,9 @@
 "Hide": "Nascondi",
 "Counter hidden": "Contatore nascosto",
 "Back at %1$s. Reels are still counted.": "Torna alle %1$s. I reel vengono ancora contati.",
-"Show now": "Mostra ora"
+"Show now": "Mostra ora",
+"How visible while hidden": "Visibilità quando nascosto",
+"Fully hidden": "Del tutto nascosto",
+"Faint": "Tenue",
+"Show counter": "Mostra contatore"
 }

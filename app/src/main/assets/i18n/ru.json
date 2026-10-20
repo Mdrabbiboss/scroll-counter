@@ -425,5 +425,9 @@
 "Hide": "Скрыть",
 "Counter hidden": "Счётчик скрыт",
 "Back at %1$s. Reels are still counted.": "Вернётся в %1$s. Ролики по-прежнему считаются.",
-"Show now": "Показать"
+"Show now": "Показать",
+"How visible while hidden": "Видимость в скрытом режиме",
+"Fully hidden": "Полностью скрыт",
+"Faint": "Бледно",
+"Show counter": "Показать счётчик"
 }

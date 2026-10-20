@@ -425,5 +425,9 @@
 "Hide": "ซ่อน",
 "Counter hidden": "ซ่อนตัวนับอยู่",
 "Back at %1$s. Reels are still counted.": "กลับมาเวลา %1$s ยังนับรีลอยู่",
-"Show now": "แสดงเลย"
+"Show now": "แสดงเลย",
+"How visible while hidden": "มองเห็นแค่ไหนขณะซ่อน",
+"Fully hidden": "ซ่อนทั้งหมด",
+"Faint": "จาง ๆ",
+"Show counter": "แสดงตัวนับ"
 }

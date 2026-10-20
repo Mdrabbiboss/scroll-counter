@@ -425,5 +425,9 @@
 "Hide": "隐藏",
 "Counter hidden": "计数器已隐藏",
 "Back at %1$s. Reels are still counted.": "%1$s 恢复显示，仍在计数。",
-"Show now": "立即显示"
+"Show now": "立即显示",
+"How visible while hidden": "隐藏时的可见程度",
+"Fully hidden": "完全隐藏",
+"Faint": "淡淡显示",
+"Show counter": "显示计数器"
 }

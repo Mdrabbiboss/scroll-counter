@@ -425,5 +425,9 @@
 "Hide": "Gizle",
 "Counter hidden": "Sayaç gizli",
 "Back at %1$s. Reels are still counted.": "%1$s'de geri gelir. Reels sayılmaya devam ediyor.",
-"Show now": "Şimdi göster"
+"Show now": "Şimdi göster",
+"How visible while hidden": "Gizliyken görünürlük",
+"Fully hidden": "Tamamen gizli",
+"Faint": "Soluk",
+"Show counter": "Sayacı göster"
 }

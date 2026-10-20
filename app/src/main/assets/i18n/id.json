@@ -426,5 +426,9 @@
 "Hide": "Sembunyikan",
 "Counter hidden": "Penghitung disembunyikan",
 "Back at %1$s. Reels are still counted.": "Kembali pukul %1$s. Reel tetap dihitung.",
-"Show now": "Tampilkan"
+"Show now": "Tampilkan",
+"How visible while hidden": "Seberapa terlihat saat disembunyikan",
+"Fully hidden": "Tersembunyi penuh",
+"Faint": "Samar",
+"Show counter": "Tampilkan penghitung"
 }

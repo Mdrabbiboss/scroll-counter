@@ -426,5 +426,9 @@
 "Hide": "লুকান",
 "Counter hidden": "কাউন্টার লুকানো আছে",
 "Back at %1$s. Reels are still counted.": "%1$s-এ ফিরবে। রিল গোনা চলছে।",
-"Show now": "এখনই দেখান"
+"Show now": "এখনই দেখান",
+"How visible while hidden": "লুকানো অবস্থায় কতটা দেখা যাবে",
+"Fully hidden": "পুরো লুকানো",
+"Faint": "হালকা",
+"Show counter": "কাউন্টার দেখান"
 }

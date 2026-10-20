@@ -426,5 +426,9 @@
 "Hide": "إخفاء",
 "Counter hidden": "العداد مخفي",
 "Back at %1$s. Reels are still counted.": "يعود في %1$s. ما زال العد مستمرًا.",
-"Show now": "أظهر الآن"
+"Show now": "أظهر الآن",
+"How visible while hidden": "مدى الظهور أثناء الإخفاء",
+"Fully hidden": "مخفي تمامًا",
+"Faint": "باهت",
+"Show counter": "إظهار العداد"
 }

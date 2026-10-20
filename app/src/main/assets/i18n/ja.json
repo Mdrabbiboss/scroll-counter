@@ -425,5 +425,9 @@
 "Hide": "隠す",
 "Counter hidden": "カウンター非表示中",
 "Back at %1$s. Reels are still counted.": "%1$sに戻ります。カウントは続いています。",
-"Show now": "今すぐ表示"
+"Show now": "今すぐ表示",
+"How visible while hidden": "非表示中の見え方",
+"Fully hidden": "完全に隠す",
+"Faint": "うっすら",
+"Show counter": "カウンターを表示"
 }

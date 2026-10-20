@@ -425,5 +425,9 @@
 "Hide": "Ẩn",
 "Counter hidden": "Bộ đếm đang ẩn",
 "Back at %1$s. Reels are still counted.": "Hiện lại lúc %1$s. Reel vẫn được đếm.",
-"Show now": "Hiện ngay"
+"Show now": "Hiện ngay",
+"How visible while hidden": "Mức hiển thị khi ẩn",
+"Fully hidden": "Ẩn hoàn toàn",
+"Faint": "Mờ",
+"Show counter": "Hiện bộ đếm"
 }
