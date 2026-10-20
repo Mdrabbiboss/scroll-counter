@@ -411,5 +411,12 @@
 "In browsers, checks only whether a short-video page is open": "Tarayıcıda yalnızca kısa video sayfası açık mı diye bakar",
 "Never reads messages, passwords or what you type": "Mesajları, şifreleri veya yazdıklarını asla okumaz",
 "Nothing ever leaves your phone": "Hiçbir şey telefonundan çıkmaz",
-"Reload": "Yenile"
+"Reload": "Yenile",
+"Left": "Kalan",
+"This app": "Bu uygulama",
+"Today by app": "Bugün uygulamaya göre",
+"More": "Daha fazla",
+"Less": "Daha az",
+"Hide counter": "Sayacı gizle",
+"Open app": "Uygulamayı aç"
 }

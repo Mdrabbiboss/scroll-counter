@@ -412,5 +412,12 @@
 "In browsers, checks only whether a short-video page is open": "ব্রাউজারে শুধু দেখে শর্ট-ভিডিও পেজ খোলা কিনা",
 "Never reads messages, passwords or what you type": "মেসেজ, পাসওয়ার্ড বা আপনি যা লেখেন তা কখনো পড়ে না",
 "Nothing ever leaves your phone": "কোনো কিছুই আপনার ফোনের বাইরে যায় না",
-"Reload": "রিলোড"
+"Reload": "রিলোড",
+"Left": "বাকি",
+"This app": "এই অ্যাপ",
+"Today by app": "আজ অ্যাপভিত্তিক",
+"More": "আরও",
+"Less": "কম",
+"Hide counter": "কাউন্টার লুকান",
+"Open app": "অ্যাপ খুলুন"
 }

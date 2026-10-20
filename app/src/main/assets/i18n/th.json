@@ -411,5 +411,12 @@
 "In browsers, checks only whether a short-video page is open": "ในเบราว์เซอร์ตรวจแค่ว่าเปิดหน้าวิดีโอสั้นอยู่หรือไม่",
 "Never reads messages, passwords or what you type": "ไม่อ่านข้อความ รหัสผ่าน หรือสิ่งที่คุณพิมพ์เลย",
 "Nothing ever leaves your phone": "ไม่มีข้อมูลใดออกจากโทรศัพท์ของคุณ",
-"Reload": "โหลดใหม่"
+"Reload": "โหลดใหม่",
+"Left": "เหลือ",
+"This app": "แอปนี้",
+"Today by app": "วันนี้แยกตามแอป",
+"More": "เพิ่มเติม",
+"Less": "น้อยลง",
+"Hide counter": "ซ่อนตัวนับ",
+"Open app": "เปิดแอป"
 }

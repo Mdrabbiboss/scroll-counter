@@ -411,5 +411,12 @@
 "In browsers, checks only whether a short-video page is open": "브라우저에서는 짧은 동영상 페이지가 열렸는지만 확인해요",
 "Never reads messages, passwords or what you type": "메시지, 비밀번호, 입력 내용은 절대 읽지 않아요",
 "Nothing ever leaves your phone": "어떤 정보도 휴대폰 밖으로 나가지 않아요",
-"Reload": "새로고침"
+"Reload": "새로고침",
+"Left": "남음",
+"This app": "이 앱",
+"Today by app": "오늘 앱별",
+"More": "더 보기",
+"Less": "간단히",
+"Hide counter": "카운터 숨기기",
+"Open app": "앱 열기"
 }

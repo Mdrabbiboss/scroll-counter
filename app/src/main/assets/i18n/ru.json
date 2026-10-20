@@ -411,5 +411,12 @@
 "In browsers, checks only whether a short-video page is open": "В браузере проверяет только, открыта ли страница коротких видео",
 "Never reads messages, passwords or what you type": "Никогда не читает сообщения, пароли и то, что вы печатаете",
 "Nothing ever leaves your phone": "Ничто не покидает ваш телефон",
-"Reload": "Обновить"
+"Reload": "Обновить",
+"Left": "Осталось",
+"This app": "Это приложение",
+"Today by app": "Сегодня по приложениям",
+"More": "Ещё",
+"Less": "Меньше",
+"Hide counter": "Скрыть счётчик",
+"Open app": "Открыть"
 }

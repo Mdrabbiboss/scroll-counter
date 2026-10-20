@@ -411,5 +411,12 @@
 "In browsers, checks only whether a short-video page is open": "Prüft im Browser nur, ob eine Kurzvideo-Seite offen ist",
 "Never reads messages, passwords or what you type": "Liest nie Nachrichten, Passwörter oder was du tippst",
 "Nothing ever leaves your phone": "Nichts verlässt jemals dein Handy",
-"Reload": "Neu laden"
+"Reload": "Neu laden",
+"Left": "Übrig",
+"This app": "Diese App",
+"Today by app": "Heute nach App",
+"More": "Mehr",
+"Less": "Weniger",
+"Hide counter": "Zähler ausblenden",
+"Open app": "App öffnen"
 }

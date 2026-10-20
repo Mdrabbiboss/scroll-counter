@@ -411,5 +411,12 @@
 "In browsers, checks only whether a short-video page is open": "Trên trình duyệt chỉ kiểm tra trang video ngắn có mở hay không",
 "Never reads messages, passwords or what you type": "Không bao giờ đọc tin nhắn, mật khẩu hay những gì bạn gõ",
 "Nothing ever leaves your phone": "Không có gì rời khỏi điện thoại của bạn",
-"Reload": "Tải lại"
+"Reload": "Tải lại",
+"Left": "Còn lại",
+"This app": "Ứng dụng này",
+"Today by app": "Hôm nay theo ứng dụng",
+"More": "Thêm",
+"Less": "Thu gọn",
+"Hide counter": "Ẩn bộ đếm",
+"Open app": "Mở ứng dụng"
 }

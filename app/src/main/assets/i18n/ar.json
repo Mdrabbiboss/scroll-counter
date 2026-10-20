@@ -412,5 +412,12 @@
 "In browsers, checks only whether a short-video page is open": "في المتصفح يتحقق فقط مما إذا كانت صفحة فيديو قصير مفتوحة",
 "Never reads messages, passwords or what you type": "لا يقرأ الرسائل أو كلمات المرور أو ما تكتبه أبدًا",
 "Nothing ever leaves your phone": "لا شيء يغادر هاتفك أبدًا",
-"Reload": "إعادة التحميل"
+"Reload": "إعادة التحميل",
+"Left": "متبقٍ",
+"This app": "هذا التطبيق",
+"Today by app": "اليوم حسب التطبيق",
+"More": "المزيد",
+"Less": "أقل",
+"Hide counter": "إخفاء العداد",
+"Open app": "فتح التطبيق"
 }

@@ -412,5 +412,12 @@
 "In browsers, checks only whether a short-video page is open": "No navegador, verifica só se uma página de vídeos curtos está aberta",
 "Never reads messages, passwords or what you type": "Nunca lê mensagens, senhas ou o que você digita",
 "Nothing ever leaves your phone": "Nada sai do seu celular",
-"Reload": "Recarregar"
+"Reload": "Recarregar",
+"Left": "Restam",
+"This app": "Este app",
+"Today by app": "Hoje por app",
+"More": "Mais",
+"Less": "Menos",
+"Hide counter": "Ocultar contador",
+"Open app": "Abrir app"
 }

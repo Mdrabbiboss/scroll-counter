@@ -412,5 +412,12 @@
 "In browsers, checks only whether a short-video page is open": "Di browser hanya memeriksa apakah halaman video pendek terbuka",
 "Never reads messages, passwords or what you type": "Tidak pernah membaca pesan, kata sandi, atau ketikanmu",
 "Nothing ever leaves your phone": "Tidak ada yang keluar dari ponselmu",
-"Reload": "Muat ulang"
+"Reload": "Muat ulang",
+"Left": "Sisa",
+"This app": "Aplikasi ini",
+"Today by app": "Hari ini per aplikasi",
+"More": "Lainnya",
+"Less": "Ringkas",
+"Hide counter": "Sembunyikan",
+"Open app": "Buka aplikasi"
 }

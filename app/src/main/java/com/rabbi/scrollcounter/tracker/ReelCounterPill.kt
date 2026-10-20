@@ -19,8 +19,10 @@ import com.rabbi.scrollcounter.face.Mood
  * the scroll buddy and today's reel count. It bumps on every new reel, changes colour as you
  * near your limit, and slides away when you leave the reels feed.
  *
- * It is an accessibility overlay (no "display over other apps" permission) and is not
- * touchable, so it never gets in the way of the video.
+ * It is an accessibility overlay (no "display over other apps" permission). Drag it anywhere
+ * (the spot is remembered); tap it for a card with today's numbers ([PillPanel]), where it can be
+ * made smaller / bigger or hidden until you leave Reels. Only the counter itself takes touches —
+ * the video around it works as normal.
  */
 class ReelCounterPill(private val service: AccessibilityService) {
 
@@ -32,6 +34,17 @@ class ReelCounterPill(private val service: AccessibilityService) {
 
     private var visible = false
     val isShowing: Boolean get() = visible
+
+    /** Today's numbers for the tap card, the "Open app" action and the size buttons (set by the service). */
+    var info: (() -> PillInfo)? = null
+    var onOpenApp: (() -> Unit)? = null
+    var onSizeChange: ((Int) -> Unit)? = null
+
+    private var lp: WindowManager.LayoutParams? = null
+    private val panel = PillPanel(service, this)
+    /** Hidden by the user until they leave Reels (still counting underneath). */
+    private var snoozed = false
+    private val prefs = service.getSharedPreferences("pill_position", android.content.Context.MODE_PRIVATE)
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, service.resources.displayMetrics)
 
@@ -81,7 +94,9 @@ class ReelCounterPill(private val service: AccessibilityService) {
             countText.textColor = if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFF5A3A12.toInt()
         } ?: run { countText.textColor = if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFFFFD873.toInt() }
 
+        if (snoozed) return
         if (firstAppearance) {
+            setTouchable(true)
             p.animate().cancel()
             p.visibility = android.view.View.VISIBLE
             p.translationY = -dp(14f); p.alpha = 0f
@@ -101,8 +116,13 @@ class ReelCounterPill(private val service: AccessibilityService) {
 
     fun hide() {
         val p = pill ?: return
+        panel.close()
+        val wasSnoozed = snoozed
+        snoozed = false
         if (!visible) return
         visible = false
+        setTouchable(false)
+        if (wasSnoozed) { p.visibility = android.view.View.INVISIBLE; return }
         p.animate().cancel()
         p.animate().translationY(-dp(10f)).alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(220)
             .setInterpolator(DecelerateInterpolator())
@@ -113,6 +133,115 @@ class ReelCounterPill(private val service: AccessibilityService) {
 
     fun destroy() {
         detach()
+    }
+
+    /** "Hide counter": out of sight (and out of the way) until you leave Reels; counting goes on. */
+    fun snooze() {
+        val p = pill ?: return
+        if (!visible) return
+        snoozed = true
+        panel.close()
+        setTouchable(false)
+        p.animate().cancel()
+        p.animate().alpha(0f).scaleX(0.6f).scaleY(0.6f).setDuration(220).setInterpolator(DecelerateInterpolator())
+            .withEndAction { if (snoozed) p.visibility = android.view.View.INVISIBLE }.start()
+    }
+
+    /** Where the counter is on screen: x, y, width, height. */
+    fun anchorRect(): IntArray? {
+        val r = root ?: return null
+        val p = pill ?: return null
+        val loc = IntArray(2)
+        p.getLocationOnScreen(loc)
+        return intArrayOf(loc[0], loc[1], p.width, p.height).takeIf { r.isAttachedToWindow }
+    }
+
+    private fun setTouchable(on: Boolean) {
+        val l = lp ?: return
+        val r = root ?: return
+        val f = if (on) l.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                else l.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        if (f == l.flags) return
+        l.flags = f
+        runCatching { wm?.updateViewLayout(r, l) }
+    }
+
+    private fun screen(): Pair<Int, Int> {
+        val dm = service.resources.displayMetrics
+        return dm.widthPixels to dm.heightPixels
+    }
+
+    /** Put the window at the remembered spot (centre-x and top as fractions of the screen), or top centre. */
+    private fun place() {
+        val r = root ?: return
+        val l = lp ?: return
+        val (sw, sh) = screen()
+        val w = r.width.takeIf { it > 0 } ?: r.measuredWidth
+        val h = r.height.takeIf { it > 0 } ?: r.measuredHeight
+        val cx = prefs.getFloat("cx", 0.5f)
+        val top = if (prefs.contains("ty")) (prefs.getFloat("ty", 0f) * sh).toInt() else statusBarHeight() + dp(6f).toInt() - dp(5f).toInt()
+        l.x = (cx * sw - w / 2f).toInt().coerceIn(0, (sw - w).coerceAtLeast(0))
+        l.y = top.coerceIn(0, (sh - h).coerceAtLeast(0))
+        runCatching { wm?.updateViewLayout(r, l) }
+    }
+
+    private fun savePosition() {
+        val r = root ?: return
+        val l = lp ?: return
+        val (sw, sh) = screen()
+        prefs.edit().putFloat("cx", (l.x + r.width / 2f) / sw).putFloat("ty", l.y.toFloat() / sh).apply()
+    }
+
+    /** Drag to move it anywhere; a tap opens the card. */
+    private fun touchHandler() = object : android.view.View.OnTouchListener {
+        private var downX = 0f; private var downY = 0f
+        private var startX = 0; private var startY = 0
+        private var dragging = false
+        private val slop = android.view.ViewConfiguration.get(service).scaledTouchSlop
+
+        override fun onTouch(v: android.view.View, e: android.view.MotionEvent): Boolean {
+            val l = lp ?: return false
+            val r = root ?: return false
+            val p = pill ?: return false
+            if (!visible || snoozed) return false
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX; downY = e.rawY; startX = l.x; startY = l.y; dragging = false
+                    p.animate().cancel()
+                    p.animate().scaleX(0.95f).scaleY(0.95f).setDuration(90).start()
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - downX; val dy = e.rawY - downY
+                    if (!dragging && kotlin.math.hypot(dx, dy) > slop) {
+                        dragging = true
+                        panel.close()
+                        r.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        p.animate().cancel()
+                        p.animate().scaleX(1.12f).scaleY(1.12f).alpha(1f).setDuration(140).setInterpolator(DecelerateInterpolator()).start()
+                    }
+                    if (dragging) {
+                        val (sw, sh) = screen()
+                        l.x = (startX + dx).toInt().coerceIn(0, (sw - r.width).coerceAtLeast(0))
+                        l.y = (startY + dy).toInt().coerceIn(0, (sh - r.height).coerceAtLeast(0))
+                        runCatching { wm?.updateViewLayout(r, l) }
+                    }
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    p.animate().cancel()
+                    p.animate().scaleX(1f).scaleY(1f).alpha(REST_ALPHA).setDuration(220)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(2f)).start()
+                    if (dragging) savePosition()
+                    else if (e.actionMasked == android.view.MotionEvent.ACTION_UP &&
+                        android.os.SystemClock.uptimeMillis() - panel.closedAt > 350) {
+                        r.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                        face.react()
+                        anchorRect()?.let { a -> panel.toggle(a[0], a[1], a[2], a[3]) }
+                    }
+                    dragging = false
+                }
+            }
+            return true
+        }
     }
 
     private fun glass(radius: Float) = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xC0061F1C.toInt(), 0xC00D5F55.toInt())).apply {
@@ -222,28 +351,37 @@ class ReelCounterPill(private val service: AccessibilityService) {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or      // touchable only while it's showing
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = statusBarHeight() + dp(6f).toInt()
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = statusBarHeight() + dp(1f).toInt()
         }
+        frame.setOnTouchListener(touchHandler())
         try {
             wm?.addView(frame, lp)
             root = frame
             pill = pillView
+            this.lp = lp
+            frame.post { place() }
+            frame.addOnLayoutChangeListener { _, l, _, r, _, ol, _, or, _ -> if (r - l != or - ol) place() }
         } catch (e: Exception) {
             root = null
             pill = null
+            this.lp = null
         }
     }
 
     private fun detach() {
+        panel.close()
         val r = root ?: return
         try { wm?.removeView(r) } catch (_: Exception) { }
         root = null
         pill = null
+        lp = null
         visible = false
     }
 

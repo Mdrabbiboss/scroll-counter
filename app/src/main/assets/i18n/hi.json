@@ -412,5 +412,12 @@
 "In browsers, checks only whether a short-video page is open": "ब्राउज़र में सिर्फ़ देखता है कि शॉर्ट-वीडियो पेज खुला है या नहीं",
 "Never reads messages, passwords or what you type": "मैसेज, पासवर्ड या आप जो लिखते हैं, कभी नहीं पढ़ता",
 "Nothing ever leaves your phone": "कुछ भी आपके फ़ोन से बाहर नहीं जाता",
-"Reload": "रीलोड"
+"Reload": "रीलोड",
+"Left": "बाकी",
+"This app": "यह ऐप",
+"Today by app": "आज ऐप के हिसाब से",
+"More": "और",
+"Less": "कम",
+"Hide counter": "काउंटर छिपाएं",
+"Open app": "ऐप खोलें"
 }

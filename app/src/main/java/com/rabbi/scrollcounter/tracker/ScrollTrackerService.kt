@@ -259,7 +259,31 @@ class ScrollTrackerService : AccessibilityService() {
         super.onServiceConnected()
         val s = ScrollStore.get(this)
         store = s
-        pill = ReelCounterPill(this)
+        pill = ReelCounterPill(this).also { p ->
+            // The card that opens when the counter is tapped.
+            p.info = {
+                val today = s.dayStats(java.time.LocalDate.now())
+                val apps = s.todayUsedApps(today.apps)
+                val here = (pillPkg ?: currentPkg)?.let { TrackedApps.forPackage(it) }
+                PillInfo(
+                    count = s.todayUsed(), limit = s.dailyLimit,
+                    appName = here?.name, appCount = apps.firstOrNull { it.key == here?.key }?.scrolls ?: 0,
+                    watchSeconds = today.totalSeconds,
+                    apps = apps.take(5).map { (TrackedApps.forKey(it.key)?.name ?: it.key) to it.scrolls },
+                    size = s.pillSize,
+                )
+            }
+            p.onOpenApp = {
+                runCatching {
+                    startActivity(Intent(this, com.rabbi.scrollcounter.MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                }
+            }
+            p.onSizeChange = { size ->
+                s.pillSize = size
+                if (p.isShowing) p.show(s.todayUsed(), s.dailyLimit, bump = false, style = s.pillSize)
+            }
+        }
         val dm = resources.displayMetrics
         detector = ReelDetector(dm.widthPixels, dm.heightPixels)
         web = BrowserReelDetector(dm.heightPixels)
