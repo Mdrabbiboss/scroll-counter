@@ -14,9 +14,10 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * The buddy's little pet-like voice, synthesised in code (no sound files): happy chirps when
- * fresh, a content coo when okay, a yawn when tired, a whimper when drained and a dizzy groan
- * when exhausted. Stays quiet when the phone is on silent / vibrate.
+ * The buddy's little pet-like voice, synthesised in code (no sound files): six cute sounds for
+ * each mood (chirps, giggles and "wheee" when fresh; hums and "boop?" when okay; yawns, sighs
+ * and snores when tired; whimpers and sniffles when drained; dizzy groans when exhausted), each
+ * acted out with its own move. Stays quiet when the phone is on silent / vibrate.
  */
 object BuddyVoice {
     private const val RATE = 44100
@@ -25,6 +26,7 @@ object BuddyVoice {
     private val cache = HashMap<String, ShortArray>()
     private val envCache = HashMap<String, FloatArray>()
     @Volatile private var playingUntil = 0L
+    private val lastIdx = HashMap<Mood, Int>()
 
     /** One sound segment: [ms] long, pitch gliding [f0]→[f1] Hz, with an optional gentle vibrato. */
     private class Seg(
@@ -34,43 +36,82 @@ object BuddyVoice {
 
     private fun gap(ms: Int) = Seg(ms, 0f, 0f, 0f, silent = true)
 
-    // Clean, cute "ocarina / bubble" tones only — no noise, no buzzy harmonics.
-    private fun variants(mood: Mood): List<List<Seg>> = when (mood) {
+    /** One cute sound and the move the buddy makes while saying it. */
+    private class Variant(val gesture: Gesture, val segs: List<Seg>)
+    private fun v(g: Gesture, vararg segs: Seg) = Variant(g, segs.toList())
+
+    // Clean, cute "ocarina / bubble" tones only — no noise, no buzzy harmonics. Six per mood,
+    // each with its own move, so the buddy never feels repetitive.
+    private fun variants(mood: Mood): List<Variant> = when (mood) {
         Mood.FRESH -> listOf(
-            // "pip-pip-piu!"
-            listOf(Seg(75, 1050f, 1450f), gap(55), Seg(85, 1150f, 1600f), gap(55), Seg(170, 1500f, 1250f, vibHz = 7f, vibDepth = 0.015f)),
-            // bubbly "bloop-bloop!"
-            listOf(Seg(110, 700f, 1150f), gap(60), Seg(130, 820f, 1350f)),
-            // giggle "hi-hi-hi"
-            listOf(Seg(80, 1250f, 1400f, 0.9f), gap(60), Seg(80, 1300f, 1450f, 0.9f), gap(60), Seg(110, 1350f, 1550f, 0.9f)),
+            // "pip-pip-piu!" — happy hop
+            v(Gesture.HOP, Seg(75, 1050f, 1450f), gap(55), Seg(85, 1150f, 1600f), gap(55), Seg(170, 1500f, 1250f, vibHz = 7f, vibDepth = 0.015f)),
+            // "bloop-bloop!" — bounces on each bloop
+            v(Gesture.BOUNCE, Seg(110, 700f, 1150f), gap(70), Seg(130, 820f, 1350f)),
+            // "hi-hi-hi" — giggles, eyes squeezed
+            v(Gesture.GIGGLE, Seg(80, 1250f, 1400f, 0.9f), gap(60), Seg(80, 1300f, 1450f, 0.9f), gap(60), Seg(110, 1350f, 1550f, 0.9f)),
+            // "wheee~!" — a full twirl
+            v(Gesture.SPIN, Seg(620, 760f, 1700f, 0.9f, vibHz = 6f, vibDepth = 0.012f)),
+            // little bird trill — shimmies
+            v(Gesture.SHIMMY, Seg(420, 1300f, 1480f, 0.8f, vibHz = 22f, vibDepth = 0.045f)),
+            // "mwah!" — squishes, then pops
+            v(Gesture.SQUISH, Seg(60, 900f, 1250f, 0.9f), gap(40), Seg(150, 1400f, 1100f)),
         )
         Mood.OKAY -> listOf(
-            // content "mm-hmm~"
-            listOf(Seg(170, 560f, 640f, 0.9f), gap(70), Seg(280, 650f, 540f, 0.9f, vibHz = 5f, vibDepth = 0.012f)),
-            // curious "boop?"
-            listOf(Seg(170, 650f, 900f, 0.9f)),
-            // little happy hum
-            listOf(Seg(380, 600f, 680f, 0.8f, vibHz = 5f, vibDepth = 0.015f)),
+            // content "mm-hmm~" — nods
+            v(Gesture.NOD, Seg(170, 560f, 640f, 0.9f), gap(70), Seg(280, 650f, 540f, 0.9f, vibHz = 5f, vibDepth = 0.012f)),
+            // curious "boop?" — tilts its head
+            v(Gesture.TILT, Seg(190, 650f, 920f, 0.9f)),
+            // happy hum — sways
+            v(Gesture.SWAY, Seg(420, 600f, 680f, 0.8f, vibHz = 5f, vibDepth = 0.015f)),
+            // "la-la!" — two little bounces
+            v(Gesture.BOUNCE, Seg(150, 700f, 720f, 0.85f), gap(80), Seg(210, 880f, 860f, 0.85f)),
+            // cosy "aww~" — squish
+            v(Gesture.SQUISH, Seg(360, 720f, 560f, 0.8f, vibHz = 5f, vibDepth = 0.015f)),
+            // whistle "fwee-oo" — shimmy
+            v(Gesture.SHIMMY, Seg(180, 1000f, 1300f, 0.75f), Seg(260, 1300f, 900f, 0.75f, vibHz = 6f, vibDepth = 0.01f)),
         )
         Mood.TIRED -> listOf(
             // soft yawn "aah~ uhh"
-            listOf(Seg(260, 560f, 760f, 0.75f), Seg(650, 760f, 380f, 0.85f, vibHz = 4f, vibDepth = 0.012f)),
-            // sleepy "hmmm…"
-            listOf(Seg(560, 520f, 400f, 0.75f, vibHz = 4.5f, vibDepth = 0.015f)),
-            // drowsy "mm… mm"
-            listOf(Seg(200, 560f, 500f, 0.75f), gap(110), Seg(320, 520f, 420f, 0.7f)),
+            v(Gesture.YAWN, Seg(260, 560f, 760f, 0.75f), Seg(650, 760f, 380f, 0.85f, vibHz = 4f, vibDepth = 0.012f)),
+            // sleepy "hmmm…" — nods off, then jolts awake
+            v(Gesture.DROOP, Seg(620, 520f, 380f, 0.75f, vibHz = 4.5f, vibDepth = 0.015f)),
+            // drowsy "mm… mm" — slow nods
+            v(Gesture.NOD, Seg(200, 560f, 500f, 0.75f), gap(110), Seg(320, 520f, 420f, 0.7f)),
+            // tiny snore "zzz" — breathes in and out, eyes shut
+            v(Gesture.SNORE, Seg(380, 330f, 360f, 0.6f, vibHz = 28f, vibDepth = 0.03f), gap(120), Seg(420, 360f, 310f, 0.55f, vibHz = 28f, vibDepth = 0.03f)),
+            // long sigh "haaah" — deflates
+            v(Gesture.SIGH, Seg(640, 640f, 420f, 0.75f)),
+            // stretch "mmm-ah!" — stretches tall
+            v(Gesture.STRETCH, Seg(320, 500f, 720f, 0.8f), Seg(220, 800f, 900f, 0.8f)),
         )
         Mood.DRAINED -> listOf(
-            // little whimper "nnn… nnn"
-            listOf(Seg(210, 860f, 720f, 0.8f, vibHz = 6f, vibDepth = 0.02f), gap(100), Seg(360, 760f, 540f, 0.8f, vibHz = 6f, vibDepth = 0.02f)),
-            // worried "uh-oh"
-            listOf(Seg(160, 620f, 560f, 0.85f), gap(80), Seg(300, 540f, 420f, 0.85f)),
+            // little whimper "nnn… nnn" — shivers
+            v(Gesture.SHIVER, Seg(210, 860f, 720f, 0.8f, vibHz = 6f, vibDepth = 0.02f), gap(100), Seg(360, 760f, 540f, 0.8f, vibHz = 6f, vibDepth = 0.02f)),
+            // worried "uh-oh" — tilts
+            v(Gesture.TILT, Seg(160, 620f, 560f, 0.85f), gap(80), Seg(300, 540f, 420f, 0.85f)),
+            // sniffles — little jerks
+            v(Gesture.SNIFF, Seg(60, 900f, 1000f, 0.7f), gap(70), Seg(60, 950f, 1050f, 0.7f), gap(90), Seg(260, 820f, 600f, 0.8f, vibHz = 7f, vibDepth = 0.02f)),
+            // sad "awww" — deflates
+            v(Gesture.SIGH, Seg(520, 700f, 450f, 0.8f, vibHz = 6f, vibDepth = 0.025f)),
+            // "nooo~" — shakes its head
+            v(Gesture.SHAKE, Seg(640, 560f, 400f, 0.8f, vibHz = 5f, vibDepth = 0.03f)),
+            // tiny cry "eee-hee" — droops
+            v(Gesture.DROOP, Seg(200, 1000f, 900f, 0.75f, vibHz = 9f, vibDepth = 0.04f), gap(80), Seg(320, 950f, 700f, 0.75f, vibHz = 9f, vibDepth = 0.04f)),
         )
         Mood.EXHAUSTED -> listOf(
-            // dizzy "ooo-ooo~"
-            listOf(Seg(850, 520f, 330f, 0.85f, vibHz = 5f, vibDepth = 0.03f)),
-            // woozy "wooo-ah"
-            listOf(Seg(420, 640f, 460f, 0.85f, vibHz = 6f, vibDepth = 0.025f), gap(60), Seg(300, 480f, 380f, 0.8f)),
+            // dizzy "ooo-ooo~" — wobbles
+            v(Gesture.WOBBLE, Seg(850, 520f, 330f, 0.85f, vibHz = 5f, vibDepth = 0.03f)),
+            // woozy "wooo-ah" — slow dizzy spin
+            v(Gesture.SPIN, Seg(420, 640f, 460f, 0.85f, vibHz = 6f, vibDepth = 0.025f), gap(60), Seg(300, 480f, 380f, 0.8f)),
+            // low groan "uhhh" — deflates
+            v(Gesture.SIGH, Seg(700, 380f, 300f, 0.8f, vibHz = 4f, vibDepth = 0.02f)),
+            // "bwah!" — flops down and bounces
+            v(Gesture.FLOP, Seg(120, 700f, 500f, 0.85f), Seg(320, 450f, 300f, 0.8f)),
+            // seeing stars — circles round
+            v(Gesture.ORBIT, Seg(900, 920f, 520f, 0.7f, vibHz = 8f, vibDepth = 0.05f)),
+            // "nooo" — shakes its head
+            v(Gesture.SHAKE, Seg(160, 600f, 560f, 0.85f), gap(60), Seg(420, 560f, 360f, 0.85f, vibHz = 5f, vibDepth = 0.03f)),
         )
     }
 
@@ -111,7 +152,10 @@ object BuddyVoice {
     }
 
     /** How the face acts while a sound plays. */
-    enum class Gesture { HOP, SWAY, YAWN, SHIVER, WOBBLE }
+    enum class Gesture {
+        HOP, BOUNCE, GIGGLE, SPIN, SHIMMY, SQUISH, NOD, TILT, SWAY, YAWN,
+        DROOP, SNORE, SIGH, STRETCH, SHIVER, SNIFF, SHAKE, WOBBLE, FLOP, ORBIT
+    }
 
     /**
      * One "performance": the sound's loudness every 10 ms ([talk], 0..1, drives the mouth) and
@@ -126,14 +170,6 @@ object BuddyVoice {
         }
         /** 0..1 progress through the sound. */
         fun progress(now: Long) = ((now - startMs).toFloat() / durationMs).coerceIn(0f, 1f)
-    }
-
-    fun gestureFor(mood: Mood) = when (mood) {
-        Mood.FRESH -> Gesture.HOP
-        Mood.OKAY -> Gesture.SWAY
-        Mood.TIRED -> Gesture.YAWN
-        Mood.DRAINED -> Gesture.SHIVER
-        Mood.EXHAUSTED -> Gesture.WOBBLE
     }
 
     /** Loudness envelope every 10 ms, normalised and smoothed, so the mouth follows the sound. */
@@ -171,12 +207,15 @@ object BuddyVoice {
         val now = android.os.SystemClock.uptimeMillis()
         if (now < playingUntil || !allowed(app)) return
         val list = variants(mood)
-        val idx = Random.nextInt(list.size)
+        // A different one from last time.
+        var idx = Random.nextInt(list.size)
+        if (idx == lastIdx[mood] && list.size > 1) idx = (idx + 1 + Random.nextInt(list.size - 1)) % list.size
+        lastIdx[mood] = idx
         playingUntil = now + 1500
         io.execute {
             runCatching {
                 val key = "${mood.name}$idx"
-                val pcm = synchronized(cache) { cache.getOrPut(key) { synth(list[idx]) } }
+                val pcm = synchronized(cache) { cache.getOrPut(key) { synth(list[idx].segs) } }
                 val env = synchronized(envCache) { envCache.getOrPut(key) { envelope(pcm) } }
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
@@ -197,7 +236,7 @@ object BuddyVoice {
                     .build()
                 track.write(pcm, 0, pcm.size)
                 track.play()
-                val perf = Performance(env, gestureFor(mood), android.os.SystemClock.uptimeMillis() + 40)
+                val perf = Performance(env, list[idx].gesture, android.os.SystemClock.uptimeMillis() + 40)
                 main.post { onStart(perf) }
                 val ms = pcm.size * 1000L / RATE
                 playingUntil = android.os.SystemClock.uptimeMillis() + ms + 150
