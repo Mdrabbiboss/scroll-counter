@@ -419,5 +419,12 @@
 "More": "المزيد",
 "Less": "أقل",
 "Hide counter": "إخفاء العداد",
-"Open app": "فتح التطبيق"
+"Open app": "فتح التطبيق",
+"Hide the counter for": "إخفاء العداد لمدة",
+"Until I leave Reels": "حتى أغادر المقاطع",
+"Rest of today": "بقية اليوم",
+"Hide": "إخفاء",
+"Counter hidden": "العداد مخفي",
+"Back at %1$s. Reels are still counted.": "يعود في %1$s. ما زال العد مستمرًا.",
+"Show now": "أظهر الآن"
 }

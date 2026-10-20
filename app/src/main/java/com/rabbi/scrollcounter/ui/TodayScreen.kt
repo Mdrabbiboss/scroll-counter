@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.drawscope.rotate
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.ui.draw.drawBehind
@@ -119,6 +120,7 @@ fun TodayScreen(
         }
         if (!status.trackerOn) item { SetupBanner(onEnableTracking) }
         else if (paused) item { PausedBanner { store.paused = false } }
+        if (status.trackerOn) item { CounterHiddenBanner(tick) }
 
         item { HeroCard(usedTotal, limit, streak, usedApps, onEditLimit, limitLocked, buddySounds) }
         if (status.trackerOn && !status.widgetPlaced) item { WidgetBanner(usedTotal, limit, onAddWidget) }
@@ -408,6 +410,36 @@ private fun SetupBanner(onEnable: () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         Button(onClick = onEnable) { Text(tr("Enable tracking")) }
+    }
+}
+
+/** The floating counter was hidden for a while: say until when, and offer to bring it back. */
+@Composable
+private fun CounterHiddenBanner(tick: Long) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val prefs = androidx.compose.runtime.remember { ctx.getSharedPreferences(com.rabbi.scrollcounter.tracker.ReelCounterPill.PREFS, android.content.Context.MODE_PRIVATE) }
+    var until by androidx.compose.runtime.remember(tick) { androidx.compose.runtime.mutableLongStateOf(prefs.getLong(com.rabbi.scrollcounter.tracker.ReelCounterPill.KEY_HIDE_UNTIL, 0L)) }
+    // Disappears by itself when the time is up.
+    androidx.compose.runtime.LaunchedEffect(until) {
+        val left = until - System.currentTimeMillis()
+        if (left > 0) { kotlinx.coroutines.delay(left + 200); until = 0L }
+    }
+    if (until <= System.currentTimeMillis()) return
+    val time = java.time.Instant.ofEpochMilli(until).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+        .format(DateTimeFormatter.ofPattern("h:mm a"))
+    PremiumCard(container = Brand.Gold.copy(alpha = 0.12f)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(androidx.compose.material.icons.Icons.Rounded.VisibilityOff, null, tint = Brand.Gold)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tr("Counter hidden"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("Back at %1\$s. Reels are still counted.", time), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Button(
+                onClick = { prefs.edit().remove(com.rabbi.scrollcounter.tracker.ReelCounterPill.KEY_HIDE_UNTIL).apply(); until = 0L },
+                colors = ButtonDefaults.buttonColors(containerColor = Brand.Gold, contentColor = Color(0xFF2A1A00))
+            ) { Text(tr("Show now")) }
+        }
     }
 }
 

@@ -46,6 +46,10 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
     private var root: FrameLayout? = null
     private var lp: WindowManager.LayoutParams? = null
     private var expanded = false
+    /** Showing the "hide for how long" picker instead of the size row and buttons. */
+    private var picking = false
+    /** Index in [HIDE_STEPS], or [UNTIL_LEAVE] / [REST_OF_TODAY]. */
+    private var hideChoice = 4
     private var anchor = IntArray(4)
     var closedAt = 0L
         private set
@@ -55,7 +59,7 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, service.resources.displayMetrics)
 
-    fun toggle(x: Int, y: Int, w: Int, h: Int) { if (isOpen) close() else open(x, y, w, h, animate = true) }
+    fun toggle(x: Int, y: Int, w: Int, h: Int) { if (isOpen) close() else { picking = false; open(x, y, w, h, animate = true) } }
 
     /** Open under (or above) the counter at x,y,w,h on screen. */
     fun open(x: Int, y: Int, w: Int, h: Int, animate: Boolean) {
@@ -223,6 +227,8 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
             setOnClickListener { expanded = !expanded; reopen() }
         }, LinearLayout.LayoutParams(-1, -2))
 
+        if (picking) { addHidePicker(card); return card }
+
         // Counter size: smaller / bigger
         val sizes = listOf(tr("Small"), tr("Normal"), tr("Large"), tr("XL"))
         card.addView(LinearLayout(ctx).apply {
@@ -245,11 +251,82 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
         card.addView(LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(10f).toInt(), 0, 0)
-            addView(button(tr("Hide counter"), filled = false) { close(); host.snooze() }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f))
+            addView(button(tr("Hide counter"), filled = false) { picking = true; reopen() }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f))
             addView(button(tr("Open app"), filled = true) { close(); host.onOpenApp?.invoke() },
                 LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f).apply { marginStart = dp(10f).toInt() })
         })
         return card
+    }
+
+    /** "Hide the counter for": − 15 min + , or until you leave Reels / for the rest of today. */
+    private fun addHidePicker(card: LinearLayout) {
+        val ctx = service
+        card.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14f).toInt(), dp(12f).toInt(), dp(14f).toInt(), dp(14f).toInt())
+            background = GradientDrawable().apply { cornerRadius = dp(18f); setColor(0x12FFFFFF); setStroke(dp(1f).toInt(), 0x33F8C33A) }
+            addView(text(tr("Hide the counter for"), 13f, 0xCCFFFFFF.toInt(), bold = true).apply { gravity = Gravity.CENTER },
+                LinearLayout.LayoutParams(-1, -2))
+            // − value +
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(0, dp(10f).toInt(), 0, dp(10f).toInt())
+                addView(round("−", 0x24FFFFFF, 0xFFFFFFFF.toInt(), 40f) {
+                    hideChoice = if (hideChoice < 0) HIDE_STEPS.size - 1 else (hideChoice - 1).coerceAtLeast(0); reopen()
+                })
+                val label = when (hideChoice) {
+                    UNTIL_LEAVE -> tr("Until I leave Reels")
+                    REST_OF_TODAY -> tr("Rest of today")
+                    else -> formatDuration(HIDE_STEPS[hideChoice] * 60)
+                }
+                addView(text(label, if (hideChoice < 0) 16f else 26f, 0xFFF8C33A.toInt(), bold = true, numbers = hideChoice >= 0).apply {
+                    gravity = Gravity.CENTER
+                }, LinearLayout.LayoutParams(dp(150f).toInt(), -2))
+                addView(round("+", 0x24FFFFFF, 0xFFFFFFFF.toInt(), 40f) {
+                    hideChoice = if (hideChoice < 0) 0 else (hideChoice + 1).coerceAtMost(HIDE_STEPS.size - 1); reopen()
+                })
+            }, LinearLayout.LayoutParams(-1, -2))
+            // Quick picks
+            addView(LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                fun pick(label: String, value: Int, first: Boolean) = addView(TextView(ctx).apply {
+                    text = label
+                    textSize = 12.5f
+                    gravity = Gravity.CENTER
+                    typeface = Typeface.DEFAULT_BOLD
+                    maxLines = 1
+                    setPadding(dp(8f).toInt(), dp(9f).toInt(), dp(8f).toInt(), dp(9f).toInt())
+                    val on = hideChoice == value
+                    setTextColor(if (on) 0xFF4A2A00.toInt() else 0xFFFFFFFF.toInt())
+                    background = GradientDrawable().apply {
+                        cornerRadius = dp(14f)
+                        setColor(if (on) 0xFFF8C33A.toInt() else 0x14FFFFFF)
+                        if (!on) setStroke(dp(1f).toInt(), 0x33FFFFFF)
+                    }
+                    setOnClickListener { press(this); hideChoice = value; reopen() }
+                }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (!first) marginStart = dp(8f).toInt() })
+                pick(tr("Until I leave Reels"), UNTIL_LEAVE, true)
+                pick(tr("Rest of today"), REST_OF_TODAY, false)
+            }, LinearLayout.LayoutParams(-1, -2))
+        }, LinearLayout.LayoutParams(-1, -2))
+
+        card.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(10f).toInt(), 0, 0)
+            addView(button(tr("Cancel"), filled = false) { picking = false; reopen() }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f))
+            addView(button(tr("Hide"), filled = true) {
+                val now = System.currentTimeMillis()
+                val until: Long? = when (hideChoice) {
+                    UNTIL_LEAVE -> null
+                    REST_OF_TODAY -> java.time.LocalDate.now().plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    else -> now + HIDE_STEPS[hideChoice] * 60_000L
+                }
+                picking = false
+                close()
+                host.snooze(until)
+            }, LinearLayout.LayoutParams(0, dp(44f).toInt(), 1f).apply { marginStart = dp(10f).toInt() })
+        })
     }
 
     private fun text(s: String, sp: Float, color: Int, bold: Boolean = false, numbers: Boolean = false) = TextView(service).apply {
@@ -293,6 +370,13 @@ class PillPanel(private val service: AccessibilityService, private val host: Ree
         v.animate().scaleX(0.92f).scaleY(0.92f).setDuration(70).withEndAction {
             v.animate().scaleX(1f).scaleY(1f).setDuration(140).start()
         }.start()
+    }
+
+    companion object {
+        /** Hide-for steps, in minutes. */
+        private val HIDE_STEPS = intArrayOf(1, 2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180)
+        private const val UNTIL_LEAVE = -1
+        private const val REST_OF_TODAY = -2
     }
 
     /** A rounded progress bar. */

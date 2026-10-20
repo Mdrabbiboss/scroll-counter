@@ -43,8 +43,15 @@ class ReelCounterPill(private val service: AccessibilityService) {
     private var lp: WindowManager.LayoutParams? = null
     private val panel = PillPanel(service, this)
     /** Hidden by the user until they leave Reels (still counting underneath). */
-    private var snoozed = false
-    private val prefs = service.getSharedPreferences("pill_position", android.content.Context.MODE_PRIVATE)
+    private var sessionHidden = false
+    /** Hidden by the user for a while (wall-clock time, kept across apps and restarts). */
+    private val hiddenUntil: Long get() = prefs.getLong(KEY_HIDE_UNTIL, 0L)
+    private val snoozed: Boolean get() = sessionHidden || System.currentTimeMillis() < hiddenUntil
+    /** The view is currently faded out because of a hide. */
+    private var hiddenNow = false
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val unhide = Runnable { if (visible && hiddenNow && !snoozed) reveal() }
+    private val prefs = service.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, service.resources.displayMetrics)
 
@@ -94,16 +101,14 @@ class ReelCounterPill(private val service: AccessibilityService) {
             countText.textColor = if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFF5A3A12.toInt()
         } ?: run { countText.textColor = if (ratio >= 0.8f) 0xFFFFFFFF.toInt() else 0xFFFFD873.toInt() }
 
-        if (snoozed) return
-        if (firstAppearance) {
-            setTouchable(true)
-            p.animate().cancel()
-            p.visibility = android.view.View.VISIBLE
-            p.translationY = -dp(14f); p.alpha = 0f
-            p.scaleX = 0.9f; p.scaleY = 0.9f
-            p.animate().translationY(0f).alpha(REST_ALPHA).scaleX(1f).scaleY(1f)
-                .setDuration(300).setInterpolator(DecelerateInterpolator(2f))
-                .withLayer().start()
+        if (snoozed) {
+            // Still counting, just out of sight; come back by itself when the time is up.
+            if (!hiddenNow) { hiddenNow = true; p.visibility = android.view.View.INVISIBLE; setTouchable(false) }
+            scheduleUnhide()
+            return
+        }
+        if (firstAppearance || hiddenNow) {
+            reveal()
         } else if (bump) {
             p.animate().cancel()
             p.alpha = REST_ALPHA; p.translationY = 0f
@@ -114,15 +119,34 @@ class ReelCounterPill(private val service: AccessibilityService) {
         if (bump) face.post { face.react() }
     }
 
+    private fun reveal() {
+        val p = pill ?: return
+        hiddenNow = false
+        setTouchable(true)
+        p.animate().cancel()
+        p.visibility = android.view.View.VISIBLE
+        p.translationY = -dp(14f); p.alpha = 0f
+        p.scaleX = 0.9f; p.scaleY = 0.9f
+        p.animate().translationY(0f).alpha(REST_ALPHA).scaleX(1f).scaleY(1f)
+            .setDuration(300).setInterpolator(DecelerateInterpolator(2f))
+            .withLayer().start()
+    }
+
+    private fun scheduleUnhide() {
+        handler.removeCallbacks(unhide)
+        val left = hiddenUntil - System.currentTimeMillis()
+        if (!sessionHidden && left > 0) handler.postDelayed(unhide, left + 300)
+    }
+
     fun hide() {
         val p = pill ?: return
         panel.close()
-        val wasSnoozed = snoozed
-        snoozed = false
+        sessionHidden = false               // "until I leave Reels" ends here; a timed hide goes on
+        handler.removeCallbacks(unhide)
         if (!visible) return
         visible = false
         setTouchable(false)
-        if (wasSnoozed) { p.visibility = android.view.View.INVISIBLE; return }
+        if (hiddenNow) { hiddenNow = false; p.visibility = android.view.View.INVISIBLE; return }
         p.animate().cancel()
         p.animate().translationY(-dp(10f)).alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(220)
             .setInterpolator(DecelerateInterpolator())
@@ -135,16 +159,22 @@ class ReelCounterPill(private val service: AccessibilityService) {
         detach()
     }
 
-    /** "Hide counter": out of sight (and out of the way) until you leave Reels; counting goes on. */
-    fun snooze() {
+    /**
+     * "Hide counter": out of sight (and out of the way) while counting goes on — until [untilMs]
+     * (wall-clock), or until you leave Reels when [untilMs] is null. It comes back by itself.
+     */
+    fun snooze(untilMs: Long?) {
         val p = pill ?: return
-        if (!visible) return
-        snoozed = true
+        if (untilMs == null) sessionHidden = true
+        else prefs.edit().putLong(KEY_HIDE_UNTIL, untilMs).apply()
         panel.close()
+        if (!visible) return
+        hiddenNow = true
         setTouchable(false)
         p.animate().cancel()
         p.animate().alpha(0f).scaleX(0.6f).scaleY(0.6f).setDuration(220).setInterpolator(DecelerateInterpolator())
-            .withEndAction { if (snoozed) p.visibility = android.view.View.INVISIBLE }.start()
+            .withEndAction { if (hiddenNow) p.visibility = android.view.View.INVISIBLE }.start()
+        scheduleUnhide()
     }
 
     /** Where the counter is on screen: x, y, width, height. */
@@ -388,6 +418,8 @@ class ReelCounterPill(private val service: AccessibilityService) {
     companion object {
         /** Resting opacity: a touch see-through so it sits lightly over the video. */
         private const val REST_ALPHA = 0.9f
+        const val PREFS = "pill_position"
+        const val KEY_HIDE_UNTIL = "hide_until"
     }
 
     private fun statusBarHeight(): Int {

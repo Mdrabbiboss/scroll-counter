@@ -419,5 +419,12 @@
 "More": "আরও",
 "Less": "কম",
 "Hide counter": "কাউন্টার লুকান",
-"Open app": "অ্যাপ খুলুন"
+"Open app": "অ্যাপ খুলুন",
+"Hide the counter for": "কাউন্টার কতক্ষণ লুকাবেন",
+"Until I leave Reels": "রিল থেকে বের হওয়া পর্যন্ত",
+"Rest of today": "আজ সারাদিন",
+"Hide": "লুকান",
+"Counter hidden": "কাউন্টার লুকানো আছে",
+"Back at %1$s. Reels are still counted.": "%1$s-এ ফিরবে। রিল গোনা চলছে।",
+"Show now": "এখনই দেখান"
 }

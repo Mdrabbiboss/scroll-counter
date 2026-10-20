@@ -418,5 +418,12 @@
 "More": "もっと見る",
 "Less": "閉じる",
 "Hide counter": "カウンターを隠す",
-"Open app": "アプリを開く"
+"Open app": "アプリを開く",
+"Hide the counter for": "カウンターを隠す時間",
+"Until I leave Reels": "リールを出るまで",
+"Rest of today": "今日はずっと",
+"Hide": "隠す",
+"Counter hidden": "カウンター非表示中",
+"Back at %1$s. Reels are still counted.": "%1$sに戻ります。カウントは続いています。",
+"Show now": "今すぐ表示"
 }

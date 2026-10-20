@@ -418,5 +418,12 @@
 "More": "더 보기",
 "Less": "간단히",
 "Hide counter": "카운터 숨기기",
-"Open app": "앱 열기"
+"Open app": "앱 열기",
+"Hide the counter for": "카운터 숨길 시간",
+"Until I leave Reels": "릴스를 나갈 때까지",
+"Rest of today": "오늘 하루 종일",
+"Hide": "숨기기",
+"Counter hidden": "카운터 숨김",
+"Back at %1$s. Reels are still counted.": "%1$s에 다시 표시돼요. 릴스는 계속 세고 있어요.",
+"Show now": "지금 보기"
 }
