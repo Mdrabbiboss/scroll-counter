@@ -411,5 +411,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "Accessibility শুধু রিল সোয়াইপ চিনে গুনতে ব্যবহার হয়",
 "In browsers, checks only whether a short-video page is open": "ব্রাউজারে শুধু দেখে শর্ট-ভিডিও পেজ খোলা কিনা",
 "Never reads messages, passwords or what you type": "মেসেজ, পাসওয়ার্ড বা আপনি যা লেখেন তা কখনো পড়ে না",
-"Nothing ever leaves your phone": "কোনো কিছুই আপনার ফোনের বাইরে যায় না"
+"Nothing ever leaves your phone": "কোনো কিছুই আপনার ফোনের বাইরে যায় না",
+"Reload": "রিলোড"
 }

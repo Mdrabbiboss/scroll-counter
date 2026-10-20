@@ -411,5 +411,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "يستخدم إمكانية الوصول فقط لرصد تمرير المقاطع وعدّها",
 "In browsers, checks only whether a short-video page is open": "في المتصفح يتحقق فقط مما إذا كانت صفحة فيديو قصير مفتوحة",
 "Never reads messages, passwords or what you type": "لا يقرأ الرسائل أو كلمات المرور أو ما تكتبه أبدًا",
-"Nothing ever leaves your phone": "لا شيء يغادر هاتفك أبدًا"
+"Nothing ever leaves your phone": "لا شيء يغادر هاتفك أبدًا",
+"Reload": "إعادة التحميل"
 }

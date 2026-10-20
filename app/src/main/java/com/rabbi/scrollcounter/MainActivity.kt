@@ -331,7 +331,13 @@ private fun AppRoot(activity: ComponentActivity, store: ScrollStore) {
                         when (t) {
                             Tab.Today -> TodayScreen(
                                 store, tick, status, { showDisclosure = true }, { showLimit = true }, onAddWidget = addWidget,
-                                onShareDay = { shareDay() }, onShareBadge = { shareBadge(it) }
+                                onShareDay = { shareDay() }, onShareBadge = { shareBadge(it) },
+                                onRefresh = {
+                                    status = TrackerStatus.read(context)
+                                    if (status.historySafe) store.restoreDurable()
+                                    store.refresh()
+                                    com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(context)
+                                }
                             )
                             Tab.History -> HistoryScreen(store, tick)
                             Tab.Settings -> SettingsScreen(

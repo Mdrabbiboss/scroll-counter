@@ -410,5 +410,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "접근성은 릴스 스와이프를 감지해 세는 데만 사용해요",
 "In browsers, checks only whether a short-video page is open": "브라우저에서는 짧은 동영상 페이지가 열렸는지만 확인해요",
 "Never reads messages, passwords or what you type": "메시지, 비밀번호, 입력 내용은 절대 읽지 않아요",
-"Nothing ever leaves your phone": "어떤 정보도 휴대폰 밖으로 나가지 않아요"
+"Nothing ever leaves your phone": "어떤 정보도 휴대폰 밖으로 나가지 않아요",
+"Reload": "새로고침"
 }

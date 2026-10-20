@@ -410,5 +410,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "Utilise l'accessibilité uniquement pour repérer et compter les reels",
 "In browsers, checks only whether a short-video page is open": "Dans le navigateur, vérifie seulement si une page de vidéos courtes est ouverte",
 "Never reads messages, passwords or what you type": "Ne lit jamais vos messages, mots de passe ni ce que vous tapez",
-"Nothing ever leaves your phone": "Rien ne quitte jamais votre téléphone"
+"Nothing ever leaves your phone": "Rien ne quitte jamais votre téléphone",
+"Reload": "Recharger"
 }

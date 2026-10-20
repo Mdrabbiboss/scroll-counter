@@ -410,5 +410,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "ใช้การช่วยเหลือพิเศษเพื่อจับการปัดรีลและนับเท่านั้น",
 "In browsers, checks only whether a short-video page is open": "ในเบราว์เซอร์ตรวจแค่ว่าเปิดหน้าวิดีโอสั้นอยู่หรือไม่",
 "Never reads messages, passwords or what you type": "ไม่อ่านข้อความ รหัสผ่าน หรือสิ่งที่คุณพิมพ์เลย",
-"Nothing ever leaves your phone": "ไม่มีข้อมูลใดออกจากโทรศัพท์ของคุณ"
+"Nothing ever leaves your phone": "ไม่มีข้อมูลใดออกจากโทรศัพท์ของคุณ",
+"Reload": "โหลดใหม่"
 }

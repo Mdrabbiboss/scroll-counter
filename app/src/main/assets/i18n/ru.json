@@ -410,5 +410,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "Спец. возможности нужны только чтобы замечать и считать пролистывания роликов",
 "In browsers, checks only whether a short-video page is open": "В браузере проверяет только, открыта ли страница коротких видео",
 "Never reads messages, passwords or what you type": "Никогда не читает сообщения, пароли и то, что вы печатаете",
-"Nothing ever leaves your phone": "Ничто не покидает ваш телефон"
+"Nothing ever leaves your phone": "Ничто не покидает ваш телефон",
+"Reload": "Обновить"
 }

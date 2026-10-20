@@ -75,6 +75,9 @@ class ScrollStore private constructor(context: Context) {
         com.rabbi.scrollcounter.widget.ScrollWidget.refreshAll(appContext)
     }
 
+    /** Pull-to-reload: every screen re-reads its numbers. */
+    fun refresh() = bump()
+
     private fun bump() {
         _changes.value = _changes.value + 1
         // Ask Android to back the counts up soon, so reinstalling the app keeps today's reels,

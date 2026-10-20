@@ -410,5 +410,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "Erişilebilirliği yalnızca reels kaydırmalarını görüp saymak için kullanır",
 "In browsers, checks only whether a short-video page is open": "Tarayıcıda yalnızca kısa video sayfası açık mı diye bakar",
 "Never reads messages, passwords or what you type": "Mesajları, şifreleri veya yazdıklarını asla okumaz",
-"Nothing ever leaves your phone": "Hiçbir şey telefonundan çıkmaz"
+"Nothing ever leaves your phone": "Hiçbir şey telefonundan çıkmaz",
+"Reload": "Yenile"
 }

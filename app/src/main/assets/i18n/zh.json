@@ -410,5 +410,6 @@
 "Uses Accessibility only to spot reel swipes and count them": "无障碍功能仅用于识别并统计短视频滑动",
 "In browsers, checks only whether a short-video page is open": "在浏览器中仅检查是否打开了短视频页面",
 "Never reads messages, passwords or what you type": "从不读取消息、密码或你输入的内容",
-"Nothing ever leaves your phone": "任何数据都不会离开你的手机"
+"Nothing ever leaves your phone": "任何数据都不会离开你的手机",
+"Reload": "重新加载"
 }
