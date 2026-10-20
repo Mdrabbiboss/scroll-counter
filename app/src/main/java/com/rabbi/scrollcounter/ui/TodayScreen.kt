@@ -446,15 +446,15 @@ private fun PullToReload(mood: com.rabbi.scrollcounter.face.Mood, onRefresh: () 
             if (refreshing) return@PullToRefreshBox
             refreshing = true
             scope.launch {
-                kotlinx.coroutines.delay(180)
+                kotlinx.coroutines.delay(100)
                 loading = true                      // the page turns into placeholders
                 runCatching { onRefresh() }
-                kotlinx.coroutines.delay(1350)
+                kotlinx.coroutines.delay(650)
                 pop++                               // buddy pops: done
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                kotlinx.coroutines.delay(380)
+                kotlinx.coroutines.delay(220)
                 loading = false                     // fresh page slides in
-                kotlinx.coroutines.delay(320)
+                kotlinx.coroutines.delay(180)
                 refreshing = false
             }
         },
@@ -480,7 +480,7 @@ private fun PullToReload(mood: com.rabbi.scrollcounter.face.Mood, onRefresh: () 
     }
 }
 
-/** The buddy in a white bubble: rolls in with the pull, bounces while reloading, pops when done. */
+/** The buddy alone: rolls in with the pull, hops while reloading, pops when done. */
 @Composable
 private fun BuddyBubble(pull: Float, refreshing: Boolean, mood: com.rabbi.scrollcounter.face.Mood, pop: Int, modifier: Modifier) {
     val pos by animateFloatAsState(
@@ -490,7 +490,6 @@ private fun BuddyBubble(pull: Float, refreshing: Boolean, mood: com.rabbi.scroll
     if (pos <= 0.01f && !refreshing) return
     val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "bubble")
     val hop by inf.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(tween(560, easing = androidx.compose.animation.core.LinearEasing)), label = "hop")
-    val spin by inf.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(tween(1000, easing = androidx.compose.animation.core.LinearEasing)), label = "spin")
     val popScale = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(1f) }
     androidx.compose.runtime.LaunchedEffect(pop) {
         if (pop > 0) {
@@ -500,48 +499,23 @@ private fun BuddyBubble(pull: Float, refreshing: Boolean, mood: com.rabbi.scroll
     }
     val armed = pull >= 1f
     val armScale by animateFloatAsState(if (armed && !refreshing) 1.1f else 1f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 500f), label = "arm")
-    val gold = Color(0xFFF8C33A)
     // Hop: up fast, down with gravity; squash a little on landing.
     val h = kotlin.math.sin(hop * Math.PI).toFloat()
     val squash = if (refreshing) (1f - h).let { if (it > 0.85f) (it - 0.85f) / 0.15f else 0f } else 0f
-    Box(
-        modifier.graphicsLayer {
-            val travel = 82.dp.toPx()
-            translationY = pos * travel - 58.dp.toPx()
-            alpha = (pos * 2.2f).coerceIn(0f, 1f)
-            val s = (0.5f + 0.5f * pos.coerceAtMost(1f)) * armScale * popScale.value
-            scaleX = s; scaleY = s
-        },
-        contentAlignment = Alignment.Center
-    ) {
-        // Thin gold ring: fills with the pull, sweeps round while reloading.
-        Canvas(Modifier.size(66.dp)) {
-            val w = 2.5.dp.toPx()
-            val tl = androidx.compose.ui.geometry.Offset(w / 2, w / 2)
-            val sz = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
-            val brush = Brush.sweepGradient(listOf(gold.copy(alpha = 0f), gold, Color(0xFFFF9F43)))
-            if (refreshing) rotate(spin) { drawArc(brush, 0f, 300f, false, tl, sz, style = Stroke(w, cap = StrokeCap.Round)) }
-            else drawArc(gold, -90f, 360f * pull.coerceIn(0f, 1f), false, tl, sz, style = Stroke(w, cap = StrokeCap.Round))
+    // Only the buddy itself — no bubble or ring. It appears just under the greeting and slides
+    // a little further down as you pull.
+    com.rabbi.scrollcounter.ui.AnimatedFace(
+        mood, 34.dp, bounceKey = pop,
+        modifier = modifier.graphicsLayer {
+            translationY = (30f + 26f * pos.coerceAtMost(1f) + 14f * (pos - 1f).coerceAtLeast(0f)).dp.toPx() - (if (refreshing) h * 7.dp.toPx() else 0f)
+            alpha = (pos * 2.5f).coerceIn(0f, 1f)
+            val s = (0.4f + 0.6f * pos.coerceAtMost(1f)) * armScale * popScale.value
+            scaleX = s * (1f + squash * 0.12f)
+            scaleY = s * (1f - squash * 0.12f)
+            rotationZ = if (refreshing) 0f else (1f - pos.coerceAtMost(1f)) * -200f
+            shadowElevation = 0f
         }
-        Box(
-            Modifier.size(56.dp)
-                .shadow(12.dp, androidx.compose.foundation.shape.CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
-                .clip(androidx.compose.foundation.shape.CircleShape)
-                .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF3EEE4)))),
-            contentAlignment = Alignment.Center
-        ) {
-            com.rabbi.scrollcounter.ui.AnimatedFace(
-                mood, 42.dp, bounceKey = pop,
-                modifier = Modifier.graphicsLayer {
-                    // Rolls in as it comes down, then sits upright; hops while reloading.
-                    rotationZ = if (refreshing) 0f else (1f - pos.coerceAtMost(1f)) * -200f + (pos - 1f).coerceAtLeast(0f) * 40f
-                    translationY = if (refreshing) -h * 7.dp.toPx() else 0f
-                    scaleX = 1f + squash * 0.12f
-                    scaleY = 1f - squash * 0.12f
-                }
-            )
-        }
-    }
+    )
 }
 
 /** Shimmering placeholders in the shape of the page, shown while it reloads. */
